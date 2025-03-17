@@ -28,31 +28,31 @@ class Message < ApplicationRecord
     )
   end
   
-  # RailsAdmin 설정
-  rails_admin do
-    list do
-      field :id
-      field :conversation
-      field :sender
-      field :created_at
-      field :voice_file
-      field :is_read
-    end
-    
-    show do
-      field :id
-      field :conversation
-      field :sender
-      field :created_at
-      field :updated_at
-      field :voice_file
-      field :is_read
-    end
-    
-    edit do
-      field :conversation
-      field :sender
-      field :is_read
-    end
-  end
+  # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
+  # rails_admin do
+  #   list do
+  #     field :id
+  #     field :conversation
+  #     field :sender
+  #     field :created_at
+  #     field :voice_file
+  #     field :is_read
+  #   end
+  #   
+  #   show do
+  #     field :id
+  #     field :conversation
+  #     field :sender
+  #     field :created_at
+  #     field :updated_at
+  #     field :voice_file
+  #     field :is_read
+  #   end
+  #   
+  #   edit do
+  #     field :conversation
+  #     field :sender
+  #     field :is_read
+  #   end
+  # end
 end

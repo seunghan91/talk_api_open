@@ -41,55 +41,55 @@ class User < ApplicationRecord
     status_banned? || status_suspended?
   end
   
-  # RailsAdmin 설정
-  rails_admin do
-    list do
-      field :id
-      field :nickname
-      field :phone
-      field :gender
-      field :created_at
-      field :updated_at
-      field :status
-      field :report_count do
-        formatted_value do
-          bindings[:object].report_count
-        end
-        sortable false
-      end
-      field :push_enabled
-    end
-    
-    show do
-      field :id
-      field :nickname
-      field :phone
-      field :gender
-      field :created_at
-      field :updated_at
-      field :status
-      field :expo_push_token
-      field :push_enabled
-      field :broadcast_push_enabled
-      field :message_push_enabled
-      field :report_count do
-        formatted_value do
-          bindings[:object].report_count
-        end
-      end
-      field :reports_as_reported
-      field :broadcasts
-    end
-    
-    edit do
-      field :nickname
-      field :phone
-      field :gender
-      field :status
-      field :expo_push_token
-      field :push_enabled
-      field :broadcast_push_enabled
-      field :message_push_enabled
-    end
-  end
+  # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
+  # rails_admin do
+  #   list do
+  #     field :id
+  #     field :nickname
+  #     field :phone
+  #     field :gender
+  #     field :created_at
+  #     field :updated_at
+  #     field :status
+  #     field :report_count do
+  #       formatted_value do
+  #         bindings[:object].report_count
+  #       end
+  #       sortable false
+  #     end
+  #     field :push_enabled
+  #   end
+  #   
+  #   show do
+  #     field :id
+  #     field :nickname
+  #     field :phone
+  #     field :gender
+  #     field :created_at
+  #     field :updated_at
+  #     field :status
+  #     field :expo_push_token
+  #     field :push_enabled
+  #     field :broadcast_push_enabled
+  #     field :message_push_enabled
+  #     field :report_count do
+  #       formatted_value do
+  #         bindings[:object].report_count
+  #       end
+  #     end
+  #     field :reports_as_reported
+  #     field :broadcasts
+  #   end
+  #   
+  #   edit do
+  #     field :nickname
+  #     field :phone
+  #     field :gender
+  #     field :status
+  #     field :expo_push_token
+  #     field :push_enabled
+  #     field :broadcast_push_enabled
+  #     field :message_push_enabled
+  #   end
+  # end
 end

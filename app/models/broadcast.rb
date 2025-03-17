@@ -17,44 +17,44 @@ class Broadcast < ApplicationRecord
       !expired? && expired_at < 24.hours.from_now
     end
   
-    # RailsAdmin 설정
-    rails_admin do
-      list do
-        field :id
-        field :user
-        field :created_at
-        field :expired_at
-        field :active
-        field :voice_file
-        field :expired? do
-          formatted_value do
-            bindings[:object].expired? ? '만료됨' : '활성'
-          end
-          sortable false
-        end
-        field :expiring_soon? do
-          formatted_value do
-            bindings[:object].expiring_soon? ? '만료 임박' : '-'
-          end
-          sortable false
-        end
-      end
-      
-      show do
-        field :id
-        field :user
-        field :created_at
-        field :expired_at
-        field :active
-        field :voice_file
-      end
-      
-      edit do
-        field :user
-        field :active
-        field :expired_at
-      end
-    end
+    # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
+    # rails_admin do
+    #   list do
+    #     field :id
+    #     field :user
+    #     field :created_at
+    #     field :expired_at
+    #     field :active
+    #     field :voice_file
+    #     field :expired? do
+    #       formatted_value do
+    #         bindings[:object].expired? ? '만료됨' : '활성'
+    #       end
+    #       sortable false
+    #     end
+    #     field :expiring_soon? do
+    #       formatted_value do
+    #         bindings[:object].expiring_soon? ? '만료 임박' : '-'
+    #       end
+    #       sortable false
+    #     end
+    #   end
+    #   
+    #   show do
+    #     field :id
+    #     field :user
+    #     field :created_at
+    #     field :expired_at
+    #     field :active
+    #     field :voice_file
+    #   end
+    #   
+    #   edit do
+    #     field :user
+    #     field :active
+    #     field :expired_at
+    #   end
+    # end
   
     private
   
