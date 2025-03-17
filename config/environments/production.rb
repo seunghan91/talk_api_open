@@ -1,4 +1,5 @@
 require "active_support/core_ext/integer/time"
+require 'logger'  # 명시적으로 Logger 로드
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -51,8 +52,8 @@ Rails.application.configure do
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
   # Log to STDOUT by default
-  config.logger = ActiveSupport::Logger.new(STDOUT)
-  config.logger.formatter = config.log_formatter
+  config.logger = ::Logger.new(STDOUT)
+  config.logger.formatter = ::Logger::Formatter.new
   config.active_record.verbose_query_logs = false
 
   # Prepend all log lines with the following tags.
@@ -61,14 +62,17 @@ Rails.application.configure do
   # "info" includes generic and useful information about system operation, but avoids logging too much
   # information to avoid inadvertent exposure of personally identifiable information (PII). If you
   # want to log everything, set the level to "debug".
-  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
+  config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "warn")
 
   # Use a different cache store in production.
-  # config.cache_store = :mem_cache_store
+  config.cache_store = :redis_cache_store, { 
+    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"),
+    expires_in: 1.day
+  }
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  # config.active_job.queue_adapter = :resque
-  # config.active_job.queue_name_prefix = "talkk_api_production"
+  config.active_job.queue_adapter = :sidekiq
+  config.active_job.queue_name_prefix = "talkk_api_production"
 
   # Disable caching for Action Mailer templates even if Action Controller
   # caching is enabled.
@@ -98,4 +102,10 @@ Rails.application.configure do
   # ]
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  
+  # 에셋 관련 설정 (RailsAdmin을 위해)
+  config.assets.compile = false  # 런타임 컴파일 비활성화
+  config.assets.digest = true    # 에셋 핑거프린팅 활성화
+  config.assets.js_compressor = :terser # JavaScript 압축
+  config.assets.css_compressor = :sass  # CSS 압축
 end
