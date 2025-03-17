@@ -28,5 +28,8 @@ module TalkkApi
     
     # API 전용 모드 끄기 (RailsAdmin을 위해)
     config.api_only = false  # 또는 이 줄을 아예 삭제
+    
+    # secret_key_base 설정 (환경 변수가 없는 경우 기본값 사용)
+    config.secret_key_base = ENV["SECRET_KEY_BASE"] || "a58d5f62659e89d8c2ae1949570b980619361bfc08ff9a612d1b563fd7ce51250fab4db654dfb90a4f62981e6df12b2d6a49d92d4f56b8c8bacd49f4ccc7879e"
   end
 end
