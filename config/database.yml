@@ -17,6 +17,11 @@ test:
   <<: *default
   database: talkk_api_test
 
+staging:
+  <<: *default
+  url: <%= ENV['DATABASE_URL'] %>
+  database: talkk_api_staging
+
 production:
   <<: *default
   url: <%= ENV['DATABASE_URL'] %>
