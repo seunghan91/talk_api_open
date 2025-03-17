@@ -5,6 +5,13 @@ services:
     runtime: ruby
     buildCommand: bundle config set frozen false && bundle install --without development test
     startCommand: bundle exec puma -C config/puma.rb
+    buildFilter:
+      paths:
+        - Gemfile
+        - Gemfile.lock
+        - config/**
+        - db/migrate/**
+        - app/**
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -18,7 +25,22 @@ services:
         value: true
       - key: BUNDLE_FROZEN
         value: "false"
+      - key: RAILS_LOG_LEVEL
+        value: warn
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: talkk-redis
+          property: connectionString
+      - key: GENERATE_SOURCEMAP
+        value: "false"
 
 databases:
   - name: talkk-db
     databaseName: talkk_production
+
+services:
+  - type: redis
+    name: talkk-redis
+    ipAllowList: []
+    plan: free
