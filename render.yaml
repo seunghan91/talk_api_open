@@ -3,7 +3,7 @@ services:
     name: talkk-api
     env: ruby
     runtime: ruby
-    buildCommand: bundle install --without development test
+    buildCommand: bundle config set frozen false && bundle install --without development test
     startCommand: bundle exec puma -C config/puma.rb
     envVars:
       - key: DATABASE_URL
@@ -16,6 +16,8 @@ services:
         value: production
       - key: RAILS_LOG_TO_STDOUT
         value: true
+      - key: BUNDLE_FROZEN
+        value: "false"
 
 databases:
   - name: talkk-db
