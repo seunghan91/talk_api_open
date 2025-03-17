@@ -26,7 +26,7 @@ Rails.application.routes.draw do
   end
   
   # RailsAdmin 마운트
-  mount RailsAdmin::Engine => '/admin', as: 'rails_admin'
+  # mount RailsAdmin::Engine => '/admin', as: 'rails_admin'  # 젬이 설치되지 않아 주석 처리
 
   # 2) API
   namespace :api do
