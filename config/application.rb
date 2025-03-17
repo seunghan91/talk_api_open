@@ -8,8 +8,10 @@ Bundler.require(*Rails.groups)
 
 module TalkkApi
   class Application < Rails::Application
-    config.load_defaults 7.2
-    config.autoload_lib(ignore: %w[assets tasks])
+    # Rails 7.0 호환성을 위해 버전 변경
+    config.load_defaults 7.0
+    # 이 줄은 Rails 7.2에서만 사용되므로 주석 처리
+    # config.autoload_lib(ignore: %w[assets tasks])
     
     # 암호화 코드
     config.active_record.encryption.primary_key = Rails.application.credentials.dig(:active_record_encryption, :primary_key)
