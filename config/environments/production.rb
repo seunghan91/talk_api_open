@@ -102,10 +102,4 @@ Rails.application.configure do
   # ]
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-  
-  # 에셋 관련 설정 (RailsAdmin을 위해)
-  config.assets.compile = false  # 런타임 컴파일 비활성화
-  config.assets.digest = true    # 에셋 핑거프린팅 활성화
-  config.assets.js_compressor = :terser # JavaScript 압축
-  config.assets.css_compressor = :sass  # CSS 압축
 end

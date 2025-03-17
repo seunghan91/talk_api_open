@@ -37,6 +37,9 @@ gem 'redis'
 # gem 'sidekiq-cron'
 # gem 'rails_admin', '~> 3.0'
 # gem "sassc-rails"
+# gem "sprockets-rails" # RailsAdmin에 필요한 에셋 파이프라인
+# gem "importmap-rails" # JavaScript 모듈 관리
+# gem "turbo-rails"     # Hotwire 기능 (RailsAdmin UI에 도움될 수 있음)
 
 # 명시적으로 logger gem 추가
 gem "logger", "~> 1.6"
