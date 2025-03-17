@@ -9,6 +9,9 @@ Rails.application.routes.draw do
   # 헬스 체크 엔드포인트
   get "/api/health_check", to: "health_check#index"
   
+  # 헬스 체크 엔드포인트 추가
+  get '/health', to: proc { [200, {}, ['ok']] }
+  
   # 1) 웹용 루트
   root 'pages#home'
   get "purchases/create"
@@ -37,6 +40,10 @@ Rails.application.routes.draw do
     post "change_nickname", to: "users#change_nickname"
     get "generate_random_nickname", to: "users#generate_random_nickname"
     post "update_profile", to: "users#update_profile"
+    
+    # 알림 설정 관련 API
+    get "users/notification_settings", to: "users#notification_settings"
+    post "users/notification_settings", to: "users#update_notification_settings"
 
     resources :broadcasts, only: [:index, :create, :show] do
       member do

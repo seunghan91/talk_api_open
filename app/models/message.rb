@@ -27,4 +27,32 @@ class Message < ApplicationRecord
       body: "#{sender.nickname}님이 메시지를 보냈습니다."
     )
   end
+  
+  # RailsAdmin 설정
+  rails_admin do
+    list do
+      field :id
+      field :conversation
+      field :sender
+      field :created_at
+      field :voice_file
+      field :is_read
+    end
+    
+    show do
+      field :id
+      field :conversation
+      field :sender
+      field :created_at
+      field :updated_at
+      field :voice_file
+      field :is_read
+    end
+    
+    edit do
+      field :conversation
+      field :sender
+      field :is_read
+    end
+  end
 end

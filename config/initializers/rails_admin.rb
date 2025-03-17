@@ -4,10 +4,13 @@ RailsAdmin.config do |config|
   ### Popular gems integration
 
   ## == Devise ==
-  # config.authenticate_with do
-  #   warden.authenticate! scope: :user
-  # end
-  # config.current_user_method(&:current_user)
+  # 관리자 인증 설정 (JWT 토큰 기반)
+  config.authenticate_with do
+    authenticate_or_request_with_http_basic do |username, password|
+      # 실제 환경에서는 환경 변수나 암호화된 설정에서 가져와야 함
+      username == 'admin' && password == 'admin2024'
+    end
+  end
 
   ## == CancanCan ==
   # config.authorize_with :cancancan
@@ -40,6 +43,56 @@ RailsAdmin.config do |config|
   config.model 'Report' do
     list do
       filters [:reporter, :reported, :status, :report_type, :created_at]
+    end
+  end
+  
+  # Conversation 모델 설정 추가
+  config.model 'Conversation' do
+    list do
+      filters [:user_a, :user_b, :created_at, :updated_at]
+      field :id
+      field :user_a
+      field :user_b
+      field :created_at
+      field :updated_at
+      field :messages do
+        formatted_value do
+          bindings[:object].messages.count
+        end
+        sortable false
+      end
+    end
+    
+    show do
+      field :id
+      field :user_a
+      field :user_b
+      field :created_at
+      field :updated_at
+      field :messages
+    end
+  end
+  
+  # Message 모델 설정 추가
+  config.model 'Message' do
+    list do
+      filters [:conversation, :sender, :created_at]
+      field :id
+      field :conversation
+      field :sender
+      field :created_at
+      field :voice_file
+      field :is_read
+    end
+    
+    show do
+      field :id
+      field :conversation
+      field :sender
+      field :created_at
+      field :updated_at
+      field :voice_file
+      field :is_read
     end
   end
   
@@ -86,6 +139,27 @@ RailsAdmin.config do |config|
             resolved: Report.where(status: :resolved).count,
             rejected: Report.where(status: :rejected).count,
             new_today: Report.where('created_at >= ?', Date.today).count
+          }
+        end
+      end
+      
+      # 대화 및 메시지 통계 추가
+      register_instance_option :conversation_statistics do
+        proc do
+          {
+            total: Conversation.count,
+            new_today: Conversation.where('created_at >= ?', Date.today).count,
+            active_last_week: Conversation.where('updated_at >= ?', 7.days.ago).count
+          }
+        end
+      end
+      
+      register_instance_option :message_statistics do
+        proc do
+          {
+            total: Message.count,
+            new_today: Message.where('created_at >= ?', Date.today).count,
+            unread: Message.where(is_read: false).count
           }
         end
       end
@@ -302,6 +376,43 @@ RailsAdmin.config do |config|
           @object.reported.update(status: :suspended)
           @object.update(status: :resolved)
           flash[:notice] = "신고된 사용자가 정지되었습니다."
+          redirect_to back_or_index
+        end
+      end
+    end
+    
+    # 메시지 관련 커스텀 액션 추가
+    member :mark_as_read do
+      only 'Message'
+      i18n_key :mark_as_read
+      register_instance_option :link_icon do
+        'icon-check'
+      end
+      register_instance_option :visible? do
+        bindings[:object].class == Message && !bindings[:object].is_read
+      end
+      register_instance_option :controller do
+        proc do
+          @object.update(is_read: true)
+          flash[:notice] = "메시지가 읽음으로 표시되었습니다."
+          redirect_to back_or_index
+        end
+      end
+    end
+    
+    member :mark_as_unread do
+      only 'Message'
+      i18n_key :mark_as_unread
+      register_instance_option :link_icon do
+        'icon-eye-close'
+      end
+      register_instance_option :visible? do
+        bindings[:object].class == Message && bindings[:object].is_read
+      end
+      register_instance_option :controller do
+        proc do
+          @object.update(is_read: false)
+          flash[:notice] = "메시지가 읽지 않음으로 표시되었습니다."
           redirect_to back_or_index
         end
       end

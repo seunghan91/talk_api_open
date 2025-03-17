@@ -3,9 +3,6 @@ module Api
   class ConversationsController < BaseController
     before_action :authorize_request
 
-    # 인증 요청 엔드포인트는 인증 없이 접근 가능하도록 설정
-    skip_before_action :authorize_request, only: [:request_code, :verify_code]
-
     def index
       # 사용자별 대화 목록 캐싱 (1분 유효)
       @conversations = Rails.cache.fetch("conversations-user-#{current_user.id}", expires_in: 1.minute) do

@@ -175,7 +175,50 @@ module Api
       # 하이픈 제거하여 숫자만 추출
       digits_only = phone_number.gsub(/\D/, '')
       
-      # 사용자 찾기
+      # 테스트 계정 지원 - 개발 환경에서만 동작
+      if Rails.env.development? && password == 'test1234'
+        test_accounts = {
+          '01011111111' => { id: 1, nickname: 'A - 김철수', gender: 'male' },
+          '01022222222' => { id: 2, nickname: 'B - 이영희', gender: 'female' },
+          '01033333333' => { id: 3, nickname: 'C - 박지민', gender: 'male' },
+          '01044444444' => { id: 4, nickname: 'D - 최수진', gender: 'female' },
+          '01055555555' => { id: 5, nickname: 'E - 정민준', gender: 'male' }
+        }
+        
+        if test_account = test_accounts[digits_only]
+          # 테스트 계정이 존재하면 사용자 정보 생성 또는 업데이트
+          user = User.find_or_create_by(phone_number: digits_only) do |u|
+            u.nickname = test_account[:nickname]
+            u.gender = test_account[:gender]
+            u.password = password
+            u.password_confirmation = password
+          end
+          
+          # 기존 사용자의 정보 업데이트
+          unless user.nickname == test_account[:nickname] && user.gender == test_account[:gender]
+            user.update(nickname: test_account[:nickname], gender: test_account[:gender])
+          end
+          
+          # JWT 발급
+          token = JsonWebToken.encode({ user_id: user.id })
+          Rails.logger.info("테스트 계정 로그인 성공: 사용자 ID #{user.id}, 전화번호 #{digits_only}")
+          
+          return render json: {
+            message: "로그인에 성공했습니다.",
+            token: token,
+            user: {
+              id: user.id,
+              phone_number: user.phone_number,
+              nickname: user.nickname,
+              gender: user.gender || "unspecified",
+              created_at: user.created_at,
+              updated_at: user.updated_at
+            }
+          }
+        end
+      end
+      
+      # 일반 사용자 찾기
       user = User.find_by(phone_number: digits_only)
       
       # 사용자가 없거나 비밀번호가 일치하지 않는 경우

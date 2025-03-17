@@ -73,6 +73,7 @@ module Api
       
       # 로그 추가
       Rails.logger.info("프로필 업데이트 요청: #{profile_params.inspect}")
+      Rails.logger.info("요청된 성별 값: #{profile_params[:gender]}, 타입: #{profile_params[:gender].class}")
       
       # 닉네임이 비어있으면 랜덤 생성
       if profile_params[:nickname].blank?
@@ -80,8 +81,13 @@ module Api
       end
       
       # 성별이 유효한지 확인 (male, female, unknown)
-      if profile_params[:gender].present? && !User.genders.keys.include?(profile_params[:gender])
-        return render json: { error: "유효하지 않은 성별입니다." }, status: :bad_request
+      if profile_params[:gender].present?
+        Rails.logger.info("유효한 성별 값 목록: #{User.genders.keys}")
+        
+        unless User.genders.keys.include?(profile_params[:gender])
+          Rails.logger.warn("유효하지 않은 성별 값: #{profile_params[:gender]}")
+          return render json: { error: "유효하지 않은 성별입니다. 'unknown', 'male', 'female' 중 하나여야 합니다." }, status: :bad_request
+        end
       end
       
       if current_user.update(profile_params)
@@ -89,6 +95,7 @@ module Api
         Rails.logger.info("프로필 업데이트 성공: User ID #{current_user.id}, 닉네임: #{current_user.nickname}, 성별: #{current_user.gender}")
         
         render json: {
+          success: true,
           message: "프로필이 업데이트되었습니다.",
           user: {
             id: current_user.id,
@@ -103,6 +110,28 @@ module Api
         Rails.logger.error("프로필 업데이트 실패: #{current_user.errors.full_messages}")
         
         render json: { error: current_user.errors.full_messages }, status: :unprocessable_entity
+      end
+    end
+
+    # 알림 설정 조회
+    def notification_settings
+      # 현재 유저 @current_user (BaseController에서 authorize_request로 세팅)
+      render json: {
+        receive_new_letter: @current_user.receive_new_letter || true,
+        letter_receive_alarm: @current_user.letter_receive_alarm || true
+      }, status: :ok
+    end
+
+    # 알림 설정 갱신
+    def update_notification_settings
+      # params[:receive_new_letter], params[:letter_receive_alarm] 를 받아서 업데이트
+      @current_user.receive_new_letter = params[:receive_new_letter]
+      @current_user.letter_receive_alarm = params[:letter_receive_alarm]
+
+      if @current_user.save
+        render json: { message: '알림 설정이 업데이트되었습니다.' }, status: :ok
+      else
+        render json: { error: '업데이트 실패', details: @current_user.errors.full_messages }, status: :unprocessable_entity
       end
     end
   end

@@ -6,6 +6,9 @@ default: &default
   host: <%= ENV["PG_HOST"] || "localhost" %>
   pool: 5
 
+
+
+
 development:
   <<: *default
   database: talkk_api_development
@@ -16,4 +19,5 @@ test:
 
 production:
   <<: *default
+  url: <%= ENV['DATABASE_URL'] %>
   database: talkk_api_production
