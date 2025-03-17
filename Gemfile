@@ -1,4 +1,5 @@
 source "https://rubygems.org"
+ruby "3.1.0"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
 gem "rails", "~> 7.2.2", ">= 7.2.2.1"
@@ -10,6 +11,9 @@ gem "puma", ">= 5.0"
 # gem "jbuilder"
 # Use Redis adapter to run Action Cable in production
 # gem "redis", ">= 4.0.1"
+
+# Nokogiri 버전 제한 (호환성 문제 해결)
+gem "nokogiri", "~> 1.16.0"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"

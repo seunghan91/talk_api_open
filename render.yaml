@@ -2,9 +2,8 @@ services:
   - type: web
     name: talkk-api
     env: ruby
-    region: singapore
-    plan: free
-    buildCommand: bundle install && bundle exec rake assets:precompile && bundle exec rake assets:clean
+    runtime: ruby
+    buildCommand: bundle install && bundle exec rake assets:precompile
     startCommand: bundle exec puma -C config/puma.rb
     envVars:
       - key: DATABASE_URL
@@ -17,10 +16,9 @@ services:
         value: production
       - key: RAILS_LOG_TO_STDOUT
         value: true
-    healthCheckPath: /health
+      - key: BUNDLE_WITHOUT
+        value: "development:test"
 
 databases:
   - name: talkk-db
-    plan: free
-    region: singapore
-    databaseName: talkk_production 
+    databaseName: talkk_production
