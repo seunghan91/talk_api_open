@@ -2,7 +2,7 @@ source "https://rubygems.org"
 ruby "3.1.0"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 7.2.2", ">= 7.2.2.1"
+gem "rails", "~> 7.0.0"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
@@ -14,6 +14,9 @@ gem "puma", ">= 5.0"
 
 # Nokogiri 버전 제한 (호환성 문제 해결)
 gem "nokogiri", "~> 1.16.0"
+
+# FFI 버전 제한 (호환성 문제 해결)
+gem "ffi", "~> 1.15.5"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
@@ -33,6 +36,20 @@ gem "bootsnap", require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
+# JWT for authentication
+gem 'jwt'
+
+# Background jobs
+gem 'sidekiq'
+gem 'redis'
+gem 'sidekiq-cron'
+
+# Admin interface
+gem 'rails_admin', '~> 3.0'
+
+# SASS for stylesheets
+gem "sassc-rails"
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ], require: "debug/prelude"
@@ -42,19 +59,7 @@ group :development, :test do
 
   # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
   gem "rubocop-rails-omakase", require: false
-  gem 'jwt'
-  gem 'sidekiq'
 
-  # 추가된 라이브러리 (2.16)
-  gem 'redis'
-  gem 'sidekiq-cron'
-  gem 'rails_admin', '~> 3.0'
-
-  # rswag
-  #gem 'rswag-api'
-  #gem 'rswag-ui'
-  #gem 'rswag-specs'
+  # Testing
   gem "rspec-rails"
 end
-
-gem "sassc-rails"

@@ -3,7 +3,7 @@ services:
     name: talkk-api
     env: ruby
     runtime: ruby
-    buildCommand: bundle install && bundle exec rake assets:precompile
+    buildCommand: bundle install --without development test
     startCommand: bundle exec puma -C config/puma.rb
     envVars:
       - key: DATABASE_URL
@@ -16,8 +16,6 @@ services:
         value: production
       - key: RAILS_LOG_TO_STDOUT
         value: true
-      - key: BUNDLE_WITHOUT
-        value: "development:test"
 
 databases:
   - name: talkk-db
