@@ -76,16 +76,4 @@ else
   puts "메시지 테이블에 필요한 컬럼이 없습니다. 메시지 생성을 건너뜁니다."
 end
 
-# 브로드캐스트 메시지 생성
-broadcasts = [
-  { user_id: created_users[0].id, content: "안녕하세요, 모두! 김철수입니다. 오늘 날씨가 정말 좋네요!", active: true },
-  { user_id: created_users[1].id, content: "이영희입니다. 새로운 앱을 사용해 보고 있어요. 정말 편리한 것 같아요!", active: true },
-  { user_id: created_users[2].id, content: "안녕하세요! 박지민이라고 합니다. 다들 반가워요.", active: true }
-]
-
-broadcasts.each do |broadcast_data|
-  broadcast = Broadcast.create!(broadcast_data)
-  puts "브로드캐스트 생성됨: #{User.find(broadcast.user_id).nickname}의 메시지"
-end
-
 puts "시드 데이터 생성 완료!"
