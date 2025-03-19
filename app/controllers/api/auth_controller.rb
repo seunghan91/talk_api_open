@@ -132,7 +132,23 @@ module Api
       # 사용자 생성 또는 업데이트
       user = existing_user || User.new(phone_number: digits_only)
       user.nickname = user_params[:nickname] if user_params[:nickname].present?
-      user.gender = user_params[:gender].present? ? user_params[:gender] : 'male'
+      
+      # 성별 값이 존재하는지 확인하고 유효한 값인지 검증
+      if user_params[:gender].present?
+        # 성별이 유효한지 검사 (male, female, unknown만 허용) - unspecified는 unknown으로 변환
+        if user_params[:gender] == 'unspecified'
+          user.gender = 'unknown'
+        elsif User.genders.keys.include?(user_params[:gender])
+          user.gender = user_params[:gender]
+        else
+          Rails.logger.warn("유효하지 않은 성별 값: #{user_params[:gender]}")
+          return render json: { error: "유효하지 않은 성별입니다. 'unknown', 'male', 'female' 중 하나여야 합니다." }, status: :bad_request
+        end
+      else
+        # 성별이 없는 경우 기본값 'male' 사용
+        user.gender = 'male'
+      end
+      
       user.password = user_params[:password]
       user.password_confirmation = user_params[:password_confirmation]
       
