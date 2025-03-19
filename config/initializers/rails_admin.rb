@@ -124,9 +124,9 @@ if defined?(RailsAdmin)
           proc do
             {
               total: Broadcast.count,
-              active: Broadcast.where(active: true).where('expired_at > ?', Time.current).count,
+              active: Broadcast.where('expired_at > ?', Time.current).count,
               expired: Broadcast.where('expired_at <= ?', Time.current).count,
-              expiring_soon: Broadcast.where(active: true).where('expired_at > ? AND expired_at <= ?', Time.current, 24.hours.from_now).count,
+              expiring_soon: Broadcast.where('expired_at > ? AND expired_at <= ?', Time.current, 24.hours.from_now).count,
               new_today: Broadcast.where('created_at >= ?', Date.today).count
             }
           end

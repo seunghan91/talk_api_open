@@ -9,7 +9,6 @@ module Api
       # 캐싱 적용 (5분 유효)
       @broadcasts = Rails.cache.fetch("broadcasts-recent", expires_in: 5.minutes) do
         Broadcast.where("expired_at > ?", Time.current)
-                 .where(active: true)
                  .includes(:user) # N+1 쿼리 문제 해결
                  .order(created_at: :desc)
                  .limit(20)

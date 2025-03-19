@@ -17,9 +17,9 @@ class Broadcast < ApplicationRecord
       !expired? && expired_at < 24.hours.from_now
     end
   
-    # 활성 상태 확인 - active가 true이고 만료되지 않은 경우
+    # 활성 상태 확인 - 만료되지 않은 경우에만 활성 상태로 간주
     def active?
-      active && !expired?
+      !expired?
     end
   
     # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
