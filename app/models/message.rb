@@ -4,6 +4,10 @@ class Message < ApplicationRecord
   belongs_to :sender, class_name: 'User', foreign_key: :sender_id
   
   has_one_attached :voice_file
+  has_one_attached :image_file
+
+  validates :content, presence: true, unless: -> { message_type == 'voice' || message_type == 'image' }
+  validates :message_type, inclusion: { in: ['text', 'voice', 'image'] }
 
   # 1) 메시지 생성 직후에 Sidekiq 작업(푸시 알림 전송)을 등록
   after_create :enqueue_push_job
@@ -28,6 +32,34 @@ class Message < ApplicationRecord
     )
   end
   
+  # 음성 또는 이미지 파일이 첨부된 메시지 체크
+  def has_attachment?
+    voice_file.attached? || image_file.attached?
+  end
+  
+  # 메시지 타입에 따라 적절한 첨부 파일 체크
+  def valid_attachment?
+    return true if message_type == 'text'
+    return voice_file.attached? if message_type == 'voice'
+    return image_file.attached? if message_type == 'image'
+    false
+  end
+  
+  private
+  
+  # 첨부파일 타입 검증
+  def validate_file_type
+    if message_type == 'voice' && voice_file.attached?
+      unless voice_file.content_type.in?(%w[audio/m4a audio/mp4 audio/mpeg audio/aac audio/wav audio/webm])
+        errors.add(:voice_file, '유효한 오디오 파일이 아닙니다.')
+      end
+    elsif message_type == 'image' && image_file.attached?
+      unless image_file.content_type.in?(%w[image/jpeg image/png image/gif image/webp])
+        errors.add(:image_file, '유효한 이미지 파일이 아닙니다.')
+      end
+    end
+  end
+
   # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
   # rails_admin do
   #   list do
