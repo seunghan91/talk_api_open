@@ -78,9 +78,9 @@ end
 
 # 브로드캐스트 메시지 생성
 broadcasts = [
-  { user_id: created_users[0].id, content: "안녕하세요, 모두! 김철수입니다. 오늘 날씨가 정말 좋네요!" },
-  { user_id: created_users[1].id, content: "이영희입니다. 새로운 앱을 사용해 보고 있어요. 정말 편리한 것 같아요!" },
-  { user_id: created_users[2].id, content: "안녕하세요! 박지민이라고 합니다. 다들 반가워요." }
+  { user_id: created_users[0].id, content: "안녕하세요, 모두! 김철수입니다. 오늘 날씨가 정말 좋네요!", active: true },
+  { user_id: created_users[1].id, content: "이영희입니다. 새로운 앱을 사용해 보고 있어요. 정말 편리한 것 같아요!", active: true },
+  { user_id: created_users[2].id, content: "안녕하세요! 박지민이라고 합니다. 다들 반가워요.", active: true }
 ]
 
 broadcasts.each do |broadcast_data|

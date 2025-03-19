@@ -17,6 +17,11 @@ class Broadcast < ApplicationRecord
       !expired? && expired_at < 24.hours.from_now
     end
   
+    # 활성화 상태 확인
+    def active?
+      active && !expired?
+    end
+  
     # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
     # rails_admin do
     #   list do
@@ -59,6 +64,6 @@ class Broadcast < ApplicationRecord
     private
   
     def set_expired_at
-      self.expired_at = 6.days.from_now
+      self.expired_at = 24.hours.from_now
     end
   end
