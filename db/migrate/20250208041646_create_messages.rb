@@ -5,8 +5,8 @@ class CreateMessages < ActiveRecord::Migration[7.0]
       # sender -> users.id
       t.references :sender, null: false, foreign_key: { to_table: :users }
       t.boolean :read, default: false
-      t.text :content
-      t.string :message_type, default: "text"
+      t.text :content, null: true
+      t.string :message_type, default: "voice"
 
       t.timestamps
     end

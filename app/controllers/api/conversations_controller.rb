@@ -69,28 +69,91 @@ module Api
         return render json: { error: "권한이 없습니다." }, status: :forbidden
       end
       
-      # 메시지 생성
+      # 음성 파일 첨부 확인 (기본은 음성 메시지로 가정)
+      message_type = params[:message_type] || "voice"
+      
+      # 메시지 객체 초기화
       message = conversation.messages.new(
         sender_id: current_user.id,
-        content: params[:content],
-        message_type: params[:message_type] || "text"
+        message_type: message_type
       )
       
+      # 메시지 타입에 따른 처리
+      case message_type
+      when "voice"
+        # 음성 파일 검증
+        unless params[:voice_file].present?
+          return render json: { error: "음성 파일이 필요합니다." }, status: :bad_request
+        end
+        
+        # 음성 파일 로깅
+        Rails.logger.info("음성 파일 첨부됨: #{params[:voice_file].original_filename}")
+        Rails.logger.info("음성 파일 타입: #{params[:voice_file].content_type}")
+        Rails.logger.info("음성 파일 크기: #{params[:voice_file].size} 바이트")
+        
+        # 음성 파일 첨부
+        begin
+          message.voice_file.attach(params[:voice_file])
+          
+          # 첨부 확인
+          if !message.voice_file.attached?
+            return render json: { error: "음성 파일 첨부에 실패했습니다." }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error("음성 파일 첨부 중 오류: #{e.message}")
+          return render json: { error: "음성 파일 처리 중 오류가 발생했습니다: #{e.message}" }, status: :unprocessable_entity
+        end
+        
+      when "text"
+        # 텍스트 메시지 처리
+        unless params[:content].present?
+          return render json: { error: "텍스트 내용이 필요합니다." }, status: :bad_request
+        end
+        message.content = params[:content]
+        
+      when "image"
+        # 이미지 파일 처리
+        unless params[:image_file].present?
+          return render json: { error: "이미지 파일이 필요합니다." }, status: :bad_request
+        end
+        
+        # 이미지 파일 첨부
+        begin
+          message.image_file.attach(params[:image_file])
+          
+          # 첨부 확인
+          if !message.image_file.attached?
+            return render json: { error: "이미지 파일 첨부에 실패했습니다." }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error("이미지 파일 첨부 중 오류: #{e.message}")
+          return render json: { error: "이미지 파일 처리 중 오류가 발생했습니다: #{e.message}" }, status: :unprocessable_entity
+        end
+      else
+        return render json: { error: "지원하지 않는 메시지 타입입니다." }, status: :bad_request
+      end
+      
+      # 메시지 저장
       if message.save
+        # conversation.touch로 updated_at 갱신
+        conversation.touch
+        
         # 캐시 무효화
         Rails.cache.delete("conversation-messages-#{conversation.id}")
         Rails.cache.delete("conversations-user-#{current_user.id}")
         
-        # 대화 상대방 ID 찾기
+        # 대화 상대방의 캐시도 무효화
         receiver_id = (conversation.user_a_id == current_user.id) ? conversation.user_b_id : conversation.user_a_id
         Rails.cache.delete("conversations-user-#{receiver_id}")
         
+        # 메시지 전송 성공
         render json: {
           success: true,
           message: "메시지가 전송되었습니다.",
           data: message.as_json(include: { sender: { only: [:id, :nickname] } })
         }, status: :created
       else
+        # 메시지 저장 실패
         render json: { error: message.errors.full_messages.join(", ") }, status: :unprocessable_entity
       end
     end

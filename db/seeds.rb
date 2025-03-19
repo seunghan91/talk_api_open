@@ -47,33 +47,31 @@ puts "대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[2].n
 # 메시지 생성
 puts "메시지 생성 시작..."
 
-# 가능한 경우 기존 메시지 삭제
-if defined?(Message) && Message.table_exists? && 
-   Message.column_names.include?('content') && 
-   Message.column_names.include?('message_type')
-   
-  Message.create!(
-    conversation_id: conversation1.id,
-    sender_id: created_users[0].id,
-    content: "안녕하세요, 이영희님! 반갑습니다.",
-    message_type: "text"
-  )
+if defined?(Message) && Message.table_exists? && Message.column_names.include?('message_type')
+  puts "샘플 음성 파일이 없어 메시지는 생성하지 않았습니다. 실제 음성 파일을 통해 메시지를 생성해야 합니다."
   
-  Message.create!(
-    conversation_id: conversation1.id,
-    sender_id: created_users[1].id,
-    content: "네, 김철수님! 안녕하세요. 오늘 날씨가 좋네요.",
-    message_type: "text"
-  )
+  # 참고: 실제 서버 환경에서는 아래 코드를 사용하여 음성 파일 및 텍스트 메시지를 생성할 수 있습니다.
+  # 
+  # # 1. 음성 메시지
+  # voice_message = Message.new(
+  #   conversation_id: conversation1.id,
+  #   sender_id: created_users[0].id,
+  #   message_type: "voice"
+  # )
+  # 
+  # # 파일을 첨부할 경우 다음과 같이 할 수 있습니다 (파일 경로는 예시)
+  # # voice_message.voice_file.attach(io: File.open('path/to/voice.m4a'), filename: 'voice.m4a')
+  # # voice_message.save!
+  # 
+  # # 2. 텍스트 메시지
+  # text_message = Message.create!(
+  #   conversation_id: conversation1.id,
+  #   sender_id: created_users[1].id,
+  #   content: "안녕하세요! 메시지 확인했습니다.",
+  #   message_type: "text"
+  # )
   
-  Message.create!(
-    conversation_id: conversation2.id,
-    sender_id: created_users[0].id,
-    content: "박지민님, 안녕하세요!",
-    message_type: "text"
-  )
-  
-  puts "메시지 생성 완료!"
+  puts "메시지 생성 건너뜀! 앱에서 직접 메시지를 생성하세요."
 else
   puts "메시지 테이블에 필요한 컬럼이 없습니다. 메시지 생성을 건너뜁니다."
 end
