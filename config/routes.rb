@@ -34,9 +34,11 @@ Rails.application.routes.draw do
     post "auth/verify_code",  to: "auth#verify_code"
     post "auth/register",     to: "auth#register"
     post "auth/login",        to: "auth#login"
+    post "auth/logout",       to: "auth#logout"
 
     # 사용자 관련 API
     get "me", to: "users#me"
+    get "users/profile", to: "users#me"
     post "change_nickname", to: "users#change_nickname"
     get "generate_random_nickname", to: "users#generate_random_nickname"
     post "update_profile", to: "users#update_profile"

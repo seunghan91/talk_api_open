@@ -244,5 +244,11 @@ module Api
         }
       }
     end
+
+    # 로그아웃 처리
+    def logout
+      # 클라이언트에서는 토큰을 삭제하므로 서버에서는 성공 응답만 반환
+      render json: { message: "로그아웃 되었습니다." }, status: :ok
+    end
   end
 end
