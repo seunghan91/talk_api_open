@@ -64,6 +64,6 @@ class Broadcast < ApplicationRecord
     private
   
     def set_expired_at
-      self.expired_at ||= 48.hours.from_now
+      self.expired_at ||= 6.days.from_now
     end
   end
