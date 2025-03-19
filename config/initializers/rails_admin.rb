@@ -269,7 +269,8 @@ if defined?(RailsAdmin)
         end
         register_instance_option :controller do
           proc do
-            @object.update(active: false)
+            # active 필드 대신 expired_at을 현재 시간으로 설정하여 비활성화
+            @object.update(expired_at: Time.current)
             flash[:notice] = "브로드캐스트가 비활성화되었습니다."
             redirect_to back_or_index
           end
@@ -287,7 +288,8 @@ if defined?(RailsAdmin)
         end
         register_instance_option :controller do
           proc do
-            @object.update(active: true)
+            # active 필드 대신 expired_at을 미래로 설정하여 활성화
+            @object.update(expired_at: 6.days.from_now)
             flash[:notice] = "브로드캐스트가 활성화되었습니다."
             redirect_to back_or_index
           end
