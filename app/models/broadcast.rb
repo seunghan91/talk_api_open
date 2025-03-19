@@ -17,7 +17,7 @@ class Broadcast < ApplicationRecord
       !expired? && expired_at < 24.hours.from_now
     end
   
-    # 활성화 상태 확인
+    # 활성 상태 확인 - active가 true이고 만료되지 않은 경우
     def active?
       active && !expired?
     end
@@ -64,6 +64,6 @@ class Broadcast < ApplicationRecord
     private
   
     def set_expired_at
-      self.expired_at = 24.hours.from_now
+      self.expired_at ||= 48.hours.from_now
     end
   end
