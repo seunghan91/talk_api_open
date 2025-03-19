@@ -1,5 +1,5 @@
 # db/migrate/20250208050004_create_blocks.rb
-class CreateBlocks < ActiveRecord::Migration[7.2]
+class CreateBlocks < ActiveRecord::Migration[7.0]
   def change
     create_table :blocks do |t|
       t.bigint :blocker_id, null: false
