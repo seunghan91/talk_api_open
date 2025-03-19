@@ -1,5 +1,12 @@
 # db/seeds.rb
 
+# 환경 설정
+environment_value = ENV['RAILS_ENV'] || 'development'
+puts "현재 실행 환경: #{environment_value}"
+puts "환경 설정 중..."
+system("bin/rails db:environment:set RAILS_ENV=#{environment_value}")
+puts "환경 설정 완료!"
+
 # 기존 사용자 및 데이터 재설정
 ActiveRecord::Base.connection.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE")
 ActiveRecord::Base.connection.execute("TRUNCATE TABLE conversations RESTART IDENTITY CASCADE")
