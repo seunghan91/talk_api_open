@@ -132,7 +132,7 @@ module Api
       # 사용자 생성 또는 업데이트
       user = existing_user || User.new(phone_number: digits_only)
       user.nickname = user_params[:nickname] if user_params[:nickname].present?
-      user.gender = user_params[:gender] if user_params[:gender].present?
+      user.gender = user_params[:gender].present? ? user_params[:gender] : 'male'
       user.password = user_params[:password]
       user.password_confirmation = user_params[:password_confirmation]
       

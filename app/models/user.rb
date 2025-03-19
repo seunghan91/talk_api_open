@@ -7,7 +7,7 @@ class User < ApplicationRecord
 
   # status 필드를 attribute로 선언
   attribute :status, :integer, default: 0
-  attribute :gender, :integer, default: 0
+  attribute :gender, :integer, default: 1
   
   enum :gender, { unknown: 0, male: 1, female: 2 }, prefix: true
   enum :status, { active: 0, suspended: 1, banned: 2 }, prefix: true
