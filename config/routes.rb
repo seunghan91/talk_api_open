@@ -42,6 +42,7 @@ Rails.application.routes.draw do
     post "change_nickname", to: "users#change_nickname"
     get "generate_random_nickname", to: "users#generate_random_nickname"
     post "update_profile", to: "users#update_profile"
+    post "users/update_profile", to: "users#update_profile"
     
     # 알림 설정 관련 API
     get "users/notification_settings", to: "users#notification_settings"
