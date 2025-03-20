@@ -17,6 +17,11 @@ class User < ApplicationRecord
   has_many :reports_as_reported, class_name: 'Report', foreign_key: :reported_id
   has_many :blocks_as_blocker, class_name: 'Block', foreign_key: :blocker_id
   has_many :blocks_as_blocked, class_name: 'Block', foreign_key: :blocked_id
+  has_one :wallet, dependent: :destroy
+  has_many :notifications, dependent: :destroy
+  
+  # 사용자 생성 후 지갑 자동 생성
+  after_create :create_wallet_for_user
   
   # 비밀번호 유효성 검사 (비밀번호가 있는 경우에만)
   validates :password, length: { minimum: 6 }, if: -> { password.present? }
@@ -39,6 +44,39 @@ class User < ApplicationRecord
   # 차단 여부 확인 메서드
   def blocked?
     status_banned? || status_suspended?
+  end
+  
+  # 지갑 잔액 조회
+  def wallet_balance
+    wallet&.balance || 0
+  end
+  
+  # 알림 생성 메서드
+  def create_notification(type, body, title: nil, metadata: {}, notifiable: nil)
+    notification = notifications.create!(
+      notification_type: type,
+      title: title,
+      body: body,
+      metadata: metadata,
+      notifiable: notifiable
+    )
+    
+    # 푸시 알림 전송 시도
+    notification.send_push! if push_token.present? && push_enabled
+    
+    notification
+  end
+  
+  # 읽지 않은 알림 수 조회
+  def unread_notification_count
+    notifications.unread.count
+  end
+  
+  private
+  
+  # 사용자 생성 시 지갑 자동 생성
+  def create_wallet_for_user
+    create_wallet if wallet.nil?
   end
   
   # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)

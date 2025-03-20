@@ -30,6 +30,26 @@ Rails.application.routes.draw do
 
   # 2) API
   namespace :api do
+    namespace :v1 do
+      # 지갑 관련 API
+      get 'wallet', to: 'wallets#show'
+      get 'wallet/transactions', to: 'wallets#transactions'
+      post 'wallet/deposit', to: 'wallets#deposit'
+      
+      # 알림 관련 API
+      resources :notifications, only: [:index, :show] do
+        member do
+          post :mark_as_read
+        end
+        collection do
+          post :mark_all_as_read
+          post :update_push_token
+          get :settings
+          post :update_settings
+        end
+      end
+    end
+    
     post "auth/request_code", to: "auth#request_code"
     post "auth/verify_code",  to: "auth#verify_code"
     post "auth/register",     to: "auth#register"

@@ -13,6 +13,28 @@ ActiveRecord::Base.connection.execute("TRUNCATE TABLE conversations RESTART IDEN
 ActiveRecord::Base.connection.execute("TRUNCATE TABLE messages RESTART IDENTITY CASCADE")
 ActiveRecord::Base.connection.execute("TRUNCATE TABLE broadcasts RESTART IDENTITY CASCADE")
 
+# 새 테이블이 존재하는 경우 초기화
+begin
+  ActiveRecord::Base.connection.execute("TRUNCATE TABLE wallets RESTART IDENTITY CASCADE")
+  puts "지갑 테이블 초기화 완료!"
+rescue => e
+  puts "지갑 테이블 초기화 생략: #{e.message}"
+end
+
+begin
+  ActiveRecord::Base.connection.execute("TRUNCATE TABLE transactions RESTART IDENTITY CASCADE")
+  puts "트랜잭션 테이블 초기화 완료!"
+rescue => e
+  puts "트랜잭션 테이블 초기화 생략: #{e.message}"
+end
+
+begin
+  ActiveRecord::Base.connection.execute("TRUNCATE TABLE notifications RESTART IDENTITY CASCADE")
+  puts "알림 테이블 초기화 완료!"
+rescue => e
+  puts "알림 테이블 초기화 생략: #{e.message}"
+end
+
 # 테스트 계정 생성 (각 계정에 비밀번호 설정)
 users = [
   # 기본 테스트 계정
@@ -29,6 +51,38 @@ users.each do |user_data|
   user = User.create!(user_data)
   created_users << user
   puts "사용자 생성됨: #{user.nickname} (#{user.phone_number})"
+  
+  # 지갑 생성 (사용자 생성 후 자동 생성되도록 설정됨)
+  if defined?(Wallet) && Wallet.table_exists?
+    wallet = user.wallet
+    if wallet
+      puts "지갑 생성됨: #{user.nickname}의 지갑 (잔액: #{wallet.balance}원)"
+      
+      # 테스트용 거래 내역 추가
+      if defined?(Transaction) && Transaction.table_exists?
+        tx = wallet.deposit(
+          1000, 
+          description: '첫 충전 보너스', 
+          payment_method: '시스템', 
+          metadata: { type: 'bonus', system: true }
+        )
+        puts "거래 생성됨: #{user.nickname}의 첫 충전 보너스 +1,000원"
+      end
+    else
+      puts "지갑 생성 실패: #{user.nickname}"
+    end
+  end
+  
+  # 테스트용 알림 생성
+  if defined?(Notification) && Notification.table_exists?
+    notification = user.create_notification(
+      'system',
+      '가입을 축하합니다! 5,000원 상당의 무료 체험권이 지급되었습니다.',
+      title: '가입 환영',
+      metadata: { type: 'welcome' }
+    )
+    puts "알림 생성됨: #{user.nickname}의 가입 환영 알림"
+  end
 end
 
 # 대화방 생성

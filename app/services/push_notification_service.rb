@@ -1,59 +1,112 @@
 # app/services/push_notification_service.rb
+require 'net/http'
+require 'uri'
+require 'json'
+
 class PushNotificationService
   # Expo Push Notification 서비스 URL
   EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send'.freeze
   
   # 푸시 알림 전송
-  def send_notification(tokens, title, body, data = {})
-    return if tokens.blank?
+  def self.send_notification(push_token, title:, body:, data: {})
+    return if push_token.blank?
     
-    # 토큰이 배열이 아니면 배열로 변환
-    tokens = [tokens] unless tokens.is_a?(Array)
+    # Expo 푸시 서비스에 전송할 데이터 구성
+    message = {
+      to: push_token,
+      title: title,
+      body: body,
+      data: data,
+      sound: 'default',
+      badge: 1, # iOS 뱃지 카운터
+      channelId: 'default', # Android 채널 ID
+      priority: 'high' # Android 우선순위
+    }
     
-    # 유효한 토큰만 필터링
-    valid_tokens = tokens.compact.select { |token| valid_expo_token?(token) }
-    return if valid_tokens.empty?
-    
-    # 푸시 알림 메시지 구성
-    messages = valid_tokens.map do |token|
-      {
-        to: token,
-        sound: 'default',
-        title: title,
-        body: body,
-        data: data
-      }
+    # 개발 모드에서는 로깅만 수행
+    if Rails.env.development? || Rails.env.test?
+      Rails.logger.info "[PushNotification] Would send: #{message.to_json}"
+      return true
     end
     
-    # 로깅
-    Rails.logger.info("푸시 알림 전송: #{messages.to_json}")
-    
-    # HTTP 요청 전송
+    # 실제 Expo 푸시 서비스 호출
     begin
-      response = HTTParty.post(
-        EXPO_PUSH_URL,
-        body: messages.to_json,
-        headers: {
-          'Content-Type' => 'application/json',
-          'Accept' => 'application/json'
-        }
+      uri = URI.parse(EXPO_PUSH_URL)
+      request = Net::HTTP::Post.new(
+        uri.request_uri,
+        'Content-Type' => 'application/json',
+        'Accept' => 'application/json'
       )
+      request.body = [message].to_json
       
-      # 응답 로깅
-      Rails.logger.info("푸시 알림 응답: #{response.body}")
-      
-      # 응답 파싱
-      result = JSON.parse(response.body)
-      
-      # 오류 확인
-      if result['errors'] && result['errors'].any?
-        Rails.logger.error("푸시 알림 오류: #{result['errors']}")
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+        http.request(request)
       end
       
-      result
+      # 응답 처리
+      result = JSON.parse(response.body)
+      if result['data'].present? && result['data'][0]['status'] == 'ok'
+        Rails.logger.info "[PushNotification] Successfully sent to #{push_token}"
+        return true
+      else
+        Rails.logger.error "[PushNotification] Failed: #{result.to_json}"
+        return false
+      end
+      
     rescue => e
-      Rails.logger.error("푸시 알림 전송 실패: #{e.message}")
-      { error: e.message }
+      Rails.logger.error "[PushNotification] Error: #{e.message}"
+      return false
+    end
+  end
+  
+  # 여러 토큰에 동시에 알림 전송
+  def self.send_notifications(push_tokens, title:, body:, data: {})
+    # 빈 토큰 제거
+    tokens = Array(push_tokens).compact.reject(&:blank?)
+    return if tokens.empty?
+    
+    # 최대 100개씩 나누어 전송 (Expo API 제한)
+    tokens.each_slice(100) do |token_batch|
+      messages = token_batch.map do |token|
+        {
+          to: token,
+          title: title,
+          body: body,
+          data: data,
+          sound: 'default',
+          badge: 1,
+          channelId: 'default',
+          priority: 'high'
+        }
+      end
+      
+      # 개발 모드에서는 로깅만 수행
+      if Rails.env.development? || Rails.env.test?
+        Rails.logger.info "[PushNotification] Would send to #{token_batch.size} devices: #{messages.to_json}"
+        next
+      end
+      
+      # 실제 Expo 푸시 서비스 호출
+      begin
+        uri = URI.parse(EXPO_PUSH_URL)
+        request = Net::HTTP::Post.new(
+          uri.request_uri,
+          'Content-Type' => 'application/json',
+          'Accept' => 'application/json'
+        )
+        request.body = messages.to_json
+        
+        response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
+          http.request(request)
+        end
+        
+        # 결과 로깅
+        result = JSON.parse(response.body)
+        Rails.logger.info "[PushNotification] Batch result: #{result.to_json}"
+        
+      rescue => e
+        Rails.logger.error "[PushNotification] Batch error: #{e.message}"
+      end
     end
   end
   
@@ -63,9 +116,9 @@ class PushNotificationService
     
     send_notification(
       broadcast.user.expo_push_token,
-      '브로드캐스트 답장',
-      "#{sender.nickname}님이 당신의 브로드캐스트에 답장했습니다.",
-      {
+      title: '브로드캐스트 답장',
+      body: "#{sender.nickname}님이 당신의 브로드캐스트에 답장했습니다.",
+      data: {
         type: 'broadcast_reply',
         broadcast_id: broadcast.id,
         sender_id: sender.id,
@@ -87,9 +140,9 @@ class PushNotificationService
     
     send_notification(
       receiver.expo_push_token,
-      '새 메시지',
-      "#{sender.nickname}님으로부터 새 메시지가 도착했습니다.",
-      {
+      title: '새 메시지',
+      body: "#{sender.nickname}님으로부터 새 메시지가 도착했습니다.",
+      data: {
         type: 'new_message',
         conversation_id: conversation.id,
         sender_id: sender.id,
@@ -106,9 +159,9 @@ class PushNotificationService
     
     send_notification(
       user.expo_push_token,
-      '계정 정지 알림',
-      message,
-      {
+      title: '계정 정지 알림',
+      body: message,
+      data: {
         type: 'account_suspension',
         reason: reason
       }
@@ -127,9 +180,9 @@ class PushNotificationService
     
     send_notification(
       tokens,
-      '새 브로드캐스트',
-      "#{broadcast.user.nickname}님이 새 브로드캐스트를 게시했습니다.",
-      {
+      title: '새 브로드캐스트',
+      body: "#{broadcast.user.nickname}님이 새 브로드캐스트를 게시했습니다.",
+      data: {
         type: 'new_broadcast',
         broadcast_id: broadcast.id,
         user_id: broadcast.user.id,
