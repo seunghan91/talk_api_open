@@ -37,10 +37,12 @@ end
 
 # 테스트 계정 생성 (각 계정에 비밀번호 설정)
 users = [
-  # 기본 테스트 계정
-  { phone_number: "01011111111", nickname: "김철수", gender: "male", password: "123456", password_confirmation: "123456" },
-  { phone_number: "01022222222", nickname: "이영희", gender: "female", password: "123456", password_confirmation: "123456" },
-  { phone_number: "01033333333", nickname: "박지민", gender: "male", password: "123456", password_confirmation: "123456" },
+  # 베타 테스트 계정
+  { phone_number: "01011111111", nickname: "A - 김철수", gender: "male", password: "test1234", password_confirmation: "test1234" },
+  { phone_number: "01022222222", nickname: "B - 이영희", gender: "female", password: "test1234", password_confirmation: "test1234" },
+  { phone_number: "01033333333", nickname: "C - 박지민", gender: "male", password: "test1234", password_confirmation: "test1234" },
+  { phone_number: "01044444444", nickname: "D - 최수진", gender: "female", password: "test1234", password_confirmation: "test1234" },
+  { phone_number: "01055555555", nickname: "E - 정민준", gender: "male", password: "test1234", password_confirmation: "test1234" },
   
   # 관리자 계정
   { phone_number: "01099999999", nickname: "관리자", gender: "unknown", password: "admin123", password_confirmation: "admin123" }
