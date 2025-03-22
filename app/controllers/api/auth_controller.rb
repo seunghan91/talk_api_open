@@ -435,13 +435,13 @@ module Api
         if !user.password_digest.present?
           Rails.logger.warn("비밀번호가 설정되지 않은 사용자: #{digits_only}")
           return render json: { error: "계정 설정이 완료되지 않았습니다. 회원가입을 진행해주세요." }, status: :unauthorized
-        }
+        end
         
         # 회원가입 완료 확인
         if !user.is_verified
           Rails.logger.warn("인증되지 않은 사용자: #{digits_only}")
           return render json: { error: "회원가입이 완료되지 않았습니다. 회원가입을 진행해주세요." }, status: :unauthorized
-        }
+        end
         
         # 비밀번호 확인
         unless user.authenticate(password)
