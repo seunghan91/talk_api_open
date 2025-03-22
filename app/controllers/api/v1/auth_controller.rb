@@ -1,4 +1,4 @@
-# app/controllers/api/auth_controller.rb
+# app/controllers/api/v1/auth_controller.rb
 module Api
   module V1
     class AuthController < Api::V1::BaseController
