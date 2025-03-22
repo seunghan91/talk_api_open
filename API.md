@@ -105,32 +105,38 @@
 }
 ```
 
-**실패 응답 예시** (코드 불일치):
+**실패 응답 예시** (미인증 전화번호):
 ```json
 {
-  "error": "인증 코드가 일치하지 않습니다.",
+  "error": "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
+  "verification_required": true,
   "verification_status": {
     "verified": false,
-    "attempt_count": 1,
-    "remaining_attempts": 4,
-    "can_resend": false,
-    "expires_at": "2025-03-22T14:30:00Z",
-    "phone_number": "01012345678"
+    "can_resend": true,
+    "message": "인증 코드 확인이 필요합니다."
   }
 }
 ```
 
-**실패 응답 예시** (시도 횟수 초과):
+**실패 응답 예시** (인증 만료):
 ```json
 {
-  "error": "인증 시도 횟수를 초과했습니다. 새로운 인증 코드를 요청해주세요.",
+  "error": "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
+  "verification_required": true,
   "verification_status": {
     "verified": false,
-    "attempt_count": 5,
-    "max_attempts": 5,
     "can_resend": true,
-    "phone_number": "01012345678"
+    "expired": true,
+    "message": "인증이 만료되었습니다."
   }
+}
+```
+
+**실패 응답 예시** (이미 등록된 전화번호):
+```json
+{
+  "error": "이미 등록된 전화번호입니다.",
+  "user_exists": true
 }
 ```
 
@@ -168,7 +174,22 @@
   "verification_required": true,
   "verification_status": {
     "verified": false,
-    "can_resend": true
+    "can_resend": true,
+    "message": "인증 코드 확인이 필요합니다."
+  }
+}
+```
+
+**실패 응답 예시** (인증 만료):
+```json
+{
+  "error": "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
+  "verification_required": true,
+  "verification_status": {
+    "verified": false,
+    "can_resend": true,
+    "expired": true,
+    "message": "인증이 만료되었습니다."
   }
 }
 ```
