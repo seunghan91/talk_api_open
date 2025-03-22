@@ -1,7 +1,7 @@
 module Api
   module V1
     class WalletsController < ApplicationController
-      before_action :authenticate_user!
+      before_action :authorize_request
       
       # 지갑 정보 조회
       def show

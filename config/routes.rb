@@ -48,6 +48,43 @@ Rails.application.routes.draw do
           post :update_settings
         end
       end
+
+      # 사용자 관련 API
+      get "users/me", to: "users#me"
+      get "users/profile", to: "users#profile"
+      get "users/:id", to: "users#show"
+      patch "users/me", to: "users#update"
+      put "users/me", to: "users#update"
+      post "users/change_password", to: "users#change_password"
+      
+      # 기존 사용자 API (이전 버전과의 호환성 유지)
+      get "me", to: "users#me"
+      post "change_nickname", to: "users#change_nickname"
+      get "generate_random_nickname", to: "users#generate_random_nickname"
+      post "update_profile", to: "users#update_profile"
+      post "users/update_profile", to: "users#update_profile"
+      
+      # 알림 설정 관련 API
+      resources :users, only: [:show, :update, :destroy] do
+        member do
+          get 'notification_settings', to: 'users#notification_settings'
+          patch 'notification_settings', to: 'users#update_notification_settings'
+        end
+      end
+
+      resources :broadcasts, only: [:index, :create, :show] do
+        member do
+          post :reply
+        end
+      end
+
+      resources :conversations, only: [:index, :show, :destroy] do
+        member do
+          post :favorite
+          post :unfavorite
+          post :send_message
+        end
+      end
     end
     
     # 인증 관련 API
