@@ -1,487 +1,252 @@
 # app/controllers/api/auth_controller.rb
 module Api
-  class AuthController < BaseController
-    # 회원가입/로그인(전화번호 인증)에는 JWT 없이 접근 가능
-    skip_before_action :authorize_request, only: [:request_code, :verify_code, :register, :login]
-
-    def request_code
-      phone_number = params[:phone_number]
+  module V1
+    class AuthController < Api::V1::BaseController
+      # 인증이 필요한 액션에서만 authorize_request 실행
+      before_action :authorize_request, except: [:login, :register, :request_code, :verify_code, :check_phone]
       
-      # 로깅 추가
-      Rails.logger.info("인증코드 요청: 전화번호 #{phone_number}")
-      
-      begin
-        # 전화번호 형식 검증 (하이픈 있는 형식 또는 숫자만 있는 형식 모두 허용)
-        unless phone_number.present? && (phone_number.match?(/^\d{3}-\d{3,4}-\d{4}$/) || phone_number.match?(/^\d{10,11}$/))
-          Rails.logger.warn("잘못된 전화번호 형식: #{phone_number}")
-          return render json: { error: "유효한 전화번호 형식이 아닙니다. (예: 010-1234-5678 또는 01012345678)" }, status: :bad_request
-        end
+      # 로그인 처리
+      def login
+        # 로그 추가
+        Rails.logger.info("로그인 시도: #{params[:phone_number]}")
         
-        # 하이픈 제거하여 숫자만 추출
-        digits_only = phone_number.gsub(/\D/, '')
-        
-        # 전화번호 인증코드 생성/발송 로직
-        code = rand(100000..999999).to_s
-        
-        # 실제 서비스에서는 SMS 발송 로직 추가
-        # SmsService.send_verification(digits_only, code)
-        
-        # 기존의 만료되지 않은 인증 코드가 있는지 확인
-        existing_verification = PhoneVerification.where(phone_number: digits_only, verified: false)
-                                              .where("expires_at > ?", Time.current)
-                                              .order(created_at: :desc)
-                                              .first
-
-        # 기존 인증 코드가 있다면 만료 처리
-        if existing_verification
-          Rails.logger.info("기존 인증 코드 만료 처리: #{existing_verification.id}")
-          existing_verification.update(expires_at: Time.current)
-        end
-        
-        # 새 인증 코드 저장
-        verification = nil
         begin
-          verification = PhoneVerification.create!(
-            phone_number: digits_only,
-            code: code,
-            expires_at: 5.minutes.from_now,
-            verified: false
-          )
-          Rails.logger.info("인증코드 생성 완료: ID #{verification.id}, 전화번호 #{digits_only}, 코드 #{code}")
+          # 전화번호로 사용자 찾기
+          @user = User.find_by(phone_number: params[:phone_number])
+          
+          # 사용자가 없거나 비밀번호가 일치하지 않으면
+          unless @user && @user.authenticate(params[:password])
+            Rails.logger.warn("로그인 실패: #{params[:phone_number]} - 사용자가 없거나 비밀번호가 일치하지 않음")
+            return render json: { error: '전화번호 또는 비밀번호가 올바르지 않습니다.' }, status: :unauthorized
+          end
+          
+          # JWT 토큰 생성
+          token = AuthToken.encode(user_id: @user.id)
+          
+          # 로그인 정보 저장 (최근 로그인 시간 등)
+          @user.update(last_login_at: Time.current)
+          
+          # 성공 응답
+          render json: {
+            token: token,
+            user: {
+              id: @user.id,
+              nickname: @user.nickname,
+              phone_number: @user.phone_number,
+              profile_image: @user.profile_image.attached? ? url_for(@user.profile_image) : nil,
+              last_login_at: @user.last_login_at,
+              created_at: @user.created_at
+            },
+            message: '로그인에 성공했습니다.'
+          }, status: :ok
+          
+          Rails.logger.info("로그인 성공: 사용자 ID #{@user.id}")
         rescue => e
-          Rails.logger.error("인증코드 생성 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          return render json: { error: "인증코드 생성 중 오류가 발생했습니다." }, status: :internal_server_error
+          Rails.logger.error("로그인 중 오류 발생: #{e.message}")
+          render json: { error: '로그인 중 오류가 발생했습니다.' }, status: :internal_server_error
         end
-        
-        # JSON 응답
-        render json: {
-          phone_number: digits_only,
-          code: code, # 테스트 환경에서만 코드 노출
-          message: "인증코드가 발송되었습니다. (테스트 환경)",
-          verification_id: verification.id
-        }
-      rescue => e
-        # 전체 예외 처리
-        Rails.logger.error("인증코드 요청 중 예외 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { error: "인증코드 요청 중 오류가 발생했습니다." }, status: :internal_server_error
       end
-    end
-
-    def verify_code
-      phone_number = params[:phone_number]
-      code = params[:code]
       
-      # 로깅 추가
-      Rails.logger.info("인증코드 확인: 전화번호 #{phone_number}, 코드 #{code}")
-      
-      begin
-        # 전화번호 형식 검증 (하이픈 있는 형식 또는 숫자만 있는 형식 모두 허용)
-        unless phone_number.present? && (phone_number.match?(/^\d{3}-\d{3,4}-\d{4}$/) || phone_number.match?(/^\d{10,11}$/))
-          Rails.logger.warn("잘못된 전화번호 형식: #{phone_number}")
-          return render json: { error: "유효한 전화번호 형식이 아닙니다." }, status: :bad_request
-        end
+      # 회원가입 처리
+      def register
+        # 로그 추가
+        Rails.logger.info("회원가입 시도: #{params[:phone_number]}")
         
-        # 하이픈 제거하여 숫자만 추출
-        digits_only = phone_number.gsub(/\D/, '')
-        
-        # 인증 코드 확인
-        verification = PhoneVerification.where(phone_number: digits_only, verified: false)
-                                      .where("expires_at > ?", Time.current)
-                                      .order(created_at: :desc)
-                                      .first
-        
-        Rails.logger.info("검색된 인증정보: #{verification.inspect}")
-        
-        unless verification
-          Rails.logger.warn("인증정보 없음: 전화번호 #{digits_only}")
-          return render json: { error: "유효한 인증요청이 없거나 이미 만료되었습니다." }, status: :unauthorized
-        end
-        
-        unless verification.code == code
-          Rails.logger.warn("인증코드 불일치: 입력 #{code}, 저장 #{verification.code}")
-          return render json: { error: "인증코드가 올바르지 않습니다." }, status: :unauthorized
-        end
-        
-        # 인증 성공 처리
-        verification.update(verified: true)
-        Rails.logger.info("인증 성공 처리: verification_id=#{verification.id}")
-        
-        # 유저 찾거나 생성
-        user = nil
         begin
-          user = User.find_or_create_by(phone_number: digits_only) do |u|
-            # 새 사용자인 경우 닉네임 자동 생성
-            random_nickname = NicknameGenerator.generate_unique
-            u.nickname = random_nickname
-            u.gender = 'unknown'  # 기본값 설정
-            u.password = SecureRandom.hex(8) if u.respond_to?(:password)  # 임시 비밀번호
-            Rails.logger.info("새 사용자 생성: 전화번호 #{digits_only}, 닉네임 #{random_nickname}")
+          # 이미 있는 전화번호인지 확인
+          if User.exists?(phone_number: params[:phone_number])
+            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 이미 등록된 전화번호")
+            return render json: { error: '이미 등록된 전화번호입니다.' }, status: :unprocessable_entity
           end
-          Rails.logger.info("사용자 정보: #{user.inspect}")
-        rescue => e
-          Rails.logger.error("사용자 생성 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          return render json: { error: "사용자 정보 처리 중 오류가 발생했습니다." }, status: :internal_server_error
-        end
-        
-        if user.nil?
-          Rails.logger.error("사용자 객체가 nil입니다: phone_number=#{digits_only}")
-          return render json: { error: "사용자 정보를 찾을 수 없습니다." }, status: :internal_server_error
-        end
-        
-        # PhoneVerification과 User 연결
-        begin
-          verification.update(user: user)
-          Rails.logger.info("사용자와 인증정보 연결: user_id=#{user.id}, verification_id=#{verification.id}")
-        rescue => e
-          Rails.logger.error("인증정보 연결 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          # 치명적 오류는 아니므로 진행
-        end
-        
-        # 기존 사용자인데 닉네임이 없는 경우 생성
-        if user.nickname.blank?
-          random_nickname = NicknameGenerator.generate_unique
-          user.update(nickname: random_nickname)
-          Rails.logger.info("기존 사용자 닉네임 생성: 전화번호 #{digits_only}, 닉네임 #{random_nickname}")
-        end
-        
-        # JWT 발급
-        token = nil
-        begin
-          token = JsonWebToken.encode({ user_id: user.id })
-          Rails.logger.info("JWT 발급 성공: 사용자 ID #{user.id}")
-        rescue => e
-          Rails.logger.error("JWT 발급 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          return render json: { error: "인증 토큰 생성 중 오류가 발생했습니다." }, status: :internal_server_error
-        end
-        
-        # 응답 반환
-        render json: {
-          message: "인증이 완료되었습니다.",
-          token: token,
-          user: {
-            id: user.id,
-            phone_number: user.phone_number,
-            nickname: user.nickname,
-            gender: user.gender || "unknown",
-            verified: true  # 인증 완료 시 verified를 true로 설정
-          }
-        }
-      rescue => e
-        # 전체 예외 처리
-        Rails.logger.error("인증 과정 중 예외 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { error: "인증 처리 중 오류가 발생했습니다." }, status: :internal_server_error
-      end
-    end
-
-    def register
-      begin
-        # 사용자 정보 가져오기
-        user_params = params.require(:user).permit(
-          :phone_number, :nickname, :gender, :password, :password_confirmation
-        )
-        
-        # 로깅 추가
-        Rails.logger.info("회원가입 요청: 전화번호 #{user_params[:phone_number]}")
-        
-        # 전화번호 형식 검증 (하이픈 있는 형식 또는 숫자만 있는 형식 모두 허용)
-        unless user_params[:phone_number].present? && (user_params[:phone_number].match?(/^\d{3}-\d{3,4}-\d{4}$/) || user_params[:phone_number].match?(/^\d{10,11}$/))
-          Rails.logger.warn("잘못된 전화번호 형식: #{user_params[:phone_number]}")
-          return render json: { error: "유효한 전화번호 형식이 아닙니다." }, status: :bad_request
-        end
-        
-        # 하이픈 제거하여 숫자만 추출
-        digits_only = user_params[:phone_number].gsub(/\D/, '')
-        user_params[:phone_number] = digits_only
-        
-        # 닉네임 검증
-        if user_params[:nickname].blank?
-          # 닉네임이 없으면 자동 생성
-          user_params[:nickname] = NicknameGenerator.generate_unique
-          Rails.logger.info("닉네임 자동 생성: #{user_params[:nickname]}")
-        end
-        
-        # 비밀번호 검증
-        if user_params[:password].blank? || user_params[:password].length < 6
-          return render json: { error: "비밀번호는 최소 6자 이상이어야 합니다." }, status: :bad_request
-        end
-        
-        if user_params[:password] != user_params[:password_confirmation]
-          return render json: { error: "비밀번호와 비밀번호 확인이 일치하지 않습니다." }, status: :bad_request
-        end
-        
-        # 이미 가입된 전화번호인지 확인 (인증 완료된 사용자만 검사)
-        if User.exists?(phone_number: digits_only, is_verified: true)
-          Rails.logger.warn("이미 가입된 전화번호: #{digits_only}")
-          return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
-        end
-        
-        # 전화번호로 기존 사용자 찾기 (인증 미완료 사용자 포함)
-        existing_user = User.find_by(phone_number: digits_only)
-        
-        # 기존 사용자 처리
-        if existing_user
-          # 인증이 안된 기존 사용자가 있는 경우, 관련 대화 레코드를 삭제
-          if !existing_user.is_verified
-            Rails.logger.info("인증되지 않은 기존 계정 발견: #{digits_only}")
-            
-            # 대화 레코드 삭제
-            existing_user.conversations_as_user_a.destroy_all
-            existing_user.conversations_as_user_b.destroy_all
-            
-            user = existing_user
-          else
-            # 이미 인증된 사용자인 경우 (예외 처리)
-            Rails.logger.warn("이미 인증된 사용자: #{digits_only}")
-            return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
+          
+          # 인증 코드 확인 (옵션)
+          verification = PhoneVerification.find_by(phone_number: params[:phone_number], verified: true)
+          unless verification
+            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 인증되지 않은 전화번호")
+            return render json: { error: '인증되지 않은 전화번호입니다.' }, status: :unprocessable_entity
           end
-        else
-          # 신규 사용자 생성
-          Rails.logger.info("신규 사용자 생성: #{digits_only}")
-          user = User.new(phone_number: digits_only)
-        end
-        
-        # 닉네임 업데이트
-        user.nickname = user_params[:nickname]
-        
-        # 성별 값이 존재하는지 확인하고 유효한 값인지 검증
-        if user_params[:gender].present?
-          # 성별이 유효한지 검사 (male, female, unknown만 허용) - unspecified는 unknown으로 변환
-          if user_params[:gender] == 'unspecified'
-            user.gender = 'unknown'
-          elsif User.genders.keys.include?(user_params[:gender])
-            user.gender = user_params[:gender]
-          else
-            Rails.logger.warn("유효하지 않은 성별 값: #{user_params[:gender]}")
-            return render json: { error: "유효하지 않은 성별입니다. 'unknown', 'male', 'female' 중 하나여야 합니다." }, status: :bad_request
-          end
-        else
-          # 성별이 없는 경우 기본값 'male' 사용
-          user.gender = 'male'
-        end
-        
-        # 비밀번호 설정
-        user.password = user_params[:password]
-        user.password_confirmation = user_params[:password_confirmation]
-        
-        # 회원가입 완료 표시
-        user.is_verified = true
-        
-        # 검증 로그
-        Rails.logger.info("저장 전 사용자 검증: #{user.valid?}")
-        unless user.valid?
-          Rails.logger.warn("사용자 유효성 검증 실패: #{user.errors.full_messages.join(', ')}")
-        end
-        
-        # 사용자 저장
-        if user.save
-          # 저장 성공 시 JWT 발급
-          begin
-            token = JsonWebToken.encode({ user_id: user.id })
-            Rails.logger.info("회원가입 성공: 사용자 ID #{user.id}, 전화번호 #{digits_only}")
+          
+          # 사용자 생성
+          @user = User.new(user_params)
+          @user.last_login_at = Time.current
+          
+          if @user.save
+            # JWT 토큰 생성
+            token = AuthToken.encode(user_id: @user.id)
             
+            # 지갑 생성
+            wallet = Wallet.create!(user: @user, balance: 0)
+            
+            # 성공 응답
             render json: {
-              message: "회원가입이 완료되었습니다.",
               token: token,
               user: {
-                id: user.id,
-                phone_number: user.phone_number,
-                nickname: user.nickname,
-                gender: user.gender || "unspecified",
-                created_at: user.created_at,
-                updated_at: user.updated_at
-              }
+                id: @user.id,
+                nickname: @user.nickname,
+                phone_number: @user.phone_number,
+                profile_image: @user.profile_image.attached? ? url_for(@user.profile_image) : nil,
+                created_at: @user.created_at
+              },
+              message: '회원가입에 성공했습니다.'
             }, status: :created
-          rescue => e
-            Rails.logger.error("JWT 발급 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-            render json: { error: "회원가입은 성공했으나 로그인 토큰 생성에 실패했습니다." }, status: :internal_server_error
-          end
-        else
-          # 사용자 저장 실패 시
-          Rails.logger.warn("회원가입 실패: #{user.errors.full_messages.join(', ')}")
-          render json: { error: user.errors.full_messages.join(', ') }, status: :unprocessable_entity
-        end
-      rescue ActionController::ParameterMissing => e
-        # 필수 파라미터 누락
-        Rails.logger.warn("필수 파라미터 누락: #{e.message}")
-        render json: { error: "필수 회원가입 정보가 누락되었습니다." }, status: :bad_request
-      rescue => e
-        # 그 외 모든 예외
-        Rails.logger.error("회원가입 처리 중 예외 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { error: "회원가입 처리 중 오류가 발생했습니다." }, status: :internal_server_error
-      end
-    end
-
-    def login
-      # 로그인 정보 가져오기
-      phone_number = params[:phone_number]
-      password = params[:password]
-      
-      # 로깅 추가
-      Rails.logger.info("로그인 요청: 전화번호 #{phone_number}")
-      
-      begin
-        # 전화번호와 비밀번호 검증
-        if phone_number.blank? || password.blank?
-          return render json: { error: "전화번호와 비밀번호를 입력해주세요." }, status: :bad_request
-        end
-        
-        # 하이픈 제거하여 숫자만 추출
-        digits_only = phone_number.gsub(/\D/, '')
-        
-        # 테스트 계정 지원 - 모든 환경에서 동작하도록 수정
-        if password == 'test1234'
-          Rails.logger.info("테스트 계정 로그인 시도: #{digits_only}")
-          
-          test_accounts = {
-            '01011111111' => { id: 1, nickname: 'A - 김철수', gender: 'male' },
-            '01022222222' => { id: 2, nickname: 'B - 이영희', gender: 'female' },
-            '01033333333' => { id: 3, nickname: 'C - 박지민', gender: 'male' },
-            '01044444444' => { id: 4, nickname: 'D - 최수진', gender: 'female' },
-            '01055555555' => { id: 5, nickname: 'E - 정민준', gender: 'male' }
-          }
-          
-          if test_account = test_accounts[digits_only]
-            Rails.logger.info("테스트 계정 정보 확인: #{test_account.inspect}")
             
-            # 테스트 계정이 존재하면 사용자 정보 생성 또는 업데이트
-            user = nil
-            
-            # 사용자 조회 또는 생성
-            begin
-              user = User.find_by(phone_number: digits_only)
-              
-              if user.nil?
-                # 테스트 계정 새로 생성
-                user = User.new(
-                  phone_number: digits_only,
-                  nickname: test_account[:nickname],
-                  gender: test_account[:gender],
-                  is_verified: true
-                )
-                user.password = password
-                user.password_confirmation = password
-                
-                if user.save
-                  Rails.logger.info("테스트 계정 새로 생성 성공: #{user.nickname}")
-                else
-                  Rails.logger.error("테스트 계정 생성 실패: #{user.errors.full_messages.join(', ')}")
-                  return render json: { error: "테스트 계정 생성에 실패했습니다." }, status: :internal_server_error
-                end
-              else
-                # 기존 테스트 계정 정보 업데이트
-                needs_update = user.nickname != test_account[:nickname] || user.gender != test_account[:gender] || !user.is_verified
-                
-                if needs_update
-                  Rails.logger.info("테스트 계정 정보 업데이트: #{user.nickname} -> #{test_account[:nickname]}")
-                  user.update(
-                    nickname: test_account[:nickname],
-                    gender: test_account[:gender],
-                    is_verified: true
-                  )
-                end
-                
-                # 비밀번호 없는 경우 추가
-                if !user.password_digest.present?
-                  Rails.logger.info("테스트 계정 비밀번호 설정")
-                  user.password = password
-                  user.password_confirmation = password
-                  user.save!
-                end
-              end
-            rescue => e
-              Rails.logger.error("테스트 계정 처리 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-              return render json: { error: "테스트 계정 처리 중 오류가 발생했습니다." }, status: :internal_server_error
-            end
-            
-            # JWT 발급
-            token = nil
-            begin
-              token = JsonWebToken.encode({ user_id: user.id })
-              Rails.logger.info("테스트 계정 로그인 성공: 사용자 ID #{user.id}, 전화번호 #{digits_only}")
-            rescue => e
-              Rails.logger.error("JWT 발급 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-              return render json: { error: "인증 토큰 생성 중 오류가 발생했습니다." }, status: :internal_server_error
-            end
-            
-            return render json: {
-              message: "테스트 계정으로 로그인되었습니다.",
-              token: token,
-              user: {
-                id: user.id,
-                phone_number: user.phone_number,
-                nickname: user.nickname,
-                gender: user.gender || "unspecified",
-                created_at: user.created_at,
-                updated_at: user.updated_at,
-                is_test_account: true
-              }
-            }
+            Rails.logger.info("회원가입 성공: 사용자 ID #{@user.id}")
           else
-            Rails.logger.warn("등록되지 않은 테스트 계정: #{digits_only}")
-            return render json: { error: "테스트 계정이 아닙니다. 01011111111부터 01055555555까지의 번호만 테스트 계정으로 사용할 수 있습니다." }, status: :unauthorized
+            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - #{@user.errors.full_messages.join(', ')}")
+            render json: { error: @user.errors.full_messages.join(', ') }, status: :unprocessable_entity
           end
-        end
-        
-        # 일반 사용자 찾기
-        user = User.find_by(phone_number: digits_only)
-        
-        # 사용자가 없는 경우
-        if user.nil?
-          Rails.logger.warn("존재하지 않는 사용자: #{digits_only}")
-          return render json: { error: "전화번호 또는 비밀번호가 올바르지 않습니다." }, status: :unauthorized
-        end
-        
-        # 비밀번호 없는 경우 (예외 상황)
-        if !user.password_digest.present?
-          Rails.logger.warn("비밀번호가 설정되지 않은 사용자: #{digits_only}")
-          return render json: { error: "계정 설정이 완료되지 않았습니다. 회원가입을 진행해주세요." }, status: :unauthorized
-        end
-        
-        # 회원가입 완료 확인
-        if !user.is_verified
-          Rails.logger.warn("인증되지 않은 사용자: #{digits_only}")
-          return render json: { error: "회원가입이 완료되지 않았습니다. 회원가입을 진행해주세요." }, status: :unauthorized
-        end
-        
-        # 비밀번호 확인
-        unless user.authenticate(password)
-          Rails.logger.warn("비밀번호 불일치: 사용자 ID #{user.id}, 전화번호 #{digits_only}")
-          return render json: { error: "전화번호 또는 비밀번호가 올바르지 않습니다." }, status: :unauthorized
-        end
-        
-        # JWT 발급
-        token = nil
-        begin
-          token = JsonWebToken.encode({ user_id: user.id })
-          Rails.logger.info("로그인 성공: 사용자 ID #{user.id}, 전화번호 #{digits_only}")
         rescue => e
-          Rails.logger.error("JWT 발급 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          return render json: { error: "인증 토큰 생성 중 오류가 발생했습니다." }, status: :internal_server_error
+          Rails.logger.error("회원가입 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: '회원가입 중 오류가 발생했습니다.' }, status: :internal_server_error
+        end
+      end
+      
+      # 인증 코드 요청
+      def request_code
+        phone_number = params[:phone_number]
+        
+        # 로그 추가
+        Rails.logger.info("인증코드 요청: #{phone_number}")
+        
+        # 전화번호 형식 검증
+        unless valid_phone_number?(phone_number)
+          Rails.logger.warn("인증코드 요청 실패: #{phone_number} - 유효하지 않은 전화번호 형식")
+          return render json: { error: '유효하지 않은 전화번호 형식입니다.' }, status: :bad_request
         end
         
-        render json: {
-          message: "로그인에 성공했습니다.",
-          token: token,
-          user: {
-            id: user.id,
-            phone_number: user.phone_number,
-            nickname: user.nickname,
-            gender: user.gender || "unspecified",
-            created_at: user.created_at,
-            updated_at: user.updated_at
-          }
-        }
-      rescue => e
-        # 전체 예외 처리
-        Rails.logger.error("로그인 처리 중 예외 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { error: "로그인 처리 중 오류가 발생했습니다." }, status: :internal_server_error
+        begin
+          # 인증 코드 생성
+          code = generate_verification_code
+          
+          # 이미 인증 레코드가 있으면 업데이트, 없으면 새로 생성
+          verification = PhoneVerification.find_or_initialize_by(phone_number: phone_number)
+          verification.code = code
+          verification.expires_at = 10.minutes.from_now
+          verification.verified = false
+          verification.save!
+          
+          # 실제 환경에서는 SMS 전송
+          send_sms(phone_number, "인증 코드: #{code}") if Rails.env.production?
+          
+          render json: { 
+            message: '인증 코드가 발송되었습니다.',
+            code: Rails.env.development? ? code : nil # 개발 환경에서만 코드 반환
+          }, status: :ok
+          
+          Rails.logger.info("인증코드 발송 성공: #{phone_number}, 코드: #{code}")
+        rescue => e
+          Rails.logger.error("인증코드 발송 중 오류: #{e.message}")
+          render json: { error: '인증 코드 발송에 실패했습니다.' }, status: :internal_server_error
+        end
       end
-    end
-
-    # 로그아웃 처리
-    def logout
-      # 클라이언트에서는 토큰을 삭제하므로 서버에서는 성공 응답만 반환
-      render json: { message: "로그아웃 되었습니다." }, status: :ok
+      
+      # 인증 코드 확인
+      def verify_code
+        phone_number = params[:phone_number]
+        code = params[:code]
+        
+        # 로그 추가
+        Rails.logger.info("인증코드 확인: #{phone_number}, 코드: #{code}")
+        
+        begin
+          verification = PhoneVerification.find_by(phone_number: phone_number)
+          
+          if verification.nil?
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 해당 전화번호의 인증 정보가 없음")
+            return render json: { error: '인증 요청을 먼저 진행해주세요.' }, status: :not_found
+          end
+          
+          # 만료 확인
+          if verification.expires_at < Time.current
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 만료된 인증 코드")
+            return render json: { error: '인증 코드가 만료되었습니다. 다시 요청해주세요.' }, status: :bad_request
+          end
+          
+          # 코드 확인
+          if verification.code == code
+            # 인증 성공 처리
+            verification.update(verified: true)
+            
+            # 사용자가 이미 존재하는지 확인
+            existing_user = User.find_by(phone_number: phone_number)
+            
+            render json: { 
+              message: '인증에 성공했습니다.',
+              user_exists: existing_user.present?,
+              user: existing_user ? {
+                id: existing_user.id,
+                nickname: existing_user.nickname
+              } : nil
+            }, status: :ok
+            
+            Rails.logger.info("인증코드 확인 성공: #{phone_number}")
+          else
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: #{code}, 저장: #{verification.code}")
+            render json: { error: '인증 코드가 일치하지 않습니다.' }, status: :bad_request
+          end
+        rescue => e
+          Rails.logger.error("인증코드 확인 중 오류: #{e.message}")
+          render json: { error: '인증 확인 중 오류가 발생했습니다.' }, status: :internal_server_error
+        end
+      end
+      
+      # 전화번호 존재 여부 확인
+      def check_phone
+        phone_number = params[:phone_number]
+        
+        # 로그 추가
+        Rails.logger.info("전화번호 확인: #{phone_number}")
+        
+        begin
+          user_exists = User.exists?(phone_number: phone_number)
+          
+          render json: { 
+            exists: user_exists,
+            message: user_exists ? '이미 등록된 전화번호입니다.' : '사용 가능한 전화번호입니다.'
+          }, status: :ok
+          
+          Rails.logger.info("전화번호 확인 결과: #{phone_number}, 존재 여부: #{user_exists}")
+        rescue => e
+          Rails.logger.error("전화번호 확인 중 오류: #{e.message}")
+          render json: { error: '전화번호 확인 중 오류가 발생했습니다.' }, status: :internal_server_error
+        end
+      end
+      
+      # 로그아웃 처리
+      def logout
+        # JWT는 서버에 저장되지 않으므로, 클라이언트에서 토큰 삭제하는 것이 중요
+        # 하지만 선택적으로 블랙리스트 등을 관리할 수 있음
+        
+        # 로그 추가
+        Rails.logger.info("로그아웃: 사용자 ID #{current_user.id}")
+        
+        render json: { message: '로그아웃되었습니다.' }, status: :ok
+      end
+      
+      private
+      
+      # 허용된 파라미터 목록
+      def user_params
+        params.permit(:phone_number, :password, :nickname, :gender, :profile_image)
+      end
+      
+      # 한국 전화번호 유효성 검사
+      def valid_phone_number?(phone_number)
+        # 한국 전화번호 형식 검증 (010으로 시작하는 10-11자리 숫자)
+        phone_number =~ /^01[0-9]{8,9}$/
+      end
+      
+      # 인증 코드 생성 (6자리 숫자)
+      def generate_verification_code
+        rand(100000..999999).to_s
+      end
+      
+      # SMS 전송 메소드 (실제 구현은 서비스에 따라 다름)
+      def send_sms(phone_number, message)
+        # 실제 SMS 서비스 연동 코드 구현
+        # 예: TwilioClient.new.send_sms(phone_number, message)
+        Rails.logger.info("SMS 전송 (가상): #{phone_number}, 메시지: #{message}")
+      end
     end
   end
 end

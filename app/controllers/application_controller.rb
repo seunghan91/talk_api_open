@@ -21,7 +21,7 @@ class ApplicationController < ActionController::API
       
       # 토큰 디코딩 시도
       begin
-        decoded = JsonWebToken.decode(token)
+        decoded = AuthToken.decode(token)
         Rails.logger.debug "디코딩된 토큰 내용: #{decoded.inspect}"
         
         if decoded && decoded[:user_id]

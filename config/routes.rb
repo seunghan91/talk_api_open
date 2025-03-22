@@ -127,6 +127,20 @@ Rails.application.routes.draw do
     patch "users/notification_settings", to: "v1/users#update_notification_settings"
     put "users/notification_settings", to: "v1/users#update_notification_settings"
     
+    # 브로드캐스트 관련 레거시 API
+    get "broadcasts", to: "v1/broadcasts#index"
+    post "broadcasts", to: "v1/broadcasts#create"
+    get "broadcasts/:id", to: "v1/broadcasts#show"
+    post "broadcasts/:id/reply", to: "v1/broadcasts#reply"
+    
+    # 대화 관련 레거시 API
+    get "conversations", to: "v1/conversations#index"
+    get "conversations/:id", to: "v1/conversations#show"
+    delete "conversations/:id", to: "v1/conversations#destroy"
+    post "conversations/:id/favorite", to: "v1/conversations#favorite"
+    post "conversations/:id/unfavorite", to: "v1/conversations#unfavorite"
+    post "conversations/:id/send_message", to: "v1/conversations#send_message"
+    
     # 기타 레거시 API
     get "me", to: "v1/users#me"
     post "change_nickname", to: "v1/users#change_nickname"
