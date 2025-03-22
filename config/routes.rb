@@ -59,6 +59,7 @@ Rails.application.routes.draw do
 
     # 사용자 관련 API
     get "users/me", to: "users#me"
+    get "users/profile", to: "users#profile"
     get "users/:id", to: "users#show"
     patch "users/me", to: "users#update"
     put "users/me", to: "users#update"
@@ -66,7 +67,6 @@ Rails.application.routes.draw do
     
     # 기존 사용자 API (이전 버전과의 호환성 유지)
     get "me", to: "users#me"
-    get "users/profile", to: "users#me"
     post "change_nickname", to: "users#change_nickname"
     get "generate_random_nickname", to: "users#generate_random_nickname"
     post "update_profile", to: "users#update_profile"

@@ -30,6 +30,41 @@ module Api
       end
     end
     
+    # GET /api/users/profile - 이전 버전 호환성을 위한 엔드포인트
+    def profile
+      Rails.logger.info("사용자 프로필 조회: #{current_user ? "사용자 ID #{current_user.id}" : "인증 실패"}")
+      
+      begin
+        if current_user
+          render json: {
+            user: {
+              id: current_user.id,
+              phone_number: current_user.phone_number,
+              nickname: current_user.nickname,
+              gender: current_user.gender || "unspecified",
+              push_enabled: current_user.push_enabled,
+              broadcast_push_enabled: current_user.broadcast_push_enabled,
+              message_push_enabled: current_user.message_push_enabled,
+              push_token: current_user.push_token,
+              wallet_balance: current_user.wallet_balance,
+              unread_notification_count: current_user.unread_notification_count,
+              created_at: current_user.created_at,
+              updated_at: current_user.updated_at
+            }
+          }
+        else
+          Rails.logger.warn("프로필 조회 시 사용자 인증 실패")
+          render json: { 
+            error: "사용자를 찾을 수 없습니다. 토큰이 만료되었거나 유효하지 않습니다.",
+            code: "invalid_token" 
+          }, status: :unauthorized
+        end
+      rescue => e
+        Rails.logger.error("프로필 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "사용자 정보를 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
+    end
+    
     # GET /api/users/:id
     def show
       begin

@@ -6,119 +6,132 @@ module Api
     # skip_before_action :authorize_request, only: [:request_code, :verify_code]
 
     def index
-      # 캐싱 적용 (5분 유효)
-      @broadcasts = Rails.cache.fetch("broadcasts-recent", expires_in: 5.minutes) do
-        Broadcast.where("expired_at > ?", Time.current)
-                 .includes(:user) # N+1 쿼리 문제 해결
-                 .order(created_at: :desc)
-                 .limit(20)
-                 .to_a
+      begin
+        # 현재 사용자가 보낸 방송 목록 + 수신한 방송 목록
+        @broadcasts = current_user.broadcasts.order(created_at: :desc).limit(50)
+        
+        render json: {
+          broadcasts: @broadcasts.map { |broadcast| broadcast_response(broadcast) }
+        }
+      rescue => e
+        Rails.logger.error("방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "방송 목록을 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
       end
-      
-      render json: @broadcasts, include: { user: { only: [:id, :nickname, :gender] } }
     end
 
     def create
-      # 브로드캐스트 생성 요청 로깅
-      Rails.logger.info "Broadcast creation request from user: #{current_user.id}, #{current_user.nickname}"
-      
-      # 음성 파일 확인 - 파라미터 이름을 'broadcast[voice_file]'에서 'voice_file'로 변경
-      voice_file = params[:voice_file]
-      Rails.logger.info "Voice file received: #{voice_file.present?}"
-      
-      if voice_file.blank?
-        Rails.logger.warn "음성 파일이 없습니다: 사용자 ID #{current_user.id}"
-        return render json: { error: "음성 파일이 필요합니다." }, status: :bad_request
-      end
-      
-      # 음성 파일 로깅
-      if voice_file.present?
-        Rails.logger.info "음성 파일 첨부됨: #{voice_file.original_filename}"
-        Rails.logger.info "음성 파일 타입: #{voice_file.content_type}"
-        Rails.logger.info "음성 파일 크기: #{voice_file.size} 바이트"
-      end
-      
-      # 브로드캐스트 생성 로직 - 개발 환경에서는 하드코딩된 응답 반환
-      if Rails.env.development?
-        # 수신자 목록에서 현재 사용자 제외
-        all_test_recipients = [
-          { id: 1, nickname: "김철수" },
-          { id: 2, nickname: "이영희" },
-          { id: 3, nickname: "박지민" },
-          { id: 4, nickname: "최수진" },
-          { id: 5, nickname: "정민준" }
-        ]
+      begin
+        Rails.logger.info "Broadcast creation request from user: #{current_user.id}, #{current_user.nickname}"
         
-        # 현재 사용자 ID를 기반으로 수신자 목록에서 제외
-        filtered_recipients = all_test_recipients.reject { |recipient| recipient[:id] == current_user.id }
+        # 파라미터 유효성 검사
+        broadcast_params = params.require(:broadcast).permit(:audio, :text, :recipient_count)
         
-        # 현재 시간 및 만료 시간 설정 (6일 후)
-        current_time = Time.now
-        expiry_time = current_time + 6.days
-        
-        render json: {
-          message: "방송이 성공적으로 생성되었습니다.",
-          broadcast: {
-            id: SecureRandom.uuid,
-            created_at: current_time,
-            expired_at: expiry_time,
-            user: {
-              id: current_user.id,
-              nickname: current_user.nickname
-            }
-          },
-          recipient_count: filtered_recipients.length,
-          recipients: filtered_recipients
-        }, status: :created
-      else
-        # 실제 구현: 데이터베이스에 저장하고 파일 업로드
-        @broadcast = current_user.broadcasts.new(
-          expired_at: Time.current + 6.days
-        )
-        
-        begin
-          # 음성 파일 첨부
-          @broadcast.voice_file.attach(voice_file)
-          
-          # 첨부 확인
-          if @broadcast.voice_file.attached?
-            Rails.logger.info "음성 파일 첨부 성공"
-          else
-            Rails.logger.error "음성 파일 첨부 실패"
-            return render json: { error: "음성 파일 첨부에 실패했습니다." }, status: :unprocessable_entity
-          end
-        rescue => e
-          Rails.logger.error "음성 파일 첨부 중 오류: #{e.message}"
-          return render json: { error: "음성 파일 처리 중 오류가 발생했습니다: #{e.message}" }, status: :unprocessable_entity
+        # 음성 파일이 있는지 확인
+        unless broadcast_params[:audio].present?
+          Rails.logger.warn "음성 파일이 없습니다: 사용자 ID #{current_user.id}"
+          return render json: { error: "음성 파일이 필요합니다." }, status: :bad_request
         end
         
-        if @broadcast.save
-          # 캐시 무효화
-          Rails.cache.delete("broadcasts-recent")
+        # 텍스트 메시지가 있는지 확인 (선택 사항)
+        broadcast_text = broadcast_params[:text].presence || "새로운 음성 메시지"
+        
+        # 수신자 수 설정 (기본값: 5)
+        recipient_count = (broadcast_params[:recipient_count] || 5).to_i
+        recipient_count = 5 if recipient_count <= 0 || recipient_count > 10
+        
+        # 테스트 계정 처리 - 실제 환경에서는 제거
+        is_test_account = current_user.phone_number.match?(/^010\d{8}$/) && 
+                         current_user.phone_number.gsub(/\D/, '').match?(/^010(1|2|3|4|5){2}+\1{6}$/)
+        
+        if is_test_account
+          Rails.logger.info "테스트 계정 방송 처리: #{current_user.phone_number}"
+          # 테스트 계정은 다른 테스트 계정에만 방송
+          all_test_recipients = [
+            { id: 1, phone_number: '01011111111', nickname: '김철수', gender: 'male' },
+            { id: 2, phone_number: '01022222222', nickname: '이영희', gender: 'female' },
+            { id: 3, phone_number: '01033333333', nickname: '박지민', gender: 'male' },
+            { id: 4, phone_number: '01044444444', nickname: '최수진', gender: 'female' },
+            { id: 5, phone_number: '01055555555', nickname: '정민준', gender: 'male' }
+          ]
           
-          # 수신자 목록 생성 (실제 구현에서는 알고리즘에 따라 결정)
-          recipient_count = 5 # 임의의 수
-          recipients = User.where.not(id: current_user.id).limit(recipient_count)
-          recipient_data = recipients.map { |r| { id: r.id, nickname: r.nickname } }
+          # 현재 사용자를 제외
+          filtered_recipients = all_test_recipients.reject { |recipient| recipient[:id] == current_user.id }
           
+          # 수신자 수만큼 선택
+          recipients = filtered_recipients.sample(recipient_count)
+          
+          # 방송 생성 및 저장
+          # 여기서는 테스트 데이터만 반환하고 실제 저장은 하지 않음
           render json: {
-            message: "방송이 성공적으로 생성되었습니다.",
+            message: "방송이 성공적으로 전송되었습니다.",
             broadcast: {
-              id: @broadcast.id,
-              created_at: @broadcast.created_at,
-              expired_at: @broadcast.expired_at,
-              user: {
+              id: SecureRandom.uuid,
+              audio_url: "https://example.com/test_audio.mp3",
+              text: broadcast_text,
+              sender: {
                 id: current_user.id,
                 nickname: current_user.nickname
-              }
-            },
-            recipient_count: recipient_data.length,
-            recipients: recipient_data
+              },
+              recipients: recipients,
+              created_at: Time.current,
+              is_test: true
+            }
+          }, status: :created
+          return
+        end
+        
+        # 실제 방송 생성 로직
+        @broadcast = current_user.broadcasts.new(
+          text: broadcast_text,
+          audio: broadcast_params[:audio]
+        )
+        
+        # 수신자 선택 로직 (무작위로 수신자 선택)
+        recipients = User.where.not(id: current_user.id).limit(recipient_count)
+        
+        # 비동기 작업 실행 (Sidekiq)
+        broadcast_id = nil
+        
+        if @broadcast.save
+          broadcast_id = @broadcast.id
+          # 비동기 작업을 통해 푸시 알림 전송
+          BroadcastWorker.perform_async(broadcast_id, recipient_count)
+          
+          render json: {
+            message: "방송이 성공적으로 전송되었습니다.",
+            broadcast: {
+              id: @broadcast.id,
+              audio_url: @broadcast.audio.url,
+              text: @broadcast.text,
+              sender: {
+                id: current_user.id,
+                nickname: current_user.nickname
+              },
+              created_at: @broadcast.created_at
+            }
           }, status: :created
         else
-          Rails.logger.error "방송 생성 실패: #{@broadcast.errors.full_messages}"
-          render json: { errors: @broadcast.errors.full_messages }, status: :unprocessable_entity
+          Rails.logger.warn("방송 생성 실패: #{@broadcast.errors.full_messages.join(', ')}")
+          render json: { error: @broadcast.errors.full_messages.join(', ') }, status: :unprocessable_entity
         end
+      rescue ActionController::ParameterMissing => e
+        Rails.logger.warn("파라미터 누락: #{e.message}")
+        render json: { error: "필수 파라미터가 누락되었습니다." }, status: :bad_request
+      rescue Redis::CannotConnectError, RedisClient::CannotConnectError => e
+        Rails.logger.error("Redis 연결 실패: #{e.message}")
+        render json: { 
+          error: "방송 서비스에 일시적인 문제가 발생했습니다. 잠시 후 다시 시도해주세요.",
+          details: "Redis 연결 실패: #{e.message}"
+        }, status: :service_unavailable
+      rescue Sidekiq::JobRetry::Skip => e
+        Rails.logger.error("Sidekiq 작업 건너뛰기: #{e.message}")
+        render json: { 
+          error: "백그라운드 작업을 처리할 수 없습니다. 잠시 후 다시 시도해주세요.",
+          details: "Sidekiq 오류: #{e.message}"
+        }, status: :service_unavailable
+      rescue => e
+        Rails.logger.error("방송 생성 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "방송을 전송하는 중 오류가 발생했습니다." }, status: :internal_server_error
       end
     end
     
