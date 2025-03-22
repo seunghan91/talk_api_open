@@ -279,6 +279,116 @@ config.active_storage.service = :production
 - `POST /api/blocks`: 사용자 차단
 - `DELETE /api/blocks/:id`: 차단 해제
 
+## API 설계 및 관리 가이드라인
+
+### 1. API 버전 관리
+
+모든 API는 명확한 버전 관리 전략을 사용합니다:
+
+- 모든 API 요청은 `/api/v1/*` 형식의 경로를 사용해야 합니다.
+- 각 버전은 별도의 네임스페이스로 구성됩니다:
+  - `/api/v1/*` → `Api::V1::*` 컨트롤러
+  - `/api/v2/*` → `Api::V2::*` 컨트롤러 (향후 구현)
+
+레거시 API(버전이 없는 `/api/*` 엔드포인트)는 호환성을 위해 유지되지만, 
+신규 개발 시에는 반드시 버전이 있는 API를 사용해야 합니다.
+
+### 2. 컨트롤러 구조
+
+컨트롤러는 다음과 같은 구조를 따릅니다:
+
+```
+app/controllers/
+  ├── api/
+  │   ├── base_controller.rb
+  │   ├── v1/
+  │   │   ├── base_controller.rb
+  │   │   ├── users_controller.rb
+  │   │   ├── auth/
+  │   │   │   └── auth_controller.rb
+  │   │   └── ...
+  │   └── ...
+  └── ...
+```
+
+- 모든 API v1 컨트롤러는 `Api::V1::BaseController`를 상속받습니다.
+- 인증 관련 로직은 `Api::V1::Auth` 네임스페이스에 위치합니다.
+
+### 3. API 문서화
+
+API 문서는 OpenAPI(Swagger) 규격을 따릅니다:
+
+- API 문서는 `/api-docs` 경로에서 접근할 수 있습니다.
+- 새로운 API를 추가할 때는 컨트롤러에 Swagger 주석을 추가해야 합니다:
+
+```ruby
+# @swagger
+# /api/v1/users/{id}:
+#   get:
+#     summary: 사용자 정보 조회
+#     tags: [사용자]
+#     parameters:
+#       - name: id
+#         in: path
+#         required: true
+#         type: integer
+#     responses:
+#       200:
+#         description: 성공적으로 사용자 정보 반환
+```
+
+### 4. 오류 처리
+
+일관된 오류 응답 형식을 사용합니다:
+
+```json
+{
+  "error": "오류 메시지",
+  "code": "오류_코드" // 선택적
+}
+```
+
+모든 예외는 적절한 HTTP 상태 코드와 함께 처리되어야 합니다:
+- 400: 잘못된 요청
+- 401: 인증 실패
+- 403: 권한 없음
+- 404: 리소스 없음
+- 422: 유효성 검사 오류
+- 500: 서버 오류
+
+### 5. 로깅
+
+모든 API 요청과 응답은 적절히 로깅되어야 합니다:
+
+- 요청 시: 메서드, 경로, 파라미터
+- 응답 시: 상태 코드, 처리 시간
+- 오류 발생 시: 상세 오류 정보와 스택 트레이스
+
+로그 레벨을 적절하게 사용하세요:
+- INFO: 일반적인 요청/응답 정보
+- WARN: 잠재적 문제
+- ERROR: 오류 상황
+
+### 6. API 변경 관리
+
+API를 변경할 때는 다음 사항을 고려해야 합니다:
+
+1. 하위 호환성을 유지하세요. 기존 클라이언트가 중단되지 않아야 합니다.
+2. 파괴적인 변경이 필요한 경우, 새로운 API 버전을 만드세요.
+3. 제거 예정인 API는 명확히 문서화하고 충분한 마이그레이션 기간을 제공하세요.
+
+### 7. 테스트
+
+모든 API 엔드포인트는 테스트해야 합니다:
+
+```bash
+# 테스트 실행
+bundle exec rspec spec/requests/api/v1/
+
+# API 문서 생성
+RAILS_ENV=test bundle exec rake rswag:specs:swaggerize
+```
+
 ---
 
 © 2024 Talkk. All rights reserved.
