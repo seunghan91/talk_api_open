@@ -66,9 +66,15 @@ GEM
       i18n (>= 1.6, < 2)
       minitest (>= 5.1)
       tzinfo (~> 2.0)
+    addressable (2.8.7)
+      public_suffix (>= 2.0.2, < 7.0)
+    annotate (3.2.0)
+      activerecord (>= 3.2, < 8.0)
+      rake (>= 10.4, < 14.0)
     ast (2.4.2)
     base64 (0.2.0)
     bcrypt (3.1.20)
+    bigdecimal (3.1.9)
     bootsnap (1.18.4)
       msgpack (~> 1.2)
     brakeman (7.0.0)
@@ -77,12 +83,29 @@ GEM
     concurrent-ruby (1.3.5)
     connection_pool (2.5.0)
     crass (1.0.6)
+    database_cleaner (2.1.0)
+      database_cleaner-active_record (>= 2, < 3)
+    database_cleaner-active_record (2.2.0)
+      activerecord (>= 5.a)
+      database_cleaner-core (~> 2.0.0)
+    database_cleaner-core (2.0.1)
     date (3.4.1)
     debug (1.10.0)
       irb (~> 1.10)
       reline (>= 0.3.8)
     diff-lcs (1.6.0)
     erubi (1.13.1)
+    ethon (0.16.0)
+      ffi (>= 1.15.0)
+    exponent-server-sdk (0.1.0)
+      typhoeus
+    factory_bot (6.5.1)
+      activesupport (>= 6.1.0)
+    factory_bot_rails (6.4.4)
+      factory_bot (~> 6.5)
+      railties (>= 5.0.0)
+    faker (3.5.1)
+      i18n (>= 1.8.11, < 2)
     ffi (1.15.5)
     globalid (1.2.1)
       activesupport (>= 6.1)
@@ -94,6 +117,9 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     json (2.9.1)
+    json-schema (5.1.1)
+      addressable (~> 2.8)
+      bigdecimal (~> 3.1)
     jwt (2.10.1)
       base64
     language_server-protocol (3.17.0.4)
@@ -136,7 +162,8 @@ GEM
     psych (5.2.3)
       date
       stringio
-    puma (6.6.0)
+    public_suffix (6.0.1)
+    puma (5.6.9)
       nio4r (~> 2.0)
     racc (1.8.1)
     rack (2.2.13)
@@ -176,8 +203,7 @@ GEM
     rake (13.2.1)
     rdoc (6.12.0)
       psych (>= 4.0.0)
-    redis (5.3.0)
-      redis-client (>= 0.22.0)
+    redis (4.8.1)
     redis-client (0.23.2)
       connection_pool
     regexp_parser (2.10.0)
@@ -200,6 +226,17 @@ GEM
       rspec-mocks (~> 3.13)
       rspec-support (~> 3.13)
     rspec-support (3.13.2)
+    rswag-api (2.16.0)
+      activesupport (>= 5.2, < 8.1)
+      railties (>= 5.2, < 8.1)
+    rswag-specs (2.16.0)
+      activesupport (>= 5.2, < 8.1)
+      json-schema (>= 2.2, < 6.0)
+      railties (>= 5.2, < 8.1)
+      rspec-core (>= 2.14)
+    rswag-ui (2.16.0)
+      actionpack (>= 5.2, < 8.1)
+      railties (>= 5.2, < 8.1)
     rubocop (1.71.2)
       json (~> 2.3)
       language_server-protocol (>= 3.17.0)
@@ -229,6 +266,14 @@ GEM
       rubocop-performance
       rubocop-rails
     ruby-progressbar (1.13.0)
+    sentry-rails (5.23.0)
+      railties (>= 5.0)
+      sentry-ruby (~> 5.23.0)
+    sentry-ruby (5.23.0)
+      bigdecimal
+      concurrent-ruby (~> 1.0, >= 1.0.2)
+    shoulda-matchers (6.4.0)
+      activesupport (>= 5.2.0)
     sidekiq (7.3.9)
       base64
       connection_pool (>= 2.3.0)
@@ -238,6 +283,8 @@ GEM
     stringio (3.1.2)
     thor (1.3.2)
     timeout (0.4.3)
+    typhoeus (1.4.1)
+      ethon (>= 0.9.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     unicode-display_width (3.1.4)
@@ -260,22 +307,33 @@ PLATFORMS
   x86_64-linux-musl
 
 DEPENDENCIES
+  annotate
   bcrypt (~> 3.1.7)
   bootsnap
   brakeman
+  database_cleaner
   debug
+  exponent-server-sdk
+  factory_bot_rails
+  faker
   ffi (~> 1.15.5)
   jwt
   logger (~> 1.6)
   nokogiri (~> 1.16.0)
   pg (~> 1.1)
-  puma (>= 5.0)
+  puma (~> 5.0)
   rack-cors
-  rails (~> 7.0.0)
-  redis
+  rails (~> 7.0.8)
+  redis (~> 4.0)
   rspec-rails
+  rswag-api
+  rswag-specs
+  rswag-ui
   rubocop-rails-omakase
-  sidekiq
+  sentry-rails
+  sentry-ruby
+  shoulda-matchers
+  sidekiq (~> 7.1)
   tzinfo-data
 
 RUBY VERSION

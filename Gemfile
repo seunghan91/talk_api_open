@@ -1,12 +1,14 @@
 source "https://rubygems.org"
+git_source(:github) { |repo| "https://github.com/#{repo}.git" }
+
 ruby "3.1.0"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 7.0.0"
+gem "rails", "~> 7.0.8"
 # Use postgresql as the database for Active Record
 gem "pg", "~> 1.1"
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", ">= 5.0"
+gem "puma", "~> 5.0"
 
 # Nokogiri 버전 제한 (호환성 문제 해결)
 gem "nokogiri", "~> 1.16.0"
@@ -18,7 +20,7 @@ gem "ffi", "~> 1.15.5"
 gem "bcrypt", "~> 3.1.7"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
-gem "tzinfo-data", platforms: %i[ mswin mswin64 mingw x64_mingw jruby ]
+gem "tzinfo-data", platforms: %i[ mingw mswin x64_mingw jruby ]
 
 # Reduces boot times through caching; required in config/boot.rb
 gem "bootsnap", require: false
@@ -30,8 +32,8 @@ gem "rack-cors"
 gem 'jwt'
 
 # Background jobs
-gem 'sidekiq'
-gem 'redis'
+gem 'sidekiq', '~> 7.1'
+gem 'redis', '~> 4.0'
 
 # 필요한 기본 gem만 유지하고 나머지는 배포 성공 후 추가
 # gem 'sidekiq-cron'
@@ -44,9 +46,24 @@ gem 'redis'
 # 명시적으로 logger gem 추가
 gem "logger", "~> 1.6"
 
+# 알림을 위한 Expo push notification
+gem 'exponent-server-sdk'
+
+# Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
+# gem "kredis"
+
+# API 문서화를 위한 Swagger 도구
+gem 'rswag-api'
+gem 'rswag-ui'
+gem 'rswag-specs'
+
+# 에러 모니터링 도구
+gem 'sentry-rails'
+gem 'sentry-ruby'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
-  gem "debug", platforms: %i[ mri mswin mswin64 mingw x64_mingw ], require: "debug/prelude"
+  gem "debug", platforms: %i[ mri mingw x64_mingw ]
 
   # Static analysis for security vulnerabilities [https://brakemanscanner.org/]
   gem "brakeman", require: false
@@ -55,10 +72,18 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
 
   # Testing
-  gem "rspec-rails"
+  gem 'rspec-rails'
+  gem 'factory_bot_rails'
+  gem 'faker'
 end
 
 group :development do
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem "spring"
+  gem 'annotate'
+end
+
+group :test do
+  gem 'shoulda-matchers'
+  gem 'database_cleaner'
 end
