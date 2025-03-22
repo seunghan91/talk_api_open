@@ -7,10 +7,12 @@ Sentry.init do |config|
   
   # 성능 모니터링 설정
   config.traces_sample_rate = 0.5
-  
-  # 민감한 파라미터 필터링
-  config.filter_parameters = %w[password token auth_token code phone_number verification_id jwt]
-  
+  # 기존 설정 유지 (예: DSN, environment 등)
+  config.before_send = lambda do |event, hint|
+    # Rails의 filter_parameters를 Sentry 이벤트에 적용
+    event = Sentry::Rails::FilterParameters.filter_event(event)
+    event
+  end
   # 사용자 정보 추가
   config.before_send = lambda do |event, hint|
     if event.request && event.user.nil?
