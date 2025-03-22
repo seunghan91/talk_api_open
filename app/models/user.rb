@@ -17,6 +17,8 @@ class User < ApplicationRecord
   has_many :reports_as_reported, class_name: 'Report', foreign_key: :reported_id
   has_many :blocks_as_blocker, class_name: 'Block', foreign_key: :blocker_id
   has_many :blocks_as_blocked, class_name: 'Block', foreign_key: :blocked_id
+  has_many :conversations_as_user_a, class_name: 'Conversation', foreign_key: :user_a_id, dependent: :destroy
+  has_many :conversations_as_user_b, class_name: 'Conversation', foreign_key: :user_b_id, dependent: :destroy
   has_one :wallet, dependent: :destroy
   has_many :notifications, dependent: :destroy
   has_many :phone_verifications, dependent: :destroy
@@ -62,6 +64,11 @@ class User < ApplicationRecord
   # 지갑 잔액 조회
   def wallet_balance
     wallet&.balance || 0
+  end
+  
+  # 모든 대화 가져오기
+  def conversations
+    Conversation.where("user_a_id = ? OR user_b_id = ?", id, id)
   end
   
   # 알림 생성 메서드

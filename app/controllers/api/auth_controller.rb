@@ -209,20 +209,31 @@ module Api
           return render json: { error: "비밀번호와 비밀번호 확인이 일치하지 않습니다." }, status: :bad_request
         end
         
-        # 이미 존재하는 사용자인지 확인
-        existing_user = User.find_by(phone_number: digits_only)
-        
-        # 이미 비밀번호가 설정된 사용자인 경우 (진짜 가입 완료된 사용자)
-        if existing_user && existing_user.password_digest.present? && existing_user.is_verified
+        # 이미 가입된 전화번호인지 확인 (인증 완료된 사용자만 검사)
+        if User.exists?(phone_number: digits_only, is_verified: true)
           Rails.logger.warn("이미 가입된 전화번호: #{digits_only}")
           return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
         end
         
-        # 사용자 생성 또는 업데이트
+        # 전화번호로 기존 사용자 찾기 (인증 미완료 사용자 포함)
+        existing_user = User.find_by(phone_number: digits_only)
+        
+        # 기존 사용자 처리
         if existing_user
-          # 기존에 인증만 했고 회원가입은 안 한 사용자 (비밀번호 없음)
-          Rails.logger.info("기존 계정 업데이트 (비밀번호 미설정): #{digits_only}")
-          user = existing_user
+          # 인증이 안된 기존 사용자가 있는 경우, 관련 대화 레코드를 삭제
+          if !existing_user.is_verified
+            Rails.logger.info("인증되지 않은 기존 계정 발견: #{digits_only}")
+            
+            # 대화 레코드 삭제
+            existing_user.conversations_as_user_a.destroy_all
+            existing_user.conversations_as_user_b.destroy_all
+            
+            user = existing_user
+          else
+            # 이미 인증된 사용자인 경우 (예외 처리)
+            Rails.logger.warn("이미 인증된 사용자: #{digits_only}")
+            return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
+          end
         else
           # 신규 사용자 생성
           Rails.logger.info("신규 사용자 생성: #{digits_only}")
