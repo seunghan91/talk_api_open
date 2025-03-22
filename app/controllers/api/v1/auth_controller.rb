@@ -49,28 +49,42 @@ module Api
       # 회원가입 처리
       def register
         # 로그 추가
-        Rails.logger.info("회원가입 시도: #{params[:phone_number]}")
+        phone_number = params[:phone_number]
+        Rails.logger.info("회원가입 시도: #{phone_number}")
 
         begin
           # 이미 있는 전화번호인지 확인
-          if User.exists?(phone_number: params[:phone_number])
-            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 이미 등록된 전화번호")
-            return render json: { error: "이미 등록된 전화번호입니다." }, status: :unprocessable_entity
+          if User.exists?(phone_number: phone_number)
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 이미 등록된 전화번호")
+            return render json: { 
+              error: "이미 등록된 전화번호입니다.",
+              user_exists: true
+            }, status: :unprocessable_entity
           end
 
           # 인증 코드 확인
-          verification = PhoneVerification.find_by(phone_number: params[:phone_number])
+          verification = PhoneVerification.find_by(phone_number: phone_number)
 
           # 인증 레코드 자체가 없는 경우
           if verification.nil?
-            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 인증 시도 기록 없음")
-            return render json: { error: "전화번호 인증을 먼저 진행해주세요." }, status: :unprocessable_entity
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시도 기록 없음")
+            return render json: { 
+              error: "전화번호 인증을 먼저 진행해주세요.",
+              verification_required: true
+            }, status: :unprocessable_entity
           end
 
           # 인증 검증
           unless verification.verified == true
-            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
-            return render json: { error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요." }, status: :unprocessable_entity
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
+            return render json: { 
+              error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
+              verification_required: true,
+              verification_status: {
+                verified: false,
+                can_resend: true
+              }
+            }, status: :unprocessable_entity
           end
 
           # 사용자 생성
@@ -136,18 +150,22 @@ module Api
           verification.save!
 
           # 실제 환경에서는 SMS 전송
-          send_sms(phone_number, "인증 코드: #{code}") if Rails.env.production?
+          if Rails.env.production?
+            send_sms(phone_number, "인증 코드: #{code}")
+            Rails.logger.info("SMS 전송 완료: #{phone_number}")
+          end
 
           # 응답 - 개발 및 스테이징 환경에서는 코드 포함, 프로덕션에서는 제외
           response_data = {
             message: "인증 코드가 발송되었습니다.",
-            expires_at: verification.expires_at
+            expires_at: verification.expires_at,
+            development_mode: !Rails.env.production?
           }
 
           # 개발 또는 스테이징 환경에서는 코드 반환 (테스트 용이성)
           unless Rails.env.production?
             response_data[:code] = code
-            response_data[:note] = "개발/스테이징 환경에서만 코드가 노출됩니다."
+            response_data[:note] = "개발/스테이징 환경에서만 코드가 노출됩니다. 실제 앱에서는 이 코드를 입력해주세요."
           end
 
           render json: response_data, status: :ok
@@ -209,13 +227,15 @@ module Api
             render json: { 
               message: "인증에 성공했습니다.",
               user_exists: existing_user.present?,
+              can_proceed_to_register: !existing_user.present?,
               user: existing_user ? {
                 id: existing_user.id,
                 nickname: existing_user.nickname
               } : nil,
               verification_status: {
                 verified: true,
-                verified_at: Time.current
+                verified_at: Time.current,
+                phone_number: phone_number
               }
             }, status: :ok
 
@@ -235,8 +255,9 @@ module Api
                 verified: false,
                 attempt_count: verification.attempt_count,
                 remaining_attempts: remaining_attempts,
-                can_resend: true,
-                expires_at: verification.expires_at
+                can_resend: remaining_attempts <= 2, # 남은 시도 횟수가 2회 이하면 재전송 권장
+                expires_at: verification.expires_at,
+                phone_number: phone_number
               }
             }, status: :bad_request
           end
@@ -300,7 +321,8 @@ module Api
           # 응답 - 개발 및 스테이징 환경에서는 코드 포함, 프로덕션에서는 제외
           response_data = {
             message: "인증 코드가 재발송되었습니다.",
-            expires_at: verification.expires_at
+            expires_at: verification.expires_at,
+            development_mode: !Rails.env.production?
           }
 
           # 개발 또는 스테이징 환경에서는 코드 반환 (테스트 용이성)
