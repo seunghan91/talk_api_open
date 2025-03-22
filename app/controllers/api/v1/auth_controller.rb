@@ -127,10 +127,12 @@ module Api
 
           # 이미 인증 레코드가 있으면 업데이트, 없으면 새로 생성
           verification = PhoneVerification.find_or_initialize_by(phone_number: phone_number)
-          verification.code = code
-          verification.expires_at = 10.minutes.from_now
-          verification.verified = false
-          verification.attempt_count = 0
+          verification.assign_attributes(
+            code: code,
+            expires_at: 10.minutes.from_now,
+            verified: false,
+            attempt_count: 0
+          )
           verification.save!
 
           # 실제 환경에서는 SMS 전송
@@ -199,8 +201,7 @@ module Api
           # 코드 확인 - 문자열 비교 확실히
           if verification.code.to_s.strip == code.to_s.strip
             # 인증 성공 처리 - 시도 횟수 초기화
-            verification.reset_attempts!
-            verification.update(verified: true)
+            verification.mark_as_verified!
 
             # 사용자가 이미 존재하는지 확인
             existing_user = User.find_by(phone_number: phone_number)
@@ -285,10 +286,12 @@ module Api
           code = generate_secure_verification_code
 
           # 인증 정보 업데이트
-          verification.code = code
-          verification.expires_at = 10.minutes.from_now
-          verification.verified = false
-          verification.attempt_count = 0
+          verification.assign_attributes(
+            code: code,
+            expires_at: 10.minutes.from_now,
+            verified: false,
+            attempt_count: 0
+          )
           verification.save!
 
           # 실제 환경에서는 SMS 전송
@@ -363,7 +366,10 @@ module Api
 
       # 더 안전한 인증 코드 생성 (6자리 숫자)
       def generate_secure_verification_code
-        # SecureRandom 사용하여 중복 가능성이 낮은 코드 생성
+        # 개발 환경에서는 고정 코드 사용 (테스트 편의성)
+        return "123456" if Rails.env.development?
+        
+        # 프로덕션 환경에서는 SecureRandom 사용하여 중복 가능성이 낮은 코드 생성
         SecureRandom.random_number(100000..999999).to_s
       end
 

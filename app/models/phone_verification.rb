@@ -30,4 +30,8 @@ class PhoneVerification < ApplicationRecord
   def reset_attempts!
     self.update(attempt_count: 0)
   end
+  
+  def mark_as_verified!
+    self.update!(verified: true, attempt_count: 0)
+  end
 end
