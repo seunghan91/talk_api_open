@@ -11,7 +11,7 @@ gem "pg", "~> 1.1"
 gem "puma", "~> 5.0"
 
 # Nokogiri 버전 제한 (호환성 문제 해결)
-gem "nokogiri", "~> 1.16.0"
+gem "nokogiri", "~> 1.18.5"
 
 # FFI 버전 제한 (호환성 문제 해결)
 gem "ffi", "~> 1.15.5"
