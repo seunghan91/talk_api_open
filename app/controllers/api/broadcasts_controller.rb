@@ -73,7 +73,6 @@ module Api
       else
         # 실제 구현: 데이터베이스에 저장하고 파일 업로드
         @broadcast = current_user.broadcasts.new(
-          active: true,
           expired_at: Time.current + 6.days
         )
         

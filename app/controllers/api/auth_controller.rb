@@ -213,7 +213,7 @@ module Api
         existing_user = User.find_by(phone_number: digits_only)
         
         # 이미 비밀번호가 설정된 사용자인 경우 (진짜 가입 완료된 사용자)
-        if existing_user && existing_user.password_digest.present?
+        if existing_user && existing_user.password_digest.present? && existing_user.is_verified
           Rails.logger.warn("이미 가입된 전화번호: #{digits_only}")
           return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
         end
@@ -251,6 +251,9 @@ module Api
         # 비밀번호 설정
         user.password = user_params[:password]
         user.password_confirmation = user_params[:password_confirmation]
+        
+        # 회원가입 완료 표시
+        user.is_verified = true
         
         # 검증 로그
         Rails.logger.info("저장 전 사용자 검증: #{user.valid?}")
@@ -341,7 +344,8 @@ module Api
                 user = User.new(
                   phone_number: digits_only,
                   nickname: test_account[:nickname],
-                  gender: test_account[:gender]
+                  gender: test_account[:gender],
+                  is_verified: true
                 )
                 user.password = password
                 user.password_confirmation = password
@@ -354,13 +358,14 @@ module Api
                 end
               else
                 # 기존 테스트 계정 정보 업데이트
-                needs_update = user.nickname != test_account[:nickname] || user.gender != test_account[:gender]
+                needs_update = user.nickname != test_account[:nickname] || user.gender != test_account[:gender] || !user.is_verified
                 
                 if needs_update
                   Rails.logger.info("테스트 계정 정보 업데이트: #{user.nickname} -> #{test_account[:nickname]}")
                   user.update(
                     nickname: test_account[:nickname],
-                    gender: test_account[:gender]
+                    gender: test_account[:gender],
+                    is_verified: true
                   )
                 end
                 
@@ -419,7 +424,13 @@ module Api
         if !user.password_digest.present?
           Rails.logger.warn("비밀번호가 설정되지 않은 사용자: #{digits_only}")
           return render json: { error: "계정 설정이 완료되지 않았습니다. 회원가입을 진행해주세요." }, status: :unauthorized
-        end
+        }
+        
+        # 회원가입 완료 확인
+        if !user.is_verified
+          Rails.logger.warn("인증되지 않은 사용자: #{digits_only}")
+          return render json: { error: "회원가입이 완료되지 않았습니다. 회원가입을 진행해주세요." }, status: :unauthorized
+        }
         
         # 비밀번호 확인
         unless user.authenticate(password)

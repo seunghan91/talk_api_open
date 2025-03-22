@@ -33,15 +33,24 @@ module Api
     # GET /api/users/:id
     def show
       begin
-        render json: {
-          user: {
-            id: @user.id,
-            nickname: @user.nickname,
-            gender: @user.gender || "unspecified",
-            created_at: @user.created_at,
-            # 다른 사용자에게는 제한된 정보만 제공
-          }
-        }
+        # current_user를 사용하여 프로필 반환
+        if current_user
+          render json: {
+            user: {
+              id: current_user.id,
+              phone_number: current_user.phone_number,
+              nickname: current_user.nickname,
+              gender: current_user.gender || "unspecified",
+              push_enabled: current_user.push_enabled,
+              broadcast_push_enabled: current_user.broadcast_push_enabled,
+              message_push_enabled: current_user.message_push_enabled,
+              created_at: current_user.created_at,
+              updated_at: current_user.updated_at
+            }
+          }, status: :ok
+        else
+          render json: { error: "사용자를 찾을 수 없습니다." }, status: :not_found
+        end
       rescue => e
         Rails.logger.error("특정 사용자 정보 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
         render json: { error: "사용자 정보를 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
