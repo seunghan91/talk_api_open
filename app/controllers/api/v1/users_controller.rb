@@ -98,6 +98,152 @@ module Api
         end
       end
 
+      # GET /api/v1/users/generate_random_nickname
+      #
+      # @swagger
+      # /api/v1/users/generate_random_nickname:
+      #   get:
+      #     summary: 랜덤 닉네임 생성 API
+      #     tags: [사용자]
+      #     security:
+      #       - bearerAuth: []
+      #     responses:
+      #       200:
+      #         description: 성공적으로 랜덤 닉네임 생성
+      #         content:
+      #           application/json:
+      #             schema:
+      #               type: object
+      #               properties:
+      #                 nickname:
+      #                   type: string
+      #       401:
+      #         description: 인증 실패
+      def generate_random_nickname
+        Rails.logger.info("랜덤 닉네임 생성 요청")
+
+        begin
+          # 랜덤 닉네임 생성 로직
+          nickname = generate_random_nickname_string
+          
+          render json: {
+            nickname: nickname
+          }, status: :ok
+          
+          Rails.logger.info("랜덤 닉네임 생성 성공: #{nickname}")
+        rescue => e
+          Rails.logger.error("랜덤 닉네임 생성 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: "랜덤 닉네임 생성 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
+      end
+
+      # POST /api/v1/users/change_nickname
+      #
+      # @swagger
+      # /api/v1/users/change_nickname:
+      #   post:
+      #     summary: 닉네임 변경 API
+      #     tags: [사용자]
+      #     security:
+      #       - bearerAuth: []
+      #     requestBody:
+      #       content:
+      #         application/json:
+      #           schema:
+      #             type: object
+      #             properties:
+      #               nickname:
+      #                 type: string
+      #             required:
+      #               - nickname
+      #     responses:
+      #       200:
+      #         description: 성공적으로 닉네임 변경
+      #       401:
+      #         description: 인증 실패
+      #       422:
+      #         description: 유효하지 않은 닉네임
+      def change_nickname
+        Rails.logger.info("닉네임 변경 요청: 사용자 ID #{current_user.id}, 새 닉네임: #{params[:nickname]}")
+
+        begin
+          # 닉네임 유효성 검사
+          unless params[:nickname].present?
+            Rails.logger.warn("닉네임 변경 실패: 닉네임이 비어 있음")
+            return render json: { error: "닉네임은 비워둘 수 없습니다." }, status: :unprocessable_entity
+          end
+
+          # 닉네임 업데이트
+          if current_user.update(nickname: params[:nickname])
+            Rails.logger.info("닉네임 변경 성공: 사용자 ID #{current_user.id}, 새 닉네임: #{current_user.nickname}")
+            render json: {
+              message: "닉네임이 성공적으로 변경되었습니다.",
+              user: {
+                id: current_user.id,
+                nickname: current_user.nickname
+              }
+            }, status: :ok
+          else
+            Rails.logger.warn("닉네임 변경 실패: #{current_user.errors.full_messages.join(', ')}")
+            render json: { error: current_user.errors.full_messages.join(", ") }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error("닉네임 변경 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: "닉네임 변경 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
+      end
+
+      # POST /api/v1/users/update_profile
+      #
+      # @swagger
+      # /api/v1/users/update_profile:
+      #   post:
+      #     summary: 사용자 프로필 업데이트 API
+      #     tags: [사용자]
+      #     security:
+      #       - bearerAuth: []
+      #     requestBody:
+      #       content:
+      #         application/json:
+      #           schema:
+      #             type: object
+      #             properties:
+      #               gender:
+      #                 type: string
+      #                 enum: [male, female, other, unspecified]
+      #               nickname:
+      #                 type: string
+      #     responses:
+      #       200:
+      #         description: 성공적으로 프로필 업데이트
+      #       401:
+      #         description: 인증 실패
+      #       422:
+      #         description: 유효하지 않은 입력값
+      def update_profile
+        Rails.logger.info("프로필 업데이트 요청: 사용자 ID #{current_user.id}, 파라미터: #{profile_params.inspect}")
+
+        begin
+          if current_user.update(profile_params)
+            Rails.logger.info("프로필 업데이트 성공: 사용자 ID #{current_user.id}")
+            render json: {
+              message: "프로필이 성공적으로 업데이트되었습니다.",
+              user: {
+                id: current_user.id,
+                nickname: current_user.nickname,
+                gender: current_user.gender || "unspecified"
+              }
+            }, status: :ok
+          else
+            Rails.logger.warn("프로필 업데이트 실패: #{current_user.errors.full_messages.join(', ')}")
+            render json: { error: current_user.errors.full_messages.join(", ") }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error("프로필 업데이트 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: "프로필 업데이트 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
+      end
+
       # GET /api/v1/users/notification_settings
       #
       # @swagger
@@ -249,6 +395,26 @@ module Api
 
       def set_user
         @user = User.find(params[:id])
+      end
+
+      def profile_params
+        params.permit(:gender, :nickname)
+      end
+
+      def generate_random_nickname_string
+        # 형용사와 명사 리스트
+        adjectives = ["행복한", "즐거운", "멋진", "신나는", "귀여운", "활발한", "친절한", "사랑스러운", "따뜻한", "밝은"]
+        nouns = ["고양이", "강아지", "토끼", "사자", "호랑이", "판다", "코끼리", "기린", "여우", "늑대"]
+        
+        # 랜덤 형용사와 명사 선택
+        adjective = adjectives.sample
+        noun = nouns.sample
+        
+        # 랜덤 숫자 추가 (10~999)
+        number = rand(10..999)
+        
+        # 닉네임 조합
+        "#{adjective}#{noun}#{number}"
       end
     end
   end
