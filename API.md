@@ -11,27 +11,84 @@
 {
   "phone_number": "01012345678"
 }
+```
 
+**응답 예시**:
+```json
+{
+  "message": "인증 코드가 발송되었습니다.",
+  "expires_at": "2025-03-22T14:30:00Z"
+}
+```
 
-인증 코드 확인
-URL: /api/auth/verify_code
-Method: POST
-Parameters:
-jsonCopy{
+### 인증 코드 재전송
+
+**URL**: `/api/auth/resend_code`
+**Method**: `POST`
+**Parameters**:
+```json
+{
+  "phone_number": "01012345678"
+}
+```
+
+**응답 예시**:
+```json
+{
+  "message": "인증 코드가 재발송되었습니다.",
+  "expires_at": "2025-03-22T14:30:00Z"
+}
+```
+
+**오류 응답 예시** (너무 빈번한 요청):
+```json
+{
+  "error": "잠시 후 다시 시도해주세요.",
+  "wait_seconds": 45
+}
+```
+
+### 인증 코드 확인
+
+**URL**: `/api/auth/verify_code`
+**Method**: `POST`
+**Parameters**:
+```json
+{
   "phone_number": "01012345678",
   "code": "123456"
 }
-응답 예시:
-jsonCopy{
-  "message": "인증 완료",
-  "token": "eyJhbGciOiJIUzI1NiJ9...",
+```
+
+**성공 응답 예시**:
+```json
+{
+  "message": "인증에 성공했습니다.",
+  "user_exists": true,
   "user": {
     "id": 1,
-    "phone_number": "01012345678",
+    "nickname": "사용자123"
+  },
+  "verification_status": {
     "verified": true,
-    "gender": "male"
+    "verified_at": "2025-03-22T14:30:00Z"
   }
 }
+```
+
+**실패 응답 예시**:
+```json
+{
+  "error": "인증 코드가 일치하지 않습니다.",
+  "verification_status": {
+    "verified": false,
+    "remaining_attempts": 5,
+    "can_resend": true,
+    "expires_at": "2025-03-22T14:30:00Z"
+  }
+}
+```
+
 브로드캐스트 API
 브로드캐스트 목록 조회
 URL: /api/broadcasts
