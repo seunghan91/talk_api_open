@@ -70,19 +70,41 @@ module Api
             Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시도 기록 없음")
             return render json: { 
               error: "전화번호 인증을 먼저 진행해주세요.",
-              verification_required: true
+              verification_required: true,
+              verification_status: {
+                verified: false,
+                message: "인증이 필요합니다."
+              }
             }, status: :unprocessable_entity
           end
 
           # 인증 검증
-          unless verification.verified == true
+          verified = verification.verified == true
+
+          unless verified
             Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
             return render json: { 
               error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
               verification_required: true,
               verification_status: {
                 verified: false,
-                can_resend: true
+                can_resend: true,
+                message: "인증 코드 확인이 필요합니다."
+              }
+            }, status: :unprocessable_entity
+          end
+
+          # 인증 시간 확인 (추가 보안 - 인증 후 30분 이내만 회원가입 허용)
+          if verification.updated_at < 30.minutes.ago
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
+            return render json: { 
+              error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
+              verification_required: true,
+              verification_status: {
+                verified: false,
+                can_resend: true,
+                expired: true,
+                message: "인증이 만료되었습니다."
               }
             }, status: :unprocessable_entity
           end
@@ -167,6 +189,9 @@ module Api
             response_data[:code] = code
             response_data[:note] = "개발/스테이징 환경에서만 코드가 노출됩니다. 실제 앱에서는 이 코드를 입력해주세요."
           end
+
+          # 인증 코드 정보를 로그에 항상 기록 (중요: 프로덕션 환경에서도)
+          Rails.logger.info("🔐 인증코드 발송 정보 (관리자 확인용): 전화번호=#{phone_number}, 코드=#{code}, 만료시간=#{verification.expires_at}")
 
           render json: response_data, status: :ok
 
@@ -330,6 +355,9 @@ module Api
             response_data[:code] = code
             response_data[:note] = "개발/스테이징 환경에서만 코드가 노출됩니다."
           end
+
+          # 인증 코드 정보를 로그에 항상 기록 (중요: 프로덕션 환경에서도)
+          Rails.logger.info("🔐 인증코드 재발송 정보 (관리자 확인용): 전화번호=#{phone_number}, 코드=#{code}, 만료시간=#{verification.expires_at}")
 
           render json: response_data, status: :ok
 
