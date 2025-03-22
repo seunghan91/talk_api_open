@@ -59,6 +59,34 @@ module Api
           render json: { error: "인증 처리 중 오류가 발생했습니다." }, status: :internal_server_error
         end
       end
+
+      # 사용자 활성 상태 확인
+      def ensure_user_active
+        return true if current_user.nil? # authorize_request에서 이미 처리
+        
+        unless current_user.status_active?
+          render json: { 
+            error: '현재 계정 상태로는 이 기능을 사용할 수 없습니다.', 
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :forbidden
+          return false
+        end
+        true
+      end
+      
+      # 요청된 리소스에 대한 사용자 권한 확인
+      def authorize_resource(resource, owner_id_field = :user_id)
+        return false unless current_user
+        
+        unless resource.send(owner_id_field) == current_user.id
+          render json: { 
+            error: '이 리소스에 접근할 권한이 없습니다.', 
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :forbidden
+          return false
+        end
+        true
+      end
     end
   end
 end
