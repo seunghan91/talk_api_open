@@ -76,15 +76,29 @@
 }
 ```
 
-**실패 응답 예시**:
+**실패 응답 예시** (코드 불일치):
 ```json
 {
   "error": "인증 코드가 일치하지 않습니다.",
   "verification_status": {
     "verified": false,
-    "remaining_attempts": 5,
+    "attempt_count": 1,
+    "remaining_attempts": 4,
     "can_resend": true,
     "expires_at": "2025-03-22T14:30:00Z"
+  }
+}
+```
+
+**실패 응답 예시** (시도 횟수 초과):
+```json
+{
+  "error": "인증 시도 횟수를 초과했습니다. 새로운 인증 코드를 요청해주세요.",
+  "verification_status": {
+    "verified": false,
+    "attempt_count": 5,
+    "max_attempts": 5,
+    "can_resend": true
   }
 }
 ```

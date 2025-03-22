@@ -130,6 +130,7 @@ module Api
           verification.code = code
           verification.expires_at = 10.minutes.from_now
           verification.verified = false
+          verification.attempt_count = 0
           verification.save!
 
           # 실제 환경에서는 SMS 전송
@@ -173,7 +174,7 @@ module Api
           end
 
           # 인증 데이터 로깅
-          Rails.logger.info("인증코드 정보: 전화번호=#{phone_number}, 저장코드=#{verification.code}, 만료시간=#{verification.expires_at}, 현재시간=#{Time.current}")
+          Rails.logger.info("인증코드 정보: 전화번호=#{phone_number}, 저장코드=#{verification.code}, 만료시간=#{verification.expires_at}, 현재시간=#{Time.current}, 시도횟수=#{verification.attempt_count}")
 
           # 만료 확인
           if verification.expires_at < Time.current
@@ -181,15 +182,30 @@ module Api
             return render json: { error: "인증 코드가 만료되었습니다. 다시 요청해주세요." }, status: :bad_request
           end
 
+          # 시도 횟수 초과 확인 (최대 5회)
+          if verification.attempts_exceeded?
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 시도 횟수 초과 (#{verification.attempt_count}/#{PhoneVerification::MAX_ATTEMPTS})")
+            return render json: { 
+              error: "인증 시도 횟수를 초과했습니다. 새로운 인증 코드를 요청해주세요.",
+              verification_status: {
+                verified: false,
+                attempt_count: verification.attempt_count,
+                max_attempts: PhoneVerification::MAX_ATTEMPTS,
+                can_resend: true
+              }
+            }, status: :too_many_requests
+          end
+
           # 코드 확인 - 문자열 비교 확실히
           if verification.code.to_s.strip == code.to_s.strip
-            # 인증 성공 처리
+            # 인증 성공 처리 - 시도 횟수 초기화
+            verification.reset_attempts!
             verification.update(verified: true)
 
             # 사용자가 이미 존재하는지 확인
             existing_user = User.find_by(phone_number: phone_number)
 
-            render json: {
+            render json: { 
               message: "인증에 성공했습니다.",
               user_exists: existing_user.present?,
               user: existing_user ? {
@@ -204,15 +220,19 @@ module Api
 
             Rails.logger.info("인증코드 확인 성공: #{phone_number}")
           else
-            # 재시도 남은 횟수 또는 다음 재전송 가능 시간 추가 (선택 사항)
-            remaining_attempts = 5 # 설정에 따라 조정 가능
+            # 실패 시 시도 횟수 증가
+            verification.increment_attempt!
+            
+            # 남은 시도 횟수 계산
+            remaining_attempts = verification.remaining_attempts
 
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: '#{code}', 저장: '#{verification.code}'")
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: '#{code}', 저장: '#{verification.code}', 남은 시도: #{remaining_attempts}")
 
             render json: {
               error: "인증 코드가 일치하지 않습니다.",
               verification_status: {
                 verified: false,
+                attempt_count: verification.attempt_count,
                 remaining_attempts: remaining_attempts,
                 can_resend: true,
                 expires_at: verification.expires_at
@@ -268,6 +288,7 @@ module Api
           verification.code = code
           verification.expires_at = 10.minutes.from_now
           verification.verified = false
+          verification.attempt_count = 0
           verification.save!
 
           # 실제 환경에서는 SMS 전송

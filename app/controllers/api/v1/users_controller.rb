@@ -3,6 +3,54 @@ module Api
     class UsersController < Api::V1::BaseController
       before_action :set_user, only: [ :show, :update, :destroy ]
 
+      # GET /api/v1/users/profile
+      #
+      # @swagger
+      # /api/v1/users/profile:
+      #   get:
+      #     summary: 현재 로그인한 사용자 프로필 정보 조회
+      #     tags: [사용자]
+      #     security:
+      #       - bearerAuth: []
+      #     responses:
+      #       200:
+      #         description: 성공적으로 사용자 프로필 정보 반환
+      #         content:
+      #           application/json:
+      #             schema:
+      #               type: object
+      #               properties:
+      #                 id:
+      #                   type: integer
+      #                 nickname:
+      #                   type: string
+      #                 phone_number:
+      #                   type: string
+      #                 last_login_at:
+      #                   type: string
+      #                   format: date-time
+      #                 created_at:
+      #                   type: string
+      #                   format: date-time
+      #       401:
+      #         description: 인증 실패
+      def profile
+        Rails.logger.info("사용자 프로필 조회: 사용자 ID #{current_user.id}")
+
+        begin
+          render json: {
+            id: current_user.id,
+            nickname: current_user.nickname,
+            phone_number: current_user.phone_number,
+            last_login_at: current_user.last_login_at,
+            created_at: current_user.created_at
+          }, status: :ok
+        rescue => e
+          Rails.logger.error("사용자 프로필 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: "사용자 프로필을 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
+      end
+
       # GET /api/v1/users/me
       #
       # @swagger
