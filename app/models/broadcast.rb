@@ -2,9 +2,23 @@
 class Broadcast < ApplicationRecord
     belongs_to :user
 
-    # 음성 파일 첨부
-    has_one_attached :voice_file
+    # 수신자 관계 추가
+    has_many :broadcast_recipients, dependent: :destroy
+    has_many :recipients, through: :broadcast_recipients, source: :user
+    
+    # 대화 및 메시지 관계 추가
+    has_many :conversations, dependent: :restrict_with_error
+    has_many :messages, dependent: :restrict_with_error
 
+    # 음성 파일 첨부
+    has_one_attached :audio
+
+    # 유효성 검증 추가
+    validates :user_id, presence: true
+    validates :audio, presence: true
+    validates :text, length: { maximum: 200 }
+
+    # 인덱스드 필드
     before_create :set_expired_at
 
     # 만료 여부 확인
@@ -20,6 +34,27 @@ class Broadcast < ApplicationRecord
     # 활성 상태 확인 - 만료되지 않은 경우에만 활성 상태로 간주
     def active?
       !expired?
+    end
+    
+    # 오디오 URL 반환
+    def audio_url
+      audio.attached? ? Rails.application.routes.url_helpers.url_for(audio) : nil
+    end
+    
+    # 수신자에게 브로드캐스트 전송
+    def deliver_to_recipients(recipient_ids, max_count = 5)
+      # 수신자 유효성 검사 및 제한
+      recipients = User.where(id: recipient_ids)
+                       .where.not(id: user_id)
+                       .where(status: :active)
+                       .limit(max_count)
+      
+      return false if recipients.empty?
+      
+      # 백그라운드 작업으로 처리
+      BroadcastWorker.perform_async(id, recipients.count)
+      
+      true
     end
 
     # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
