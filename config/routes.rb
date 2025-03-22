@@ -105,4 +105,13 @@ Rails.application.routes.draw do
       post :update_push_token
     end
   end
+
+  # 사용자 관련 라우트
+  get '/api/users/me', to: 'api/users#me'
+  get '/api/users/profile', to: 'api/users#profile'
+  get '/api/users/notification_settings', to: 'api/users#notification_settings'
+  patch '/api/users/notification_settings', to: 'api/users#update_notification_settings'
+  put '/api/users/notification_settings', to: 'api/users#update_notification_settings'
+  patch '/api/users/change_password', to: 'api/users#change_password'
+  resources :users, path: '/api/users', only: [:show, :update, :destroy]
 end
