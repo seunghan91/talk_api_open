@@ -33,7 +33,6 @@ module Api
               id: @user.id,
               nickname: @user.nickname,
               phone_number: @user.phone_number,
-              profile_image: @user.profile_image.attached? ? url_for(@user.profile_image) : nil,
               last_login_at: @user.last_login_at,
               created_at: @user.created_at
             },
@@ -92,7 +91,6 @@ module Api
                 id: @user.id,
                 nickname: @user.nickname,
                 phone_number: @user.phone_number,
-                profile_image: @user.profile_image.attached? ? url_for(@user.profile_image) : nil,
                 created_at: @user.created_at
               },
               message: '회원가입에 성공했습니다.'
@@ -239,7 +237,7 @@ module Api
       
       # 허용된 파라미터 목록
       def user_params
-        params.permit(:phone_number, :password, :nickname, :gender, :profile_image)
+        params.permit(:phone_number, :password, :nickname, :gender)
       end
       
       # 한국 전화번호 유효성 검사
