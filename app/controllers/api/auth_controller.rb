@@ -212,15 +212,16 @@ module Api
         # 이미 존재하는 사용자인지 확인
         existing_user = User.find_by(phone_number: digits_only)
         
+        # 이미 비밀번호가 설정된 사용자인 경우 (진짜 가입 완료된 사용자)
+        if existing_user && existing_user.password_digest.present?
+          Rails.logger.warn("이미 가입된 전화번호: #{digits_only}")
+          return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
+        end
+        
+        # 사용자 생성 또는 업데이트
         if existing_user
-          # 이미 비밀번호가 설정된 사용자인 경우
-          if existing_user.password_digest.present?
-            Rails.logger.warn("이미 가입된 전화번호: #{digits_only}")
-            return render json: { error: "이미 가입된 전화번호입니다." }, status: :conflict
-          end
-          
-          # 인증으로 생성된 계정이지만 비밀번호가 없는 경우 (회원가입 계속 진행)
-          Rails.logger.info("기존 계정 업데이트: #{digits_only}")
+          # 기존에 인증만 했고 회원가입은 안 한 사용자 (비밀번호 없음)
+          Rails.logger.info("기존 계정 업데이트 (비밀번호 미설정): #{digits_only}")
           user = existing_user
         else
           # 신규 사용자 생성
@@ -313,7 +314,7 @@ module Api
         # 하이픈 제거하여 숫자만 추출
         digits_only = phone_number.gsub(/\D/, '')
         
-        # 테스트 계정 지원 - 개발 환경에서도 동작하도록 수정
+        # 테스트 계정 지원 - 모든 환경에서 동작하도록 수정
         if password == 'test1234'
           Rails.logger.info("테스트 계정 로그인 시도: #{digits_only}")
           
@@ -330,27 +331,46 @@ module Api
             
             # 테스트 계정이 존재하면 사용자 정보 생성 또는 업데이트
             user = nil
+            
+            # 사용자 조회 또는 생성
             begin
-              user = User.find_or_create_by(phone_number: digits_only) do |u|
-                u.nickname = test_account[:nickname]
-                u.gender = test_account[:gender]
-                u.password = password
-                u.password_confirmation = password
-                Rails.logger.info("테스트 계정 새로 생성: #{u.nickname}")
-              end
+              user = User.find_by(phone_number: digits_only)
               
-              # 기존 사용자의 정보 업데이트
-              unless user.nickname == test_account[:nickname] && user.gender == test_account[:gender]
-                Rails.logger.info("테스트 계정 정보 업데이트: #{user.nickname} -> #{test_account[:nickname]}")
-                user.update(nickname: test_account[:nickname], gender: test_account[:gender])
-              end
-              
-              # 비밀번호 없는 경우 추가
-              if !user.password_digest.present?
-                Rails.logger.info("테스트 계정 비밀번호 설정")
+              if user.nil?
+                # 테스트 계정 새로 생성
+                user = User.new(
+                  phone_number: digits_only,
+                  nickname: test_account[:nickname],
+                  gender: test_account[:gender]
+                )
                 user.password = password
                 user.password_confirmation = password
-                user.save
+                
+                if user.save
+                  Rails.logger.info("테스트 계정 새로 생성 성공: #{user.nickname}")
+                else
+                  Rails.logger.error("테스트 계정 생성 실패: #{user.errors.full_messages.join(', ')}")
+                  return render json: { error: "테스트 계정 생성에 실패했습니다." }, status: :internal_server_error
+                end
+              else
+                # 기존 테스트 계정 정보 업데이트
+                needs_update = user.nickname != test_account[:nickname] || user.gender != test_account[:gender]
+                
+                if needs_update
+                  Rails.logger.info("테스트 계정 정보 업데이트: #{user.nickname} -> #{test_account[:nickname]}")
+                  user.update(
+                    nickname: test_account[:nickname],
+                    gender: test_account[:gender]
+                  )
+                end
+                
+                # 비밀번호 없는 경우 추가
+                if !user.password_digest.present?
+                  Rails.logger.info("테스트 계정 비밀번호 설정")
+                  user.password = password
+                  user.password_confirmation = password
+                  user.save!
+                end
               end
             rescue => e
               Rails.logger.error("테스트 계정 처리 오류: #{e.message}\n#{e.backtrace.join("\n")}")
@@ -368,7 +388,7 @@ module Api
             end
             
             return render json: {
-              message: "로그인에 성공했습니다.",
+              message: "테스트 계정으로 로그인되었습니다.",
               token: token,
               user: {
                 id: user.id,
@@ -376,11 +396,13 @@ module Api
                 nickname: user.nickname,
                 gender: user.gender || "unspecified",
                 created_at: user.created_at,
-                updated_at: user.updated_at
+                updated_at: user.updated_at,
+                is_test_account: true
               }
             }
           else
             Rails.logger.warn("등록되지 않은 테스트 계정: #{digits_only}")
+            return render json: { error: "테스트 계정이 아닙니다. 01011111111부터 01055555555까지의 번호만 테스트 계정으로 사용할 수 있습니다." }, status: :unauthorized
           end
         end
         

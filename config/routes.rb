@@ -50,6 +50,7 @@ Rails.application.routes.draw do
       end
     end
     
+    # 인증 관련 API
     post "auth/request_code", to: "auth#request_code"
     post "auth/verify_code",  to: "auth#verify_code"
     post "auth/register",     to: "auth#register"
@@ -57,6 +58,13 @@ Rails.application.routes.draw do
     post "auth/logout",       to: "auth#logout"
 
     # 사용자 관련 API
+    get "users/me", to: "users#me"
+    get "users/:id", to: "users#show"
+    patch "users/me", to: "users#update"
+    put "users/me", to: "users#update"
+    post "users/change_password", to: "users#change_password"
+    
+    # 기존 사용자 API (이전 버전과의 호환성 유지)
     get "me", to: "users#me"
     get "users/profile", to: "users#me"
     post "change_nickname", to: "users#change_nickname"
