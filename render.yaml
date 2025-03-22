@@ -34,13 +34,11 @@ services:
           property: connectionString
       - key: GENERATE_SOURCEMAP
         value: "false"
-
-databases:
-  - name: talkk-db
-    databaseName: talkk_production
-
-services:
   - type: redis
     name: talkk-redis
     ipAllowList: []
     plan: free
+
+databases:
+  - name: talkk-db
+    databaseName: talkk_production
