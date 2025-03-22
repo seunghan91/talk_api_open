@@ -64,6 +64,9 @@ class AuthController < ApplicationController
         user.update(nickname: NicknameGenerator.generate_unique)
       end
 
+      # PhoneVerification과 User 연결
+      verification.update(user: user)
+
       # user가 nil이 아닌지 확인 (디버깅)
       Rails.logger.debug "===> created user: #{user.inspect}"
 

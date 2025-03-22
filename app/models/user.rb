@@ -19,6 +19,7 @@ class User < ApplicationRecord
   has_many :blocks_as_blocked, class_name: 'Block', foreign_key: :blocked_id
   has_one :wallet, dependent: :destroy
   has_many :notifications, dependent: :destroy
+  has_many :phone_verifications, dependent: :destroy
   
   # 사용자 생성 후 지갑 자동 생성
   after_create :create_wallet_for_user

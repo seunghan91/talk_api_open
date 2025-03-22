@@ -25,8 +25,12 @@ module Api
       # 실제 서비스에서는 SMS 발송 로직 추가
       # SmsService.send_verification(digits_only, code)
       
-      # 코드 저장 (실제로는 Redis나 DB에 저장)
-      # VerificationCode.create(phone_number: digits_only, code: code, expires_at: 5.minutes.from_now)
+      # 인증 코드 저장
+      verification = PhoneVerification.create(
+        phone_number: digits_only,
+        code: code,
+        expires_at: 5.minutes.from_now
+      )
       
       # 로깅
       Rails.logger.info("인증코드 생성 완료: 전화번호 #{digits_only}, 코드 #{code}")
@@ -55,14 +59,20 @@ module Api
       # 하이픈 제거하여 숫자만 추출
       digits_only = phone_number.gsub(/\D/, '')
       
-      # 코드 검증 (실제로는 Redis나 DB에서 확인)
-      # verification = VerificationCode.find_by(phone_number: digits_only)
-      # if verification.nil? || verification.code != code || verification.expires_at < Time.current
-      #   return render json: { error: "유효하지 않은 인증코드입니다." }, status: :unauthorized
-      # end
+      # 인증 코드 확인
+      verification = PhoneVerification.where(phone_number: digits_only, verified: false)
+                                     .where("expires_at > ?", Time.current)
+                                     .order(created_at: :desc)
+                                     .first
+                                     
+      unless verification && verification.code == code
+        Rails.logger.warn("인증코드 불일치 또는 만료: 전화번호 #{digits_only}")
+        return render json: { error: "유효하지 않은 인증코드입니다." }, status: :unauthorized
+      end
       
-      # 실제 서비스에서는 DB/Redis에서 코드 검증
-      # 여기서는 테스트용으로 간단 처리
+      # 인증 성공 처리
+      verification.update(verified: true)
+      
       # 유저 찾거나 생성
       user = User.find_or_create_by(phone_number: digits_only) do |u|
         # 새 사용자인 경우 닉네임 자동 생성
@@ -70,6 +80,9 @@ module Api
         u.nickname = random_nickname
         Rails.logger.info("새 사용자 생성: 전화번호 #{digits_only}, 닉네임 #{random_nickname}")
       end
+      
+      # PhoneVerification과 User 연결
+      verification.update(user: user)
       
       # 기존 사용자인데 닉네임이 없는 경우 생성
       if user.nickname.blank?
