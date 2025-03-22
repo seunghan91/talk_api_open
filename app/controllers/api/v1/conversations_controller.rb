@@ -61,12 +61,20 @@ module Api
             .joins(:recipients)
             .where(recipients: { user_id: current_user.id })
           
+          # 현재 사용자가 보낸 브로드캐스트 중 상대방에게 전송된 메시지도 포함
+          user_broadcasts = Broadcast.where(user_id: current_user.id)
+            .joins(:recipients)
+            .where(recipients: { user_id: sender_id })
+          
+          # 모든 브로드캐스트 합치기
+          all_broadcasts = broadcasts + user_broadcasts
+          
           # 브로드캐스트 정보를 메시지 형식으로 변환
-          broadcasts.each do |broadcast|
+          all_broadcasts.each do |broadcast|
             broadcast_messages << {
               id: "broadcast_#{broadcast.id}",
               sender_id: broadcast.user_id,
-              recipient_id: current_user.id,
+              recipient_id: broadcast.user_id == current_user.id ? sender_id : current_user.id,
               content: broadcast.content,
               voice_recording_url: broadcast.voice_recording_url,
               created_at: broadcast.created_at,
@@ -87,11 +95,12 @@ module Api
         # 5. 응답 형식 구성
         formatted_messages = all_messages.map do |message|
           is_broadcast = message.is_a?(Hash) && message[:message_type] == 'broadcast'
+          sender_id = is_broadcast ? message[:sender_id] : message.sender_id
           {
             id: is_broadcast ? message[:id] : message.id,
             content: is_broadcast ? message[:content] : message.content,
             voice_url: is_broadcast ? message[:voice_recording_url] : message.voice_recording_url,
-            is_sender: is_broadcast ? false : (message.sender_id == current_user.id),
+            is_sender: sender_id == current_user.id,
             created_at: is_broadcast ? message[:created_at] : message.created_at,
             formatted_date: (is_broadcast ? message[:created_at] : message.created_at).strftime('%Y년 %m월 %d일 %H:%M'),
             is_read: is_broadcast ? true : !message.read_at.nil?,
