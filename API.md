@@ -4,20 +4,32 @@
 
 ### 인증 코드 요청
 
-**URL**: `/api/auth/request_code`
-**Method**: `POST`
-**Parameters**:
+**엔드포인트:** `POST /api/auth/request_code`
+
+**요청 본문 예시:**
 ```json
 {
   "phone_number": "01012345678"
 }
 ```
 
-**응답 예시**:
+**성공 응답 예시** (개발 환경):
 ```json
 {
   "message": "인증 코드가 발송되었습니다.",
-  "expires_at": "2025-03-22T14:30:00Z"
+  "expires_at": "2025-03-22T14:30:00Z",
+  "development_mode": true,
+  "code": "123456",
+  "note": "개발/스테이징 환경에서만 코드가 노출됩니다. 실제 앱에서는 이 코드를 입력해주세요."
+}
+```
+
+**성공 응답 예시** (프로덕션 환경):
+```json
+{
+  "message": "인증 코드가 발송되었습니다.",
+  "expires_at": "2025-03-22T14:30:00Z",
+  "development_mode": false
 }
 ```
 
@@ -50,9 +62,9 @@
 
 ### 인증 코드 확인
 
-**URL**: `/api/auth/verify_code`
-**Method**: `POST`
-**Parameters**:
+**엔드포인트:** `POST /api/auth/verify_code`
+
+**요청 본문 예시:**
 ```json
 {
   "phone_number": "01012345678",
@@ -60,18 +72,35 @@
 }
 ```
 
-**성공 응답 예시**:
+**성공 응답 예시** (신규 사용자):
+```json
+{
+  "message": "인증에 성공했습니다.",
+  "user_exists": false,
+  "can_proceed_to_register": true,
+  "user": null,
+  "verification_status": {
+    "verified": true,
+    "verified_at": "2025-03-22T14:30:00Z",
+    "phone_number": "01012345678"
+  }
+}
+```
+
+**성공 응답 예시** (기존 사용자):
 ```json
 {
   "message": "인증에 성공했습니다.",
   "user_exists": true,
+  "can_proceed_to_register": false,
   "user": {
     "id": 1,
-    "nickname": "사용자123"
+    "nickname": "사용자1"
   },
   "verification_status": {
     "verified": true,
-    "verified_at": "2025-03-22T14:30:00Z"
+    "verified_at": "2025-03-22T14:30:00Z",
+    "phone_number": "01012345678"
   }
 }
 ```
@@ -84,8 +113,9 @@
     "verified": false,
     "attempt_count": 1,
     "remaining_attempts": 4,
-    "can_resend": true,
-    "expires_at": "2025-03-22T14:30:00Z"
+    "can_resend": false,
+    "expires_at": "2025-03-22T14:30:00Z",
+    "phone_number": "01012345678"
   }
 }
 ```
@@ -98,8 +128,90 @@
     "verified": false,
     "attempt_count": 5,
     "max_attempts": 5,
+    "can_resend": true,
+    "phone_number": "01012345678"
+  }
+}
+```
+
+## 회원가입
+
+**엔드포인트:** `POST /api/auth/register`
+
+**요청 본문 예시:**
+```json
+{
+  "phone_number": "01012345678",
+  "password": "password123",
+  "nickname": "사용자1"
+}
+```
+
+**성공 응답 예시:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "user": {
+    "id": 1,
+    "nickname": "사용자1",
+    "phone_number": "01012345678",
+    "created_at": "2025-03-22T14:30:00Z"
+  },
+  "message": "회원가입에 성공했습니다."
+}
+```
+
+**실패 응답 예시** (미인증 전화번호):
+```json
+{
+  "error": "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
+  "verification_required": true,
+  "verification_status": {
+    "verified": false,
     "can_resend": true
   }
+}
+```
+
+**실패 응답 예시** (이미 등록된 전화번호):
+```json
+{
+  "error": "이미 등록된 전화번호입니다.",
+  "user_exists": true
+}
+```
+
+## 로그인
+
+**엔드포인트:** `POST /api/auth/login`
+
+**요청 본문 예시:**
+```json
+{
+  "phone_number": "01012345678",
+  "password": "password123"
+}
+```
+
+**성공 응답 예시:**
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "user": {
+    "id": 1,
+    "nickname": "사용자1",
+    "phone_number": "01012345678",
+    "last_login_at": "2025-03-22T14:30:00Z",
+    "created_at": "2025-03-22T10:00:00Z"
+  },
+  "message": "로그인에 성공했습니다."
+}
+```
+
+**실패 응답 예시:**
+```json
+{
+  "error": "전화번호 또는 비밀번호가 올바르지 않습니다."
 }
 ```
 
