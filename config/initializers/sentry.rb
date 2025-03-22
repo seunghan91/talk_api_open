@@ -8,8 +8,8 @@ Sentry.init do |config|
   # 성능 모니터링 설정
   config.traces_sample_rate = 0.5
   
-  # Rails 통합 설정 - 민감한 파라미터 필터링
-  config.rails.skippable_params += %w[password token auth_token code phone_number verification_id jwt]
+  # 민감한 파라미터 필터링
+  config.filter_parameters = %w[password token auth_token code phone_number verification_id jwt]
   
   # 사용자 정보 추가
   config.before_send = lambda do |event, hint|
