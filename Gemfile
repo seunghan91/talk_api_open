@@ -29,11 +29,11 @@ gem "bootsnap", require: false
 gem "rack-cors"
 
 # JWT for authentication
-gem 'jwt'
+gem "jwt"
 
 # Background jobs
-gem 'sidekiq', '~> 7.1'
-gem 'redis', '~> 4.0'
+gem "sidekiq", "~> 7.1"
+gem "redis", "~> 4.0"
 
 # 필요한 기본 gem만 유지하고 나머지는 배포 성공 후 추가
 # gem 'sidekiq-cron'
@@ -47,19 +47,19 @@ gem 'redis', '~> 4.0'
 gem "logger", "~> 1.6"
 
 # 알림을 위한 Expo push notification
-gem 'exponent-server-sdk'
+gem "exponent-server-sdk"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"
 
 # API 문서화를 위한 Swagger 도구
-gem 'rswag-api'
-gem 'rswag-ui'
-gem 'rswag-specs'
+gem "rswag-api"
+gem "rswag-ui"
+gem "rswag-specs"
 
 # 에러 모니터링 도구
-gem 'sentry-rails'
-gem 'sentry-ruby'
+gem "sentry-rails"
+gem "sentry-ruby"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -72,18 +72,18 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
 
   # Testing
-  gem 'rspec-rails'
-  gem 'factory_bot_rails'
-  gem 'faker'
+  gem "rspec-rails"
+  gem "factory_bot_rails"
+  gem "faker"
 end
 
 group :development do
   # Speed up commands on slow machines / big apps [https://github.com/rails/spring]
   # gem "spring"
-  gem 'annotate'
+  gem "annotate"
 end
 
 group :test do
-  gem 'shoulda-matchers'
-  gem 'database_cleaner'
+  gem "shoulda-matchers"
+  gem "database_cleaner"
 end

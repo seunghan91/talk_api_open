@@ -3,7 +3,7 @@ class AuthToken
   DEFAULT_EXPIRY = 7.days.to_i
 
   def self.encode(payload, exp = DEFAULT_EXPIRY)
-    payload = { 
+    payload = {
       data: payload,
       exp: Time.now.to_i + exp
     }
@@ -13,7 +13,7 @@ class AuthToken
   def self.decode(token)
     begin
       decoded = JWT.decode(token, SECRET_KEY)[0]
-      HashWithIndifferentAccess.new(decoded)['data']
+      HashWithIndifferentAccess.new(decoded)["data"]
     rescue JWT::ExpiredSignature
       # 토큰 만료 시
       Rails.logger.warn("만료된 JWT 토큰: #{token[0..15]}...")
@@ -24,4 +24,4 @@ class AuthToken
       raise JWT::DecodeError.new("유효하지 않은 토큰입니다: #{e.message}")
     end
   end
-end 
+end

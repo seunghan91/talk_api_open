@@ -5,7 +5,7 @@ class CreateConversations < ActiveRecord::Migration[7.0]
       t.references :user_b, null: false, foreign_key: { to_table: :users }
       t.boolean :active, default: true
       t.boolean :favorite, default: false
-      
+
       t.timestamps
     end
   end

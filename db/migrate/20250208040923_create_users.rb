@@ -10,8 +10,8 @@ class CreateUsers < ActiveRecord::Migration[7.0]
       t.boolean :blocked, default: false
       t.integer :point_balance, default: 0
 
-      
-      
+
+
       t.timestamps
     end
   end

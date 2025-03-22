@@ -5,4 +5,4 @@ module ApiError
     class Unauthorized < Base; end
     class ResourceNotFound < Base; end
     class ValidationError < Base; end
-  end
+end

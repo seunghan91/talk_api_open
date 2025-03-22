@@ -7,9 +7,9 @@ class CreateWallets < ActiveRecord::Migration[7.0]
 
       t.timestamps
     end
-    
+
     unless index_exists?(:wallets, :user_id)
       add_index :wallets, :user_id, unique: true
     end
   end
-end 
+end

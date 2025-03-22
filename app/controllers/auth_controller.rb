@@ -2,7 +2,7 @@
 
 class AuthController < ApplicationController
   # 인증코드 발행/검증은 JWT 없이 접근해야 하므로:
-  skip_before_action :authorize_request, only: [:request_code, :verify_code]
+  skip_before_action :authorize_request, only: [ :request_code, :verify_code ]
 
   # 1) 인증코드 발송
   def request_code

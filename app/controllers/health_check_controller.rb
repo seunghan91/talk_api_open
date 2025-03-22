@@ -3,4 +3,4 @@ class HealthCheckController < ActionController::API
   def index
     render json: { status: "OK", timestamp: Time.current, environment: Rails.env }, status: :ok
   end
-end 
+end

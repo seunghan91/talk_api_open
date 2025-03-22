@@ -11,7 +11,7 @@ RSpec.describe 'Auth API', type: :request do
         properties: {
           phone_number: { type: :string, example: '01012345678' }
         },
-        required: ['phone_number']
+        required: [ 'phone_number' ]
       }
 
       response '200', 'Authentication code sent' do
@@ -22,14 +22,14 @@ RSpec.describe 'Auth API', type: :request do
             message: { type: :string },
             verification_id: { type: :integer }
           }
-        
+
         let(:params) { { phone_number: '01012345678' } }
         run_test!
       end
 
       response '400', 'Bad request' do
         schema '$ref' => '#/components/schemas/error_response'
-        
+
         let(:params) { { phone_number: '' } }
         run_test!
       end
@@ -47,7 +47,7 @@ RSpec.describe 'Auth API', type: :request do
           phone_number: { type: :string, example: '01012345678' },
           code: { type: :string, example: '123456' }
         },
-        required: ['phone_number', 'code']
+        required: [ 'phone_number', 'code' ]
       }
 
       response '200', 'Authentication successful' do
@@ -65,14 +65,14 @@ RSpec.describe 'Auth API', type: :request do
               }
             }
           }
-        
+
         let(:params) { { phone_number: '01012345678', code: '123456' } }
         run_test!
       end
 
       response '401', 'Authentication failed' do
         schema '$ref' => '#/components/schemas/error_response'
-        
+
         let(:params) { { phone_number: '01012345678', code: 'wrong' } }
         run_test!
       end

@@ -1,10 +1,10 @@
 Sentry.init do |config|
-  config.dsn = ENV['SENTRY_DSN']
-  config.breadcrumbs_logger = [:active_support_logger, :http_logger]
-  
+  config.dsn = ENV["SENTRY_DSN"]
+  config.breadcrumbs_logger = [ :active_support_logger, :http_logger ]
+
   # Rails 환경에서만 사용
   config.enabled_environments = %w[production staging]
-  
+
   # 성능 모니터링 설정
   config.traces_sample_rate = 0.5
   # 기존 설정 유지 (예: DSN, environment 등)
@@ -22,13 +22,13 @@ Sentry.init do |config|
         event.user = {
           id: controller.current_user.id,
           nickname: controller.current_user.nickname,
-          phone_number: controller.current_user.phone_number.to_s.gsub(/\d(?=\d{4})/, '*')
+          phone_number: controller.current_user.phone_number.to_s.gsub(/\d(?=\d{4})/, "*")
         }
       end
     end
     event
   end
-  
+
   # 민감한 정보는 Sentry에서 필터링
   # filter_parameters 메서드가 없으므로 다음과 같이 수정
   if defined?(Rails.application.config.filter_parameters)
@@ -56,4 +56,4 @@ Sentry.init do |config|
       event
     }
   end
-end 
+end

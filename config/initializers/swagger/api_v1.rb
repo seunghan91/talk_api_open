@@ -3,31 +3,31 @@ module Swagger
     class << self
       def swagger_docs
         {
-          'v1/swagger.json' => {
-            openapi: '3.0.0',
+          "v1/swagger.json" => {
+            openapi: "3.0.0",
             info: {
-              title: 'TALKK API',
-              version: 'v1',
-              description: 'TALKK 앱의 API 문서입니다.'
+              title: "TALKK API",
+              version: "v1",
+              description: "TALKK 앱의 API 문서입니다."
             },
             servers: [
               {
-                url: 'https://talkk-api.onrender.com',
-                description: '운영 서버'
+                url: "https://talkk-api.onrender.com",
+                description: "운영 서버"
               },
               {
-                url: 'http://localhost:3000',
-                description: '로컬 개발 서버'
+                url: "http://localhost:3000",
+                description: "로컬 개발 서버"
               }
             ],
-            consumes: ['application/json'],
-            produces: ['application/json'],
+            consumes: [ "application/json" ],
+            produces: [ "application/json" ],
             components: {
               securitySchemes: {
                 bearerAuth: {
                   type: :http,
                   scheme: :bearer,
-                  bearerFormat: 'JWT'
+                  bearerFormat: "JWT"
                 }
               },
               schemas: {
@@ -37,11 +37,11 @@ module Swagger
                     id: { type: :integer },
                     phone_number: { type: :string },
                     nickname: { type: :string },
-                    gender: { type: :string, enum: ['male', 'female', 'unspecified'] },
+                    gender: { type: :string, enum: [ "male", "female", "unspecified" ] },
                     created_at: { type: :string, format: :datetime },
                     updated_at: { type: :string, format: :datetime }
                   },
-                  required: ['id', 'phone_number', 'nickname']
+                  required: [ "id", "phone_number", "nickname" ]
                 },
                 Broadcast: {
                   type: :object,
@@ -53,18 +53,18 @@ module Swagger
                     created_at: { type: :string, format: :datetime },
                     updated_at: { type: :string, format: :datetime }
                   },
-                  required: ['id', 'content', 'user_id']
+                  required: [ "id", "content", "user_id" ]
                 },
                 Conversation: {
                   type: :object,
                   properties: {
                     id: { type: :integer },
-                    user: { '$ref' => '#/components/schemas/User' },
-                    last_message: { '$ref' => '#/components/schemas/Message' },
+                    user: { "$ref" => "#/components/schemas/User" },
+                    last_message: { "$ref" => "#/components/schemas/Message" },
                     is_favorite: { type: :boolean },
                     unread_count: { type: :integer }
                   },
-                  required: ['id', 'user']
+                  required: [ "id", "user" ]
                 },
                 Message: {
                   type: :object,
@@ -77,7 +77,7 @@ module Swagger
                     created_at: { type: :string, format: :datetime },
                     updated_at: { type: :string, format: :datetime }
                   },
-                  required: ['id', 'content', 'user_id', 'conversation_id']
+                  required: [ "id", "content", "user_id", "conversation_id" ]
                 },
                 Wallet: {
                   type: :object,
@@ -89,7 +89,7 @@ module Swagger
                     created_at: { type: :string, format: :datetime },
                     updated_at: { type: :string, format: :datetime }
                   },
-                  required: ['id', 'user_id', 'balance']
+                  required: [ "id", "user_id", "balance" ]
                 },
                 Transaction: {
                   type: :object,
@@ -97,13 +97,13 @@ module Swagger
                     id: { type: :integer },
                     wallet_id: { type: :integer },
                     amount: { type: :number, format: :float },
-                    transaction_type: { type: :string, enum: ['deposit', 'withdrawal', 'transfer'] },
+                    transaction_type: { type: :string, enum: [ "deposit", "withdrawal", "transfer" ] },
                     description: { type: :string },
-                    status: { type: :string, enum: ['pending', 'completed', 'failed'] },
+                    status: { type: :string, enum: [ "pending", "completed", "failed" ] },
                     created_at: { type: :string, format: :datetime },
                     updated_at: { type: :string, format: :datetime }
                   },
-                  required: ['id', 'wallet_id', 'amount', 'transaction_type', 'status']
+                  required: [ "id", "wallet_id", "amount", "transaction_type", "status" ]
                 },
                 Error: {
                   type: :object,
@@ -111,7 +111,7 @@ module Swagger
                     error: { type: :string },
                     code: { type: :string }
                   },
-                  required: ['error']
+                  required: [ "error" ]
                 }
               }
             },
@@ -126,4 +126,4 @@ module Swagger
       end
     end
   end
-end 
+end

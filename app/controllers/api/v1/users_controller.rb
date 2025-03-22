@@ -1,10 +1,10 @@
 module Api
   module V1
     class UsersController < Api::V1::BaseController
-      before_action :set_user, only: [:show, :update, :destroy]
-      
+      before_action :set_user, only: [ :show, :update, :destroy ]
+
       # GET /api/v1/users/me
-      # 
+      #
       # @swagger
       # /api/v1/users/me:
       #   get:
@@ -26,7 +26,7 @@ module Api
       #         description: 인증 실패
       def me
         Rails.logger.info("현재 로그인 사용자 조회: 사용자 ID #{current_user.id}")
-        
+
         begin
           render json: {
             user: {
@@ -49,9 +49,9 @@ module Api
           render json: { error: "사용자 정보를 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
         end
       end
-      
+
       # GET /api/v1/users/notification_settings
-      # 
+      #
       # @swagger
       # /api/v1/users/notification_settings:
       #   get:
@@ -81,7 +81,7 @@ module Api
       #         description: 인증 실패
       def notification_settings
         Rails.logger.info("사용자 알림 설정 조회: 사용자 ID #{current_user.id}")
-        
+
         begin
           if current_user
             render json: {
@@ -93,9 +93,9 @@ module Api
             }
           else
             Rails.logger.warn("알림 설정 조회 시 사용자 인증 실패")
-            render json: { 
+            render json: {
               error: "사용자를 찾을 수 없습니다. 토큰이 만료되었거나 유효하지 않습니다.",
-              code: "invalid_token" 
+              code: "invalid_token"
             }, status: :unauthorized
           end
         rescue => e
@@ -138,45 +138,45 @@ module Api
       #         description: 잘못된 요청
       def update_notification_settings
         Rails.logger.info("사용자 알림 설정 업데이트: 사용자 ID #{current_user.id}")
-        
+
         begin
           settings_params = params.permit(
-            :receive_new_letter, 
-            :letter_receive_alarm, 
-            :push_enabled, 
-            :broadcast_push_enabled, 
+            :receive_new_letter,
+            :letter_receive_alarm,
+            :push_enabled,
+            :broadcast_push_enabled,
             :message_push_enabled
           )
-          
+
           # 매개변수 매핑 (클라이언트 키 -> 서버 DB 컬럼)
           update_params = {}
-          
+
           # 브로드캐스트 알림 설정
           if settings_params.key?(:receive_new_letter)
             update_params[:broadcast_push_enabled] = settings_params[:receive_new_letter]
           end
-          
+
           # 메시지 알림 설정
           if settings_params.key?(:letter_receive_alarm)
             update_params[:message_push_enabled] = settings_params[:letter_receive_alarm]
           end
-          
+
           # 전체 푸시 설정
           if settings_params.key?(:push_enabled)
             update_params[:push_enabled] = settings_params[:push_enabled]
           end
-          
+
           # 개별 설정이 직접 전달된 경우 (이전 버전과의 호환성)
           if settings_params.key?(:broadcast_push_enabled)
             update_params[:broadcast_push_enabled] = settings_params[:broadcast_push_enabled]
           end
-          
+
           if settings_params.key?(:message_push_enabled)
             update_params[:message_push_enabled] = settings_params[:message_push_enabled]
           end
-          
+
           Rails.logger.info("알림 설정 업데이트 파라미터: #{update_params.inspect}")
-          
+
           if current_user.update(update_params)
             Rails.logger.info("알림 설정 업데이트 성공: 사용자 ID #{current_user.id}")
             render json: {
@@ -189,19 +189,19 @@ module Api
             }
           else
             Rails.logger.warn("알림 설정 업데이트 실패: #{current_user.errors.full_messages.join(', ')}")
-            render json: { error: current_user.errors.full_messages.join(', ') }, status: :unprocessable_entity
+            render json: { error: current_user.errors.full_messages.join(", ") }, status: :unprocessable_entity
           end
         rescue => e
           Rails.logger.error("알림 설정 업데이트 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: "알림 설정을 업데이트하는 중 오류가 발생했습니다." }, status: :internal_server_error
         end
       end
-      
+
       private
-      
+
       def set_user
         @user = User.find(params[:id])
       end
     end
   end
-end 
+end

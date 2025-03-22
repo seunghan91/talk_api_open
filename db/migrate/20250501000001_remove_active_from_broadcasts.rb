@@ -5,4 +5,4 @@ class RemoveActiveFromBroadcasts < ActiveRecord::Migration[7.0]
       remove_column :broadcasts, :active, :boolean
     end
   end
-end 
+end

@@ -10,7 +10,7 @@ if defined?(RailsAdmin)
     config.authenticate_with do
       authenticate_or_request_with_http_basic do |username, password|
         # 실제 환경에서는 환경 변수나 암호화된 설정에서 가져와야 함
-        username == 'admin' && password == 'admin2024'
+        username == "admin" && password == "admin2024"
       end
     end
 
@@ -28,30 +28,30 @@ if defined?(RailsAdmin)
     ## == Gravatar integration ==
     ## To disable Gravatar integration in Navigation Bar set to false
     # config.show_gravatar = true
-    
+
     # 모델별 필터 설정
-    config.model 'User' do
+    config.model "User" do
       list do
-        filters [:nickname, :phone, :gender, :status, :created_at]
+        filters [ :nickname, :phone, :gender, :status, :created_at ]
       end
     end
-    
-    config.model 'Broadcast' do
+
+    config.model "Broadcast" do
       list do
-        filters [:user, :created_at, :expired_at, :active]
+        filters [ :user, :created_at, :expired_at, :active ]
       end
     end
-    
-    config.model 'Report' do
+
+    config.model "Report" do
       list do
-        filters [:reporter, :reported, :status, :report_type, :created_at]
+        filters [ :reporter, :reported, :status, :report_type, :created_at ]
       end
     end
-    
+
     # Conversation 모델 설정 추가
-    config.model 'Conversation' do
+    config.model "Conversation" do
       list do
-        filters [:user_a, :user_b, :created_at, :updated_at]
+        filters [ :user_a, :user_b, :created_at, :updated_at ]
         field :id
         field :user_a
         field :user_b
@@ -64,7 +64,7 @@ if defined?(RailsAdmin)
           sortable false
         end
       end
-      
+
       show do
         field :id
         field :user_a
@@ -74,11 +74,11 @@ if defined?(RailsAdmin)
         field :messages
       end
     end
-    
+
     # Message 모델 설정 추가
-    config.model 'Message' do
+    config.model "Message" do
       list do
-        filters [:conversation, :sender, :created_at]
+        filters [ :conversation, :sender, :created_at ]
         field :id
         field :conversation
         field :sender
@@ -86,7 +86,7 @@ if defined?(RailsAdmin)
         field :voice_file
         field :is_read
       end
-      
+
       show do
         field :id
         field :conversation
@@ -97,17 +97,17 @@ if defined?(RailsAdmin)
         field :is_read
       end
     end
-    
+
     # 대시보드 커스터마이징
     config.actions do
       dashboard do
         statistics true
-        
+
         # 대시보드에 통계 추가
         register_instance_option :statistics do
           true
         end
-        
+
         register_instance_option :user_statistics do
           proc do
             {
@@ -115,23 +115,23 @@ if defined?(RailsAdmin)
               active: User.where(status: :active).count,
               suspended: User.where(status: :suspended).count,
               banned: User.where(status: :banned).count,
-              new_today: User.where('created_at >= ?', Date.today).count
+              new_today: User.where("created_at >= ?", Date.today).count
             }
           end
         end
-        
+
         register_instance_option :broadcast_statistics do
           proc do
             {
               total: Broadcast.count,
-              active: Broadcast.where('expired_at > ?', Time.current).count,
-              expired: Broadcast.where('expired_at <= ?', Time.current).count,
-              expiring_soon: Broadcast.where('expired_at > ? AND expired_at <= ?', Time.current, 24.hours.from_now).count,
-              new_today: Broadcast.where('created_at >= ?', Date.today).count
+              active: Broadcast.where("expired_at > ?", Time.current).count,
+              expired: Broadcast.where("expired_at <= ?", Time.current).count,
+              expiring_soon: Broadcast.where("expired_at > ? AND expired_at <= ?", Time.current, 24.hours.from_now).count,
+              new_today: Broadcast.where("created_at >= ?", Date.today).count
             }
           end
         end
-        
+
         register_instance_option :report_statistics do
           proc do
             {
@@ -140,33 +140,33 @@ if defined?(RailsAdmin)
               processing: Report.where(status: :processing).count,
               resolved: Report.where(status: :resolved).count,
               rejected: Report.where(status: :rejected).count,
-              new_today: Report.where('created_at >= ?', Date.today).count
+              new_today: Report.where("created_at >= ?", Date.today).count
             }
           end
         end
-        
+
         # 대화 및 메시지 통계 추가
         register_instance_option :conversation_statistics do
           proc do
             {
               total: Conversation.count,
-              new_today: Conversation.where('created_at >= ?', Date.today).count,
-              active_last_week: Conversation.where('updated_at >= ?', 7.days.ago).count
+              new_today: Conversation.where("created_at >= ?", Date.today).count,
+              active_last_week: Conversation.where("updated_at >= ?", 7.days.ago).count
             }
           end
         end
-        
+
         register_instance_option :message_statistics do
           proc do
             {
               total: Message.count,
-              new_today: Message.where('created_at >= ?', Date.today).count,
+              new_today: Message.where("created_at >= ?", Date.today).count,
               unread: Message.where(is_read: false).count
             }
           end
         end
       end
-      
+
       index                         # mandatory
       new
       export
@@ -175,13 +175,13 @@ if defined?(RailsAdmin)
       edit
       delete
       show_in_app
-      
+
       # 사용자 관련 커스텀 액션
       member :suspend do
-        only 'User'
+        only "User"
         i18n_key :suspend
         register_instance_option :link_icon do
-          'icon-ban-circle'
+          "icon-ban-circle"
         end
         register_instance_option :visible? do
           bindings[:object].class == User && !bindings[:object].status_suspended?
@@ -189,21 +189,21 @@ if defined?(RailsAdmin)
         register_instance_option :controller do
           proc do
             @object.update(status: :suspended)
-            
+
             # 정지 알림 전송
-            PushNotificationWorker.perform_async('suspension', @object.id, "관리자에 의한 계정 정지")
-            
+            PushNotificationWorker.perform_async("suspension", @object.id, "관리자에 의한 계정 정지")
+
             flash[:notice] = "사용자가 정지되었습니다."
             redirect_to back_or_index
           end
         end
       end
-      
+
       member :activate do
-        only 'User'
+        only "User"
         i18n_key :activate
         register_instance_option :link_icon do
-          'icon-ok'
+          "icon-ok"
         end
         register_instance_option :visible? do
           bindings[:object].class == User && (bindings[:object].status_suspended? || bindings[:object].status_banned?)
@@ -216,12 +216,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :ban do
-        only 'User'
+        only "User"
         i18n_key :ban
         register_instance_option :link_icon do
-          'icon-remove'
+          "icon-remove"
         end
         register_instance_option :visible? do
           bindings[:object].class == User && !bindings[:object].status_banned?
@@ -229,21 +229,21 @@ if defined?(RailsAdmin)
         register_instance_option :controller do
           proc do
             @object.update(status: :banned)
-            
+
             # 차단 알림 전송
-            PushNotificationWorker.perform_async('suspension', @object.id, "관리자에 의한 영구 차단")
-            
+            PushNotificationWorker.perform_async("suspension", @object.id, "관리자에 의한 영구 차단")
+
             flash[:notice] = "사용자가 영구 차단되었습니다."
             redirect_to back_or_index
           end
         end
       end
-      
+
       member :reset_reports do
-        only 'User'
+        only "User"
         i18n_key :reset_reports
         register_instance_option :link_icon do
-          'icon-refresh'
+          "icon-refresh"
         end
         register_instance_option :visible? do
           bindings[:object].class == User && bindings[:object].reports_as_reported.any?
@@ -256,13 +256,13 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       # 브로드캐스트 관련 커스텀 액션
       member :deactivate do
-        only 'Broadcast'
+        only "Broadcast"
         i18n_key :deactivate
         register_instance_option :link_icon do
-          'icon-remove'
+          "icon-remove"
         end
         register_instance_option :visible? do
           bindings[:object].class == Broadcast && bindings[:object].active?
@@ -276,12 +276,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :activate_broadcast do
-        only 'Broadcast'
+        only "Broadcast"
         i18n_key :activate_broadcast
         register_instance_option :link_icon do
-          'icon-ok'
+          "icon-ok"
         end
         register_instance_option :visible? do
           bindings[:object].class == Broadcast && !bindings[:object].active?
@@ -295,12 +295,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :extend_expiry do
-        only 'Broadcast'
+        only "Broadcast"
         i18n_key :extend_expiry
         register_instance_option :link_icon do
-          'icon-time'
+          "icon-time"
         end
         register_instance_option :controller do
           proc do
@@ -310,13 +310,13 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       # 신고 관련 커스텀 액션
       member :mark_as_processing do
-        only 'Report'
+        only "Report"
         i18n_key :mark_as_processing
         register_instance_option :link_icon do
-          'icon-time'
+          "icon-time"
         end
         register_instance_option :visible? do
           bindings[:object].class == Report && bindings[:object].status_pending?
@@ -329,12 +329,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :mark_as_resolved do
-        only 'Report'
+        only "Report"
         i18n_key :mark_as_resolved
         register_instance_option :link_icon do
-          'icon-ok'
+          "icon-ok"
         end
         register_instance_option :visible? do
           bindings[:object].class == Report && !bindings[:object].status_resolved?
@@ -347,12 +347,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :mark_as_rejected do
-        only 'Report'
+        only "Report"
         i18n_key :mark_as_rejected
         register_instance_option :link_icon do
-          'icon-remove'
+          "icon-remove"
         end
         register_instance_option :visible? do
           bindings[:object].class == Report && !bindings[:object].status_rejected?
@@ -365,12 +365,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :suspend_reported_user do
-        only 'Report'
+        only "Report"
         i18n_key :suspend_reported_user
         register_instance_option :link_icon do
-          'icon-ban-circle'
+          "icon-ban-circle"
         end
         register_instance_option :visible? do
           bindings[:object].class == Report && !bindings[:object].reported.status_suspended? && !bindings[:object].reported.status_banned?
@@ -384,13 +384,13 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       # 메시지 관련 커스텀 액션 추가
       member :mark_as_read do
-        only 'Message'
+        only "Message"
         i18n_key :mark_as_read
         register_instance_option :link_icon do
-          'icon-check'
+          "icon-check"
         end
         register_instance_option :visible? do
           bindings[:object].class == Message && !bindings[:object].is_read
@@ -403,12 +403,12 @@ if defined?(RailsAdmin)
           end
         end
       end
-      
+
       member :mark_as_unread do
-        only 'Message'
+        only "Message"
         i18n_key :mark_as_unread
         register_instance_option :link_icon do
-          'icon-eye-close'
+          "icon-eye-close"
         end
         register_instance_option :visible? do
           bindings[:object].class == Message && bindings[:object].is_read

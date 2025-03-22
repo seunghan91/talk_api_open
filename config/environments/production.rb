@@ -1,5 +1,5 @@
 require "active_support/core_ext/integer/time"
-require 'logger'  # 명시적으로 Logger 로드
+require "logger"  # 명시적으로 Logger 로드
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -21,9 +21,9 @@ Rails.application.configure do
   # config.require_master_key = true
 
   # Disable serving static files from `public/`, relying on NGINX/Apache to do so instead.
-  config.public_file_server.enabled = ENV['RAILS_SERVE_STATIC_FILES'].present? || ENV['RENDER'].present?
+  config.public_file_server.enabled = ENV["RAILS_SERVE_STATIC_FILES"].present? || ENV["RENDER"].present?
   config.public_file_server.headers = {
-    'Cache-Control' => "public, max-age=#{30.days.to_i}"
+    "Cache-Control" => "public, max-age=#{30.days.to_i}"
   }
 
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
@@ -46,7 +46,7 @@ Rails.application.configure do
   # config.assume_ssl = true
 
   # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  config.force_ssl = ENV['FORCE_SSL'].present? ? ENV['FORCE_SSL'] == 'true' : true
+  config.force_ssl = ENV["FORCE_SSL"].present? ? ENV["FORCE_SSL"] == "true" : true
 
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
@@ -65,7 +65,7 @@ Rails.application.configure do
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "warn")
 
   # Use a different cache store in production.
-  config.cache_store = :redis_cache_store, { 
+  config.cache_store = :redis_cache_store, {
     url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"),
     expires_in: 1.day
   }
