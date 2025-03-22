@@ -59,11 +59,19 @@ module Api
             return render json: { error: '이미 등록된 전화번호입니다.' }, status: :unprocessable_entity
           end
           
-          # 인증 코드 확인 (옵션)
-          verification = PhoneVerification.find_by(phone_number: params[:phone_number], verified: true)
-          unless verification
-            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 인증되지 않은 전화번호")
-            return render json: { error: '인증되지 않은 전화번호입니다.' }, status: :unprocessable_entity
+          # 인증 코드 확인
+          verification = PhoneVerification.find_by(phone_number: params[:phone_number])
+          
+          # 인증 레코드 자체가 없는 경우
+          if verification.nil?
+            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 인증 시도 기록 없음")
+            return render json: { error: '전화번호 인증을 먼저 진행해주세요.' }, status: :unprocessable_entity
+          end
+          
+          # 인증 검증
+          unless verification.verified == true
+            Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
+            return render json: { error: '인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.' }, status: :unprocessable_entity
           end
           
           # 사용자 생성
@@ -115,8 +123,9 @@ module Api
         end
         
         begin
-          # 인증 코드 생성
-          code = generate_verification_code
+          # 인증 코드 생성 (중복을 최소화하기 위해 시간 시드 사용)
+          # SecureRandom을 사용하여 더 안전한 난수 생성
+          code = generate_secure_verification_code
           
           # 이미 인증 레코드가 있으면 업데이트, 없으면 새로 생성
           verification = PhoneVerification.find_or_initialize_by(phone_number: phone_number)
@@ -135,7 +144,7 @@ module Api
           
           Rails.logger.info("인증코드 발송 성공: #{phone_number}, 코드: #{code}")
         rescue => e
-          Rails.logger.error("인증코드 발송 중 오류: #{e.message}")
+          Rails.logger.error("인증코드 발송 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: '인증 코드 발송에 실패했습니다.' }, status: :internal_server_error
         end
       end
@@ -146,7 +155,7 @@ module Api
         code = params[:code]
         
         # 로그 추가
-        Rails.logger.info("인증코드 확인: #{phone_number}, 코드: #{code}")
+        Rails.logger.info("인증코드 확인: #{phone_number}, 입력 코드: #{code}")
         
         begin
           verification = PhoneVerification.find_by(phone_number: phone_number)
@@ -156,14 +165,17 @@ module Api
             return render json: { error: '인증 요청을 먼저 진행해주세요.' }, status: :not_found
           end
           
+          # 인증 데이터 로깅
+          Rails.logger.info("인증코드 정보: 전화번호=#{phone_number}, 저장코드=#{verification.code}, 만료시간=#{verification.expires_at}, 현재시간=#{Time.current}")
+          
           # 만료 확인
           if verification.expires_at < Time.current
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 만료된 인증 코드")
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 만료된 인증 코드. 만료시간: #{verification.expires_at}, 현재시간: #{Time.current}")
             return render json: { error: '인증 코드가 만료되었습니다. 다시 요청해주세요.' }, status: :bad_request
           end
           
-          # 코드 확인
-          if verification.code == code
+          # 코드 확인 - 문자열 비교 확실히
+          if verification.code.to_s.strip == code.to_s.strip
             # 인증 성공 처리
             verification.update(verified: true)
             
@@ -181,11 +193,11 @@ module Api
             
             Rails.logger.info("인증코드 확인 성공: #{phone_number}")
           else
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: #{code}, 저장: #{verification.code}")
+            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: '#{code}', 저장: '#{verification.code}'")
             render json: { error: '인증 코드가 일치하지 않습니다.' }, status: :bad_request
           end
         rescue => e
-          Rails.logger.error("인증코드 확인 중 오류: #{e.message}")
+          Rails.logger.error("인증코드 확인 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: '인증 확인 중 오류가 발생했습니다.' }, status: :internal_server_error
         end
       end
@@ -236,9 +248,15 @@ module Api
         phone_number =~ /^01[0-9]{8,9}$/
       end
       
-      # 인증 코드 생성 (6자리 숫자)
+      # 더 안전한 인증 코드 생성 (6자리 숫자)
+      def generate_secure_verification_code
+        # SecureRandom 사용하여 중복 가능성이 낮은 코드 생성
+        SecureRandom.random_number(100000..999999).to_s
+      end
+      
+      # 기존 인증 코드 생성 메서드는 유지 (호환성)
       def generate_verification_code
-        rand(100000..999999).to_s
+        generate_secure_verification_code
       end
       
       # SMS 전송 메소드 (실제 구현은 서비스에 따라 다름)
