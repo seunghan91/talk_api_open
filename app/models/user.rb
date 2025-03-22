@@ -20,9 +20,14 @@ class User < ApplicationRecord
   has_one :wallet, dependent: :destroy
   has_many :notifications, dependent: :destroy
   has_many :phone_verifications, dependent: :destroy
+  has_one :latest_verification, -> { order(created_at: :desc) }, class_name: 'PhoneVerification'
   
   # 사용자 생성 후 지갑 자동 생성
   after_create :create_wallet_for_user
+  
+  # 전화번호 유효성 검증
+  validates :phone_number, presence: true, uniqueness: true
+  validate :valid_phone_number_format
   
   # 비밀번호 유효성 검사 (비밀번호가 있는 경우에만)
   validates :password, length: { minimum: 6 }, if: -> { password.present? }
@@ -37,6 +42,13 @@ class User < ApplicationRecord
   # 하지만 명시적으로 쓰고 싶다면:
   # attribute :push_token, :string
 
+  # 전화번호 형식 검증 메서드
+  def valid_phone_number_format
+    unless phone_number.present? && (phone_number.match?(/^\d{10,11}$/))
+      errors.add(:phone_number, "는 10-11자리 숫자여야 합니다.")
+    end
+  end
+  
   # 신고 횟수 카운트 메서드
   def report_count
     reports_as_reported.count
@@ -71,6 +83,14 @@ class User < ApplicationRecord
   # 읽지 않은 알림 수 조회
   def unread_notification_count
     notifications.unread.count
+  end
+  
+  # 최근 인증 코드 찾기
+  def latest_valid_verification
+    phone_verifications.where(verified: false)
+                      .where("expires_at > ?", Time.current)
+                      .order(created_at: :desc)
+                      .first
   end
   
   private
