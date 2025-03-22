@@ -32,9 +32,11 @@ Rails.application.routes.draw do
       namespace :auth do
         post "request_code", to: "auth#request_code"
         post "verify_code", to: "auth#verify_code"
+        post "resend_code", to: "auth#resend_code"
         post "register", to: "auth#register"
         post "login", to: "auth#login"
         post "logout", to: "auth#logout"
+        post "check_phone", to: "auth#check_phone"
       end
       
       # 지갑 관련 API
@@ -111,9 +113,11 @@ Rails.application.routes.draw do
     # 인증 관련 API
     post "auth/request_code", to: "v1/auth#request_code"
     post "auth/verify_code", to: "v1/auth#verify_code"
+    post "auth/resend_code", to: "v1/auth#resend_code"
     post "auth/register", to: "v1/auth#register"
     post "auth/login", to: "v1/auth#login"
     post "auth/logout", to: "v1/auth#logout"
+    post "auth/check_phone", to: "v1/auth#check_phone"
 
     # 사용자 관련 API
     get "users/me", to: "v1/users#me"

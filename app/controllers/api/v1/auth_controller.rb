@@ -3,7 +3,7 @@ module Api
   module V1
     class AuthController < Api::V1::BaseController
       # 인증이 필요한 액션에서만 authorize_request 실행
-      before_action :authorize_request, except: [:login, :register, :request_code, :verify_code, :check_phone]
+      before_action :authorize_request, except: [:login, :register, :request_code, :verify_code, :check_phone, :resend_code]
       
       # 로그인 처리
       def login
@@ -135,12 +135,21 @@ module Api
           # 실제 환경에서는 SMS 전송
           send_sms(phone_number, "인증 코드: #{code}") if Rails.env.production?
           
-          render json: { 
+          # 응답 - 개발 및 스테이징 환경에서는 코드 포함, 프로덕션에서는 제외
+          response_data = { 
             message: '인증 코드가 발송되었습니다.',
-            code: Rails.env.development? ? code : nil # 개발 환경에서만 코드 반환
-          }, status: :ok
+            expires_at: verification.expires_at
+          }
           
-          Rails.logger.info("인증코드 발송 성공: #{phone_number}, 코드: #{code}")
+          # 개발 또는 스테이징 환경에서는 코드 반환 (테스트 용이성)
+          unless Rails.env.production?
+            response_data[:code] = code
+            response_data[:note] = '개발/스테이징 환경에서만 코드가 노출됩니다.'
+          end
+          
+          render json: response_data, status: :ok
+          
+          Rails.logger.info("인증코드 발송 성공: #{phone_number}, 코드: #{code}, 만료시간: #{verification.expires_at}")
         rescue => e
           Rails.logger.error("인증코드 발송 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: '인증 코드 발송에 실패했습니다.' }, status: :internal_server_error
@@ -186,17 +195,102 @@ module Api
               user: existing_user ? {
                 id: existing_user.id,
                 nickname: existing_user.nickname
-              } : nil
+              } : nil,
+              verification_status: {
+                verified: true,
+                verified_at: Time.current
+              }
             }, status: :ok
             
             Rails.logger.info("인증코드 확인 성공: #{phone_number}")
           else
+            # 재시도 남은 횟수 또는 다음 재전송 가능 시간 추가 (선택 사항)
+            remaining_attempts = 5 # 설정에 따라 조정 가능
+            
             Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: '#{code}', 저장: '#{verification.code}'")
-            render json: { error: '인증 코드가 일치하지 않습니다.' }, status: :bad_request
+            
+            render json: { 
+              error: '인증 코드가 일치하지 않습니다.',
+              verification_status: {
+                verified: false,
+                remaining_attempts: remaining_attempts,
+                can_resend: true,
+                expires_at: verification.expires_at
+              }
+            }, status: :bad_request
           end
         rescue => e
           Rails.logger.error("인증코드 확인 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: '인증 확인 중 오류가 발생했습니다.' }, status: :internal_server_error
+        end
+      end
+      
+      # 인증 코드 재전송 (편의성 향상)
+      def resend_code
+        phone_number = params[:phone_number]
+        
+        # 로그 추가
+        Rails.logger.info("인증코드 재전송 요청: #{phone_number}")
+        
+        # 전화번호 형식 검증
+        unless valid_phone_number?(phone_number)
+          Rails.logger.warn("인증코드 재전송 실패: #{phone_number} - 유효하지 않은 전화번호 형식")
+          return render json: { error: '유효하지 않은 전화번호 형식입니다.' }, status: :bad_request
+        end
+        
+        begin
+          # 기존 인증 정보 찾기
+          verification = PhoneVerification.find_by(phone_number: phone_number)
+          
+          # 인증 정보가 없으면 새로 생성
+          if verification.nil?
+            Rails.logger.info("인증코드 재전송: #{phone_number} - 기존 인증 정보 없음, 새로 생성")
+            request_code
+            return
+          end
+          
+          # 마지막 전송 시간 확인 (너무 빈번한 요청 방지, 옵션)
+          # 예: 1분 이내 재전송 제한
+          if verification.updated_at && verification.updated_at > 1.minute.ago
+            remaining_seconds = ((verification.updated_at + 1.minute) - Time.current).to_i
+            
+            Rails.logger.warn("인증코드 재전송 제한: #{phone_number} - 재전송 대기 시간: #{remaining_seconds}초")
+            return render json: { 
+              error: '잠시 후 다시 시도해주세요.',
+              wait_seconds: remaining_seconds
+            }, status: :too_many_requests
+          end
+          
+          # 새 인증 코드 생성
+          code = generate_secure_verification_code
+          
+          # 인증 정보 업데이트
+          verification.code = code
+          verification.expires_at = 10.minutes.from_now
+          verification.verified = false
+          verification.save!
+          
+          # 실제 환경에서는 SMS 전송
+          send_sms(phone_number, "인증 코드: #{code}") if Rails.env.production?
+          
+          # 응답 - 개발 및 스테이징 환경에서는 코드 포함, 프로덕션에서는 제외
+          response_data = { 
+            message: '인증 코드가 재발송되었습니다.',
+            expires_at: verification.expires_at
+          }
+          
+          # 개발 또는 스테이징 환경에서는 코드 반환 (테스트 용이성)
+          unless Rails.env.production?
+            response_data[:code] = code
+            response_data[:note] = '개발/스테이징 환경에서만 코드가 노출됩니다.'
+          end
+          
+          render json: response_data, status: :ok
+          
+          Rails.logger.info("인증코드 재전송 성공: #{phone_number}, 코드: #{code}, 만료시간: #{verification.expires_at}")
+        rescue => e
+          Rails.logger.error("인증코드 재전송 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: '인증 코드 재전송에 실패했습니다.' }, status: :internal_server_error
         end
       end
       
