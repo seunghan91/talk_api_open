@@ -62,52 +62,50 @@ module Api
             }, status: :unprocessable_entity
           end
 
-          # 인증 코드 확인
+          # 인증 코드 확인 - 임시로 우회
           verification = PhoneVerification.find_by(phone_number: phone_number)
 
-          # 인증 레코드 자체가 없는 경우
+          # 인증 레코드가 있는 경우 로깅만 하고 진행 (인증 검증 로직 임시 제거)
           if verification.nil?
-            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시도 기록 없음")
-            return render json: { 
-              error: "전화번호 인증을 먼저 진행해주세요.",
-              verification_required: true,
-              verification_status: {
-                verified: false,
-                message: "인증이 필요합니다."
-              }
-            }, status: :unprocessable_entity
+            # 인증 레코드가 없는 경우도 로깅만 하고 진행
+            Rails.logger.warn("회원가입 임시 허용: #{phone_number} - 인증 기록 없음 (인증 검증 임시 비활성화)")
+          else
+            # 인증 상태 로깅
+            verified_status = verification.verified ? "인증됨" : "미인증" 
+            Rails.logger.warn("회원가입 임시 허용: #{phone_number} - 인증 상태: #{verified_status} (인증 검증 임시 비활성화)")
           end
 
-          # 인증 검증
-          verified = verification.verified == true
+          # 임시 우회 조치 로그
+          Rails.logger.info("⚠️ 주의: 인증 단계 임시 우회 중 - 향후 SMS 인증 연동 후 검증 로직 복원 필요")
 
-          unless verified
-            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
-            return render json: { 
-              error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
-              verification_required: true,
-              verification_status: {
-                verified: false,
-                can_resend: true,
-                message: "인증 코드 확인이 필요합니다."
-              }
-            }, status: :unprocessable_entity
-          end
-
-          # 인증 시간 확인 (추가 보안 - 인증 후 30분 이내만 회원가입 허용)
-          if verification.updated_at < 30.minutes.ago
-            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
-            return render json: { 
-              error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
-              verification_required: true,
-              verification_status: {
-                verified: false,
-                can_resend: true,
-                expired: true,
-                message: "인증이 만료되었습니다."
-              }
-            }, status: :unprocessable_entity
-          end
+          # *** 인증 검증 로직 주석 처리 - 임시 조치 ***
+          # unless verified
+          #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
+          #   return render json: { 
+          #     error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
+          #     verification_required: true,
+          #     verification_status: {
+          #       verified: false,
+          #       can_resend: true,
+          #       message: "인증 코드 확인이 필요합니다."
+          #     }
+          #   }, status: :unprocessable_entity
+          # end
+          
+          # *** 인증 시간 확인 로직 주석 처리 - 임시 조치 ***
+          # if verification.updated_at < 30.minutes.ago
+          #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
+          #   return render json: { 
+          #     error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
+          #     verification_required: true,
+          #     verification_status: {
+          #       verified: false,
+          #       can_resend: true,
+          #       expired: true,
+          #       message: "인증이 만료되었습니다."
+          #     }
+          #   }, status: :unprocessable_entity
+          # end
 
           # 사용자 생성
           @user = User.new(user_params)
