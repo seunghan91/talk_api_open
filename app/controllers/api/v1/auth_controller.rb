@@ -179,20 +179,13 @@ module Api
           # 인증 코드를 로그에 기록 (디버깅용, 프로덕션에서도 로그에는 기록)
           Rails.logger.info("🔑 인증코드 발급: 전화번호=#{phone_number}, 코드=#{code}, 만료=#{verification.expires_at.strftime('%H:%M:%S')}")
 
-          # 환경에 따라 다른 응답
-          if Rails.env.development? || Rails.env.test?
-            render json: { 
-              message: "인증 코드가 발송되었습니다.", 
-              code: code,
-              expires_at: verification.expires_at,
-              development_note: "개발 환경에서만 코드가 직접 표시됩니다."
-            }, status: :ok
-          else
-            render json: { 
-              message: "인증 코드가 발송되었습니다.",
-              expires_at: verification.expires_at
-            }, status: :ok
-          end
+          # 모든 환경에서 코드를 응답에 포함 (요청에 따른 임시 변경)
+          render json: { 
+            message: "인증 코드가 발송되었습니다.", 
+            code: code,
+            expires_at: verification.expires_at,
+            note: "보안 주의: 모든 환경에서 코드가 직접 표시됩니다."
+          }, status: :ok
         rescue => e
           Rails.logger.error("인증코드 발송 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: "인증 코드 발송에 실패했습니다." }, status: :internal_server_error
@@ -347,20 +340,15 @@ module Api
           # 실제 환경에서는 SMS 전송
           send_sms(phone_number, "인증 코드: #{code}") if Rails.env.production?
 
-          # 응답 - 개발 및 스테이징 환경에서는 코드 포함, 프로덕션에서는 제외
+          # 응답 - 모든 환경에서 코드 포함 (요청에 따른 임시 변경)
           response_data = {
             message: "인증 코드가 재발송되었습니다.",
+            code: code,
             expires_at: verification.expires_at,
-            development_mode: !Rails.env.production?
+            note: "보안 주의: 모든 환경에서 코드가 직접 표시됩니다."
           }
 
-          # 개발 또는 스테이징 환경에서는 코드 반환 (테스트 용이성)
-          unless Rails.env.production?
-            response_data[:code] = code
-            response_data[:note] = "개발/스테이징 환경에서만 코드가 노출됩니다."
-          end
-
-          # 인증 코드 정보를 로그에 항상 기록 (중요: 프로덕션 환경에서도)
+          # 인증 코드 정보를 로그에 항상 기록
           Rails.logger.info("🔐 인증코드 재발송 정보 (관리자 확인용): 전화번호=#{phone_number}, 코드=#{code}, 만료시간=#{verification.expires_at}")
 
           render json: response_data, status: :ok
@@ -420,10 +408,7 @@ module Api
 
       # 더 안전한 인증 코드 생성 (6자리 숫자)
       def generate_secure_verification_code
-        # 개발 환경에서는 고정 코드 사용 (테스트 편의성)
-        return "123456" if Rails.env.development?
-        
-        # 프로덕션 환경에서는 SecureRandom 사용하여 중복 가능성이 낮은 코드 생성
+        # 모든 환경에서 랜덤 코드 생성
         SecureRandom.random_number(100000..999999).to_s
       end
 
