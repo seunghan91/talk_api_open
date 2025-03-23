@@ -33,7 +33,7 @@ gem "jwt"
 
 # Background jobs
 gem "sidekiq", "~> 7.1"
-gem "redis", "~> 4.0"
+gem "redis", "~> 5.4"
 
 # 필요한 기본 gem만 유지하고 나머지는 배포 성공 후 추가
 # gem 'sidekiq-cron'
