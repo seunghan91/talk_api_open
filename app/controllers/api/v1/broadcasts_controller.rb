@@ -7,6 +7,37 @@ module Api
       # request_code와 verify_code 액션이 없으므로 제거
       # skip_before_action :authorize_request, only: [:request_code, :verify_code]
 
+      # 예제 브로드캐스트 API 추가
+      def example_broadcast
+        begin
+          # 샘플 오디오 파일 URL 생성
+          base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://#{request.host_with_port}")
+          sample_audio_url = "#{base_url}/audio_samples/sample_audio.wav"
+          
+          # 샘플 브로드캐스트 응답 생성
+          render json: {
+            example_broadcast: {
+              id: 999,
+              text: "이것은 샘플 브로드캐스트입니다.",
+              audio_url: sample_audio_url,
+              created_at: Time.current,
+              sender: {
+                id: current_user.id,
+                nickname: current_user.nickname
+              }
+            },
+            message: "이 브로드캐스트는 테스트용 예제입니다. 실제 데이터베이스에 저장되지 않습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }
+        rescue => e
+          Rails.logger.error("예제 브로드캐스트 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { 
+            error: "예제 브로드캐스트를 조회하는 중 오류가 발생했습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :internal_server_error
+        end
+      end
+
       def index
         begin
           # 현재 사용자가 보낸 방송 목록 + 수신한 방송 목록

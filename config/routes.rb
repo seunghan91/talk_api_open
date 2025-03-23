@@ -92,6 +92,9 @@ Rails.application.routes.draw do
         member do
           post :reply
         end
+        collection do
+          get :example_broadcast
+        end
       end
 
       # 대화 관련 API

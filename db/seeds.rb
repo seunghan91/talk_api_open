@@ -104,30 +104,85 @@ puts "대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[2].n
 puts "메시지 생성 시작..."
 
 if defined?(Message) && Message.table_exists? && Message.column_names.include?('message_type')
-  puts "샘플 음성 파일이 없어 메시지는 생성하지 않았습니다. 실제 음성 파일을 통해 메시지를 생성해야 합니다."
-
-  # 참고: 실제 서버 환경에서는 아래 코드를 사용하여 음성 파일 및 텍스트 메시지를 생성할 수 있습니다.
-  #
-  # # 1. 음성 메시지
-  # voice_message = Message.new(
-  #   conversation_id: conversation1.id,
-  #   sender_id: created_users[0].id,
-  #   message_type: "voice"
-  # )
-  #
-  # # 파일을 첨부할 경우 다음과 같이 할 수 있습니다 (파일 경로는 예시)
-  # # voice_message.voice_file.attach(io: File.open('path/to/voice.m4a'), filename: 'voice.m4a')
-  # # voice_message.save!
-  #
-  # # 2. 텍스트 메시지
-  # text_message = Message.create!(
-  #   conversation_id: conversation1.id,
-  #   sender_id: created_users[1].id,
-  #   content: "안녕하세요! 메시지 확인했습니다.",
-  #   message_type: "text"
-  # )
-
-  puts "메시지 생성 건너뜀! 앱에서 직접 메시지를 생성하세요."
+  # 샘플 오디오 파일 경로
+  base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://localhost:3000")
+  audio_samples = [
+    "#{base_url}/audio_samples/sample_audio.wav",
+    "#{base_url}/audio_samples/sample_audio1..wav",
+    "#{base_url}/audio_samples/sample_audio2.wav"
+  ]
+  
+  # 브로드캐스트 생성
+  broadcast1 = Broadcast.new(
+    user_id: created_users[0].id,
+    text: "안녕하세요! 이것은 테스트 브로드캐스트입니다."
+  )
+  
+  # 로컬 파일 첨부
+  audio_path = Rails.root.join('public', 'audio_samples', 'sample_audio.wav')
+  if File.exist?(audio_path)
+    broadcast1.audio.attach(io: File.open(audio_path), filename: 'sample_audio.wav', content_type: 'audio/wav')
+    broadcast1.save!
+    puts "브로드캐스트 생성됨: ID #{broadcast1.id}, 발신자: #{created_users[0].nickname}"
+    
+    # 브로드캐스트를 이용한 대화방 생성 (이미 존재하면 기존 대화방 사용)
+    conversation3 = Conversation.find_or_create_conversation(
+      created_users[0].id, 
+      created_users[3].id, 
+      broadcast1
+    )
+    puts "브로드캐스트 대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[3].nickname}"
+    
+    # 브로드캐스트 관련 메시지가 자동 생성되었는지 확인
+    broadcast_message = conversation3.messages.find_by(broadcast_id: broadcast1.id)
+    unless broadcast_message
+      # 브로드캐스트 메시지 수동 생성
+      broadcast_message = Message.create!(
+        conversation_id: conversation3.id,
+        sender_id: created_users[0].id,
+        broadcast_id: broadcast1.id,
+        message_type: "voice"
+      )
+      puts "브로드캐스트 메시지 수동 생성됨: ID #{broadcast_message.id}"
+    else
+      puts "브로드캐스트 메시지 자동 생성됨: ID #{broadcast_message.id}"
+    end
+    
+    # 응답 메시지 생성
+    response_message = Message.create!(
+      conversation_id: conversation3.id,
+      sender_id: created_users[3].id,
+      content: "브로드캐스트 잘 받았습니다!",
+      message_type: "text"
+    )
+    puts "응답 메시지 생성됨: ID #{response_message.id}"
+    
+    # 일반 음성 메시지 생성
+    audio_path2 = Rails.root.join('public', 'audio_samples', 'sample_audio1..wav')
+    if File.exist?(audio_path2)
+      voice_message = Message.new(
+        conversation_id: conversation1.id,
+        sender_id: created_users[0].id,
+        message_type: "voice"
+      )
+      voice_message.voice_file.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
+      voice_message.save!
+      puts "음성 메시지 생성됨: ID #{voice_message.id}, 대화방: #{conversation1.id}"
+    else
+      puts "음성 파일을 찾을 수 없음: #{audio_path2}"
+    end
+    
+    # 텍스트 메시지 생성
+    text_message = Message.create!(
+      conversation_id: conversation1.id,
+      sender_id: created_users[1].id,
+      content: "안녕하세요! 메시지 확인했습니다.",
+      message_type: "text"
+    )
+    puts "텍스트 메시지 생성됨: ID #{text_message.id}, 대화방: #{conversation1.id}"
+  else
+    puts "샘플 오디오 파일을 찾을 수 없음: #{audio_path}"
+  end
 else
   puts "메시지 테이블에 필요한 컬럼이 없습니다. 메시지 생성을 건너뜁니다."
 end
