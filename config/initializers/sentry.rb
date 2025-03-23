@@ -9,7 +9,7 @@ Sentry.init do |config|
   config.traces_sample_rate = 0.5
   
   # 민감한 파라미터 필터링
-  config.filter_parameters = %w[password token auth_token code phone_number verification_id jwt]
+  config.skippable_params = %w[password token auth_token code phone_number verification_id jwt]
   
   # 사용자 정보 추가
   config.before_send = lambda do |event, hint|
