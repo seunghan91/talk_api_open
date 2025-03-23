@@ -111,6 +111,9 @@ module Api
           #   }, status: :unprocessable_entity
           # end
 
+          # 디버깅을 위한 파라미터 로깅
+          Rails.logger.info("회원가입 파라미터: #{user_params.inspect}")
+
           # 사용자 생성
           @user = User.new(user_params)
           @user.last_login_at = Time.current
@@ -139,9 +142,9 @@ module Api
             Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - #{@user.errors.full_messages.join(', ')}")
             render json: { error: @user.errors.full_messages.join(", ") }, status: :unprocessable_entity
           end
-        rescue => e
+        rescue StandardError => e
           Rails.logger.error("회원가입 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { error: "회원가입 중 오류가 발생했습니다." }, status: :internal_server_error
+          render json: { error: "회원가입 중 오류가 발생했습니다. (#{e.message})" }, status: :internal_server_error
         end
       end
 
