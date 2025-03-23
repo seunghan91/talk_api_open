@@ -2,6 +2,7 @@
 class Message < ApplicationRecord
   belongs_to :conversation
   belongs_to :sender, class_name: "User"
+  belongs_to :broadcast, optional: true
 
   # 파일 첨부 기능 활성화
   has_one_attached :voice_file
@@ -36,6 +37,70 @@ class Message < ApplicationRecord
     return voice_file.attached? if message_type == "voice"
     return image_file.attached? if message_type == "image"
     false
+  end
+
+  # 컬렉션에서 중복된 메시지 제거
+  scope :unique_by_broadcast, -> { select('DISTINCT ON (broadcast_id) *').where.not(broadcast_id: nil) }
+
+  # 브로드캐스트 관련 메시지인지 확인
+  def broadcast?
+    broadcast_id.present?
+  end
+
+  # 메시지가 읽혔는지 확인
+  def read?
+    read_at.present?
+  end
+
+  # 메시지 읽음 처리
+  def mark_as_read!
+    return if read?
+    update(read_at: Time.current)
+  end
+
+  # 메시지 삭제 처리 (실제 삭제는 수행하지 않고 삭제 플래그만 설정)
+  def soft_delete_for_user!(user_id)
+    if sender_id == user_id
+      update(deleted_by_sender: true)
+    else
+      update(deleted_by_recipient: true)
+    end
+    
+    # 양쪽 모두 삭제 처리된 경우 실제 삭제
+    destroy if deleted_by_sender && deleted_by_recipient
+  end
+
+  # 메시지 내용 요약 (미리보기용)
+  def preview
+    if voice_file.attached?
+      "음성 메시지"
+    elsif text.present?
+      text.truncate(30)
+    elsif broadcast.present?
+      "브로드캐스트 메시지"
+    else
+      "내용 없음"
+    end
+  end
+
+  # 음성 파일 URL
+  def voice_url
+    voice_file.attached? ? voice_file.url : nil
+  end
+
+  # 브로드캐스트 메시지인 경우 음성 파일 URL 반환
+  def broadcast_voice_url
+    return nil unless broadcast
+    broadcast.voice_file.attached? ? broadcast.voice_file.url : nil
+  end
+  
+  # 사용자가 메시지를 볼 수 있는지 확인
+  def visible_to?(user_id)
+    if sender_id == user_id
+      !deleted_by_sender
+    else
+      !deleted_by_recipient
+    end
   end
 
   private
