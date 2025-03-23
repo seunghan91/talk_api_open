@@ -1,0 +1,100 @@
+---
+openapi: 3.0.1
+info:
+  title: Talk API
+  description: Talk 애플리케이션의 API 문서
+  version: v1
+servers:
+- url: "{defaultHost}"
+  variables:
+    defaultHost:
+      default: https://api.talkapp.io
+paths:
+  /api/v1/auth/login:
+    post:
+      summary: 사용자 로그인
+      tags:
+      - 인증
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_number:
+                  type: string
+                password:
+                  type: string
+              required:
+              - phone_number
+              - password
+      responses:
+        '200':
+          description: 로그인 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      phone_number:
+                        type: string
+                      nickname:
+                        type: string
+                      
+  /api/v1/auth/register:
+    post:
+      summary: 사용자 회원가입
+      tags:
+      - 인증
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_number:
+                  type: string
+                nickname:
+                  type: string
+                password:
+                  type: string
+                gender:
+                  type: string
+              required:
+              - phone_number
+              - nickname
+              - password
+      responses:
+        '201':
+          description: 회원가입 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      phone_number:
+                        type: string
+                      nickname:
+                        type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT 
