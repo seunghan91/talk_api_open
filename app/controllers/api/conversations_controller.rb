@@ -4,18 +4,90 @@ module Api
     before_action :authorize_request
 
     def index
-      # 사용자별 대화 목록 캐싱 (1분 유효)
-      @conversations = Rails.cache.fetch("conversations-user-#{current_user.id}", expires_in: 1.minute) do
-        Conversation.where("user_a_id = ? OR user_b_id = ?", current_user.id, current_user.id)
-                    .order(updated_at: :desc)
-                    .includes(:user_a, :user_b)
-                    .to_a
+      begin
+        Rails.logger.info("대화 목록 조회 시작: 사용자 ID #{current_user.id}")
+        
+        # 사용자별 대화 목록 캐싱 (1분 유효)
+        @conversations = Rails.cache.fetch("conversations-user-#{current_user.id}", expires_in: 1.minute) do
+          Rails.logger.debug("대화 목록 캐시 미스, DB에서 조회 중...")
+          conversations = Conversation.where("user_a_id = ? OR user_b_id = ?", current_user.id, current_user.id)
+                      .order(updated_at: :desc)
+                      .includes(:user_a, :user_b, messages: [:broadcast])
+                      .to_a
+          
+          Rails.logger.debug("대화 목록 DB 조회 완료: #{conversations.count}개 대화 찾음")
+          conversations
+        end
+        
+        Rails.logger.info("대화 목록 반환: #{@conversations.count}개")
+        
+        # 대화 목록 변환
+        formatted_conversations = @conversations.map do |conversation|
+          begin
+            # 상대방 정보 구성
+            other_user = (conversation.user_a_id == current_user.id) ? conversation.user_b : conversation.user_a
+            
+            # 메시지 정보 구성
+            last_message = conversation.messages.max_by(&:created_at)
+            
+            # 마지막 메시지가 없는 경우 처리
+            unless last_message
+              Rails.logger.warn("대화 ID #{conversation.id}에 메시지가 없음")
+              next nil
+            end
+            
+            # 메시지 유형별 처리
+            message_content = if last_message.message_type == "voice"
+              "음성 메시지"
+            elsif last_message.broadcast_id.present?
+              # 브로드캐스트 참조 메시지 처리
+              begin
+                broadcast = last_message.broadcast
+                broadcast ? "브로드캐스트: #{broadcast.content&.truncate(20) || '내용 없음'}" : "삭제된 브로드캐스트"
+              rescue => e
+                Rails.logger.error("브로드캐스트 참조 오류: #{e.message}")
+                "브로드캐스트 메시지"
+              end
+            else
+              last_message.content || "메시지"
+            end
+            
+            {
+              id: conversation.id,
+              with_user: {
+                id: other_user.id,
+                nickname: other_user.nickname,
+                gender: other_user.gender || "unspecified"
+              },
+              last_message: {
+                id: last_message.id,
+                content: message_content,
+                created_at: last_message.created_at,
+                message_type: last_message.message_type || "voice" # 기본값 제공
+              },
+              updated_at: conversation.updated_at,
+              favorite: conversation.favorite || false
+            }
+          rescue => e
+            Rails.logger.error("대화 정보 변환 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
+            nil
+          end
+        end.compact
+        
+        render json: {
+          success: true,
+          conversations: formatted_conversations,
+          request_id: request.request_id || SecureRandom.uuid
+        }
+      rescue => e
+        Rails.logger.error("대화 목록 조회 오류: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { 
+          success: false,
+          error: "대화 목록을 불러오는 데 실패했습니다.",
+          details: Rails.env.development? ? e.message : nil,
+          request_id: request.request_id || SecureRandom.uuid
+        }, status: :internal_server_error
       end
-
-      render json: @conversations, include: {
-        user_a: { only: [ :id, :nickname, :gender ] },
-        user_b: { only: [ :id, :nickname, :gender ] }
-      }
     end
 
     def show
