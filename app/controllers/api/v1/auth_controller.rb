@@ -62,50 +62,52 @@ module Api
             }, status: :unprocessable_entity
           end
 
-          # 인증 코드 확인 - 임시로 우회
+          # 인증 코드 확인
           verification = PhoneVerification.find_by(phone_number: phone_number)
 
-          # 인증 레코드가 있는 경우 로깅만 하고 진행 (인증 검증 로직 임시 제거)
+          # 인증 레코드 자체가 없는 경우
           if verification.nil?
-            # 인증 레코드가 없는 경우도 로깅만 하고 진행
-            Rails.logger.warn("회원가입 임시 허용: #{phone_number} - 인증 기록 없음 (인증 검증 임시 비활성화)")
-          else
-            # 인증 상태 로깅
-            verified_status = verification.verified ? "인증됨" : "미인증" 
-            Rails.logger.warn("회원가입 임시 허용: #{phone_number} - 인증 상태: #{verified_status} (인증 검증 임시 비활성화)")
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시도 기록 없음")
+            return render json: { 
+              error: "전화번호 인증을 먼저 진행해주세요.",
+              verification_required: true,
+              verification_status: {
+                verified: false,
+                message: "인증이 필요합니다."
+              }
+            }, status: :unprocessable_entity
           end
 
-          # 임시 우회 조치 로그
-          Rails.logger.info("⚠️ 주의: 인증 단계 임시 우회 중 - 향후 SMS 인증 연동 후 검증 로직 복원 필요")
+          # 인증 검증
+          verified = verification.verified == true
 
-          # *** 인증 검증 로직 주석 처리 - 임시 조치 ***
-          # unless verified
-          #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
-          #   return render json: { 
-          #     error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
-          #     verification_required: true,
-          #     verification_status: {
-          #       verified: false,
-          #       can_resend: true,
-          #       message: "인증 코드 확인이 필요합니다."
-          #     }
-          #   }, status: :unprocessable_entity
-          # end
-          
-          # *** 인증 시간 확인 로직 주석 처리 - 임시 조치 ***
-          # if verification.updated_at < 30.minutes.ago
-          #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
-          #   return render json: { 
-          #     error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
-          #     verification_required: true,
-          #     verification_status: {
-          #       verified: false,
-          #       can_resend: true,
-          #       expired: true,
-          #       message: "인증이 만료되었습니다."
-          #     }
-          #   }, status: :unprocessable_entity
-          # end
+          unless verified
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
+            return render json: { 
+              error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
+              verification_required: true,
+              verification_status: {
+                verified: false,
+                can_resend: true,
+                message: "인증 코드 확인이 필요합니다."
+              }
+            }, status: :unprocessable_entity
+          end
+
+          # 인증 시간 확인 (추가 보안 - 인증 후 30분 이내만 회원가입 허용)
+          if verification.updated_at < 30.minutes.ago
+            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
+            return render json: { 
+              error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
+              verification_required: true,
+              verification_status: {
+                verified: false,
+                can_resend: true,
+                expired: true,
+                message: "인증이 만료되었습니다."
+              }
+            }, status: :unprocessable_entity
+          end
 
           # 사용자 생성
           @user = User.new(user_params)
@@ -174,32 +176,23 @@ module Api
             Rails.logger.info("SMS 전송 완료: #{phone_number}")
           end
 
-          # 응답 데이터 구성
-          response_data = {
-            message: "인증 코드가 발송되었습니다.",
-            expires_at: verification.expires_at,
-            dev_mode: !Rails.env.production?
-          }
-
-          # 개발 또는 스테이징 환경에서만 코드 제공
-          unless Rails.env.production?
-            response_data[:code] = code
-            response_data[:note] = "개발/스테이징 환경에서만 코드가 노출됩니다."
-          end
-
-          # 추가 정보 (테스트 편의성)
-          if Rails.env.development? || Rails.env.test?
-            response_data[:test_info] = {
-              code_valid_until: verification.expires_at.strftime("%Y-%m-%d %H:%M:%S"),
-              remaining_time: ((verification.expires_at - Time.current) / 60).round(1),
-              phone_number: phone_number
-            }
-          end
-
           # 인증 코드를 로그에 기록 (디버깅용, 프로덕션에서도 로그에는 기록)
           Rails.logger.info("🔑 인증코드 발급: 전화번호=#{phone_number}, 코드=#{code}, 만료=#{verification.expires_at.strftime('%H:%M:%S')}")
 
-          render json: response_data, status: :ok
+          # 환경에 따라 다른 응답
+          if Rails.env.development? || Rails.env.test?
+            render json: { 
+              message: "인증 코드가 발송되었습니다.", 
+              code: code,
+              expires_at: verification.expires_at,
+              development_note: "개발 환경에서만 코드가 직접 표시됩니다."
+            }, status: :ok
+          else
+            render json: { 
+              message: "인증 코드가 발송되었습니다.",
+              expires_at: verification.expires_at
+            }, status: :ok
+          end
         rescue => e
           Rails.logger.error("인증코드 발송 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: "인증 코드 발송에 실패했습니다." }, status: :internal_server_error
