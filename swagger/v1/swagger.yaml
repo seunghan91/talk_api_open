@@ -48,7 +48,95 @@ paths:
                         type: string
                       nickname:
                         type: string
-                      
+                      last_login_at:
+                        type: string
+                        format: date-time
+                  
+  /api/v1/auth/request_code:
+    post:
+      summary: 인증 코드 요청
+      tags:
+      - 인증
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_number:
+                  type: string
+              required:
+              - phone_number
+      responses:
+        '200':
+          description: 인증 코드 전송 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  expires_at:
+                    type: string
+                    format: date-time
+                  code:
+                    type: string
+                    description: 개발 환경에서만 제공됩니다.
+                  note:
+                    type: string
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  
+  /api/v1/auth/verify_code:
+    post:
+      summary: 인증 코드 확인
+      tags:
+      - 인증
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone_number:
+                  type: string
+                code:
+                  type: string
+              required:
+              - phone_number
+              - code
+      responses:
+        '200':
+          description: 인증 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  verified:
+                    type: boolean
+                  message:
+                    type: string
+        '400':
+          description: 잘못된 요청 또는 인증 코드 불일치
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  
   /api/v1/auth/register:
     post:
       summary: 사용자 회원가입
@@ -69,6 +157,7 @@ paths:
                   type: string
                 gender:
                   type: string
+                  enum: [male, female, unspecified]
               required:
               - phone_number
               - nickname
@@ -92,6 +181,625 @@ paths:
                         type: string
                       nickname:
                         type: string
+        '400':
+          description: 잘못된 요청 (전화번호 미인증 등)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  
+  /api/v1/users/profile:
+    get:
+      summary: 프로필 조회
+      tags:
+      - 사용자
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 프로필 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  nickname:
+                    type: string
+                  phone_number:
+                    type: string
+                  last_login_at:
+                    type: string
+                    format: date-time
+                  created_at:
+                    type: string
+                    format: date-time
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    
+  /api/v1/users/change_nickname:
+    post:
+      summary: 닉네임 변경
+      tags:
+      - 사용자
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nickname:
+                  type: string
+              required:
+              - nickname
+      responses:
+        '200':
+          description: 닉네임 변경 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  nickname:
+                    type: string
+        '400':
+          description: 잘못된 요청
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+
+  /api/v1/users/generate_random_nickname:
+    get:
+      summary: 랜덤 닉네임 생성
+      tags:
+      - 사용자
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 랜덤 닉네임 생성 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nickname:
+                    type: string
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    
+  /api/v1/conversations:
+    get:
+      summary: 대화 목록 조회
+      tags:
+      - 대화
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 대화 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        with_user:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            nickname:
+                              type: string
+                        last_message:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            sender_id:
+                              type: integer
+                            voice_url:
+                              type: string
+                            created_at:
+                              type: string
+                              format: date-time
+                        unread_count:
+                          type: integer
+                        favorited:
+                          type: boolean
+                        updated_at:
+                          type: string
+                          format: date-time
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    
+  /api/v1/conversations/{id}:
+    get:
+      summary: 특정 대화 조회
+      tags:
+      - 대화
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 대화 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  with_user:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      nickname:
+                        type: string
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        sender_id:
+                          type: integer
+                        voice_url:
+                          type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        read_at:
+                          type: string
+                          format: date-time
+                  favorited:
+                    type: boolean
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+        '404':
+          description: 대화를 찾을 수 없음
+          
+  /api/v1/conversations/{id}/send_message:
+    post:
+      summary: 메시지 전송
+      tags:
+      - 대화
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                voice_file:
+                  type: string
+                  format: binary
+              required:
+              - voice_file
+      responses:
+        '201':
+          description: 메시지 전송 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      sender_id:
+                        type: integer
+                      voice_url:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                  request_id:
+                    type: string
+        '400':
+          description: 잘못된 요청
+        '401':
+          description: 인증 실패
+        '404':
+          description: 대화를 찾을 수 없음
+                    
+  /api/v1/conversations/{id}/favorite:
+    post:
+      summary: 대화 즐겨찾기 추가
+      tags:
+      - 대화
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 즐겨찾기 추가 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  favorited:
+                    type: boolean
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+        '404':
+          description: 대화를 찾을 수 없음
+          
+  /api/v1/conversations/{id}/unfavorite:
+    post:
+      summary: 대화 즐겨찾기 제거
+      tags:
+      - 대화
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 즐겨찾기 제거 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  favorited:
+                    type: boolean
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+        '404':
+          description: 대화를 찾을 수 없음
+          
+  /api/v1/broadcasts:
+    post:
+      summary: 방송 전송
+      tags:
+      - 방송
+      security:
+      - bearerAuth: []
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                broadcast[audio]:
+                  type: string
+                  format: binary
+                broadcast[text]:
+                  type: string
+                broadcast[recipient_count]:
+                  type: string
+              required:
+              - broadcast[audio]
+      responses:
+        '201':
+          description: 방송 전송 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  text:
+                    type: string
+                  audio_url:
+                    type: string
+                  recipient_count:
+                    type: integer
+                  created_at:
+                    type: string
+                    format: date-time
+                  request_id:
+                    type: string
+        '400':
+          description: 잘못된 요청
+        '401':
+          description: 인증 실패
+                    
+  /api/v1/broadcasts/received:
+    get:
+      summary: 받은 방송 목록 조회
+      tags:
+      - 방송
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 받은 방송 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  broadcasts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        text:
+                          type: string
+                        audio_url:
+                          type: string
+                        sender:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            nickname:
+                              type: string
+                        created_at:
+                          type: string
+                          format: date-time
+                        expires_at:
+                          type: string
+                          format: date-time
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+                    
+  /api/v1/broadcasts/sent:
+    get:
+      summary: 보낸 방송 목록 조회
+      tags:
+      - 방송
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 보낸 방송 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  broadcasts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        text:
+                          type: string
+                        audio_url:
+                          type: string
+                        recipient_count:
+                          type: integer
+                        reply_count:
+                          type: integer
+                        created_at:
+                          type: string
+                          format: date-time
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+          
+  /api/v1/broadcasts/{id}:
+    get:
+      summary: 특정 방송 조회
+      tags:
+      - 방송
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: 방송 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  text:
+                    type: string
+                  audio_url:
+                    type: string
+                  sender:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      nickname:
+                        type: string
+                  created_at:
+                    type: string
+                    format: date-time
+                  expires_at:
+                    type: string
+                    format: date-time
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+        '404':
+          description: 방송을 찾을 수 없음
+          
+  /api/v1/broadcasts/{id}/reply:
+    post:
+      summary: 방송에 답장
+      tags:
+      - 방송
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                voice_file:
+                  type: string
+                  format: binary
+              required:
+              - voice_file
+      responses:
+        '200':
+          description: 답장 전송 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  conversation:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      with_user:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          nickname:
+                            type: string
+                  request_id:
+                    type: string
+        '400':
+          description: 잘못된 요청
+        '401':
+          description: 인증 실패
+        '404':
+          description: 방송을 찾을 수 없음
+          
+  /api/v1/broadcasts/example_broadcast:
+    get:
+      summary: 예제 방송 데이터 조회
+      tags:
+      - 방송
+      security:
+      - bearerAuth: []
+      responses:
+        '200':
+          description: 예제 방송 데이터 조회 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  example_broadcast:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      text:
+                        type: string
+                      audio_url:
+                        type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      sender:
+                        type: object
+                        properties:
+                          id:
+                            type: integer
+                          nickname:
+                            type: string
+                  message:
+                    type: string
+                  request_id:
+                    type: string
+        '401':
+          description: 인증 실패
+          
 components:
   securitySchemes:
     bearerAuth:
