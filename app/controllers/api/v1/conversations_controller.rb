@@ -6,6 +6,8 @@ module Api
       # 사용자의 대화 목록 조회
       def index
         begin
+          Rails.logger.info("대화 목록 조회 시작: 사용자 ID #{current_user.id}")
+          
           # 유저의 모든 대화 목록을 찾음 (자신이 user_a이거나 user_b인 경우)
           # 삭제되지 않은 대화만 가져오기
           @conversations = find_user_conversations
@@ -14,6 +16,8 @@ module Api
             Rails.logger.error("대화 목록 조회 실패: 사용자 ID #{current_user.id}의 대화를 찾을 수 없음")
             return render json: { error: "대화 목록을 불러오는 데 실패했습니다." }, status: :not_found
           end
+
+          Rails.logger.info("대화 목록 찾음: #{@conversations.count}개")
 
           # 대화 목록을 응답 형식에 맞춰 변환
           formatted_conversations = @conversations.map do |conversation|
@@ -28,6 +32,21 @@ module Api
               
               # 마지막 메시지 조회 - 삭제되지 않은 메시지만
               last_message = find_last_message(conversation)
+              
+              # 마지막 메시지가 없는 경우 로그 추가
+              unless last_message
+                Rails.logger.warn("마지막 메시지 없음: 대화 ID #{conversation.id}")
+                next nil # 메시지가 없는 대화는 표시하지 않음
+              end
+              
+              # 브로드캐스트 관련 메시지 처리 보강
+              if last_message.broadcast_id.present?
+                broadcast = Broadcast.find_by(id: last_message.broadcast_id)
+                unless broadcast
+                  Rails.logger.warn("브로드캐스트 메시지 처리 실패: 존재하지 않는 브로드캐스트 ID #{last_message.broadcast_id}")
+                  # 브로드캐스트가 없더라도 대화는 표시
+                end
+              end
               
               {
                 id: conversation.id,
@@ -49,6 +68,8 @@ module Api
           
           # 정렬: 마지막 메시지 시간 기준 내림차순
           formatted_conversations.sort_by! { |c| -c[:updated_at].to_i }
+
+          Rails.logger.info("대화 목록 응답 반환: #{formatted_conversations.size}개")
 
           render json: { 
             conversations: formatted_conversations,
@@ -279,6 +300,22 @@ module Api
           sender = User.find_by(id: message.sender_id)
           broadcast = Broadcast.find_by(id: message.broadcast_id)
           
+          # 브로드캐스트 정보가 없는 경우 기본값 제공 (삭제된 경우 등)
+          unless broadcast
+            Rails.logger.warn("브로드캐스트 정보 없음: ID #{message.broadcast_id}")
+            return {
+              id: message.id,
+              sender_id: message.sender_id,
+              sender_nickname: sender&.nickname,
+              is_broadcast: true,
+              broadcast_id: message.broadcast_id,
+              text: "브로드캐스트 메시지(삭제됨)",
+              has_voice: false,
+              created_at: message.created_at,
+              message_type: message.message_type || "voice"
+            }
+          end
+          
           return {
             id: message.id,
             sender_id: message.sender_id,
@@ -287,7 +324,8 @@ module Api
             broadcast_id: message.broadcast_id,
             text: broadcast&.text || "브로드캐스트 메시지",
             has_voice: broadcast&.audio&.attached?,
-            created_at: message.created_at
+            created_at: message.created_at,
+            message_type: message.message_type || "voice"
           }
         else
           {
@@ -296,7 +334,8 @@ module Api
             text: message.text,
             has_voice: message.voice_file.attached?,
             created_at: message.created_at,
-            is_broadcast: false
+            is_broadcast: false,
+            message_type: message.message_type || "voice"
           }
         end
       end
@@ -348,6 +387,24 @@ module Api
             sender = User.find_by(id: message.sender_id)
             broadcast = Broadcast.find_by(id: message.broadcast_id)
             
+            # 브로드캐스트 정보가 없는 경우 기본값 제공
+            unless broadcast
+              Rails.logger.warn("브로드캐스트 정보 없음 (메시지 목록): ID #{message.broadcast_id}")
+              next {
+                id: message.id,
+                sender_id: message.sender_id,
+                sender_nickname: sender&.nickname,
+                is_broadcast: true,
+                broadcast_id: message.broadcast_id,
+                text: "브로드캐스트 메시지(삭제됨)",
+                has_voice: false,
+                voice_url: nil,
+                read_at: message.read_at,
+                created_at: message.created_at,
+                message_type: message.message_type || "voice"
+              }
+            end
+            
             {
               id: message.id,
               sender_id: message.sender_id,
@@ -358,7 +415,8 @@ module Api
               has_voice: broadcast&.audio&.attached?,
               voice_url: broadcast&.audio&.attached? ? url_for(broadcast.audio) : nil,
               read_at: message.read_at,
-              created_at: message.created_at
+              created_at: message.created_at,
+              message_type: message.message_type || "voice"
             }
           else
             {
@@ -369,7 +427,8 @@ module Api
               voice_url: message.voice_file.attached? ? url_for(message.voice_file) : nil,
               read_at: message.read_at,
               created_at: message.created_at,
-              is_broadcast: false
+              is_broadcast: false,
+              message_type: message.message_type || "voice"
             }
           end
         end
