@@ -253,7 +253,7 @@ module Api
 
       # 사용자의 대화 찾기
       def find_user_conversations
-        if current_user.user_status_active?
+        if current_user.status_active?
           Conversation.where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)", 
                             current_user.id, false, current_user.id, false)
                      .order(updated_at: :desc)
