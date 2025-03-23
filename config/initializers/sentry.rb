@@ -2,18 +2,18 @@ Sentry.init do |config|
   config.dsn = ENV["SENTRY_DSN"]
   config.breadcrumbs_logger = [:active_support_logger, :http_logger]
 
-  # Rails 환경에서만 활성화
   config.enabled_environments = %w[production staging]
 
-  # 성능 모니터링 설정 (필요 시 설정)
   config.traces_sample_rate = 0.5
 
-  # 사용자 정보 추가 및 민감 정보 필터링
   config.send_default_pii = true
-  
+
   config.before_send = lambda do |event, hint|
-    event = Sentry::Rails::FilterParameters.filter_event(event)
-    
+    # Rails의 filter_parameters를 직접 적용
+    filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+    filtered_event_hash = filter.filter(event.to_hash)
+    event = Sentry::Event.new(filtered_event_hash)
+
     if event.request && event.user.nil?
       controller = hint[:rack_env]&.controller
       if controller&.respond_to?(:current_user) && controller.current_user
@@ -24,7 +24,7 @@ Sentry.init do |config|
         }
       end
     end
-    
+
     event
   end
 end
