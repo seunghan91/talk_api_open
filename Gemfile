@@ -73,6 +73,9 @@ group :development, :test do
 
   # Testing
   gem "rspec-rails"
+  gem "rspec-expectations"
+  gem "rspec-mocks"
+  gem "rspec-support"
   gem "factory_bot_rails"
   gem "faker"
 end
