@@ -6,37 +6,27 @@ class Message < ApplicationRecord
 
   # 파일 첨부 기능 활성화
   has_one_attached :voice_file
-  has_one_attached :image_file
 
-  # message_type은 voice가 기본값
-  validates :message_type, inclusion: { in: [ "voice", "text", "image" ] }
-
-  # 텍스트 메시지일 경우에만 content 필수
-  validates :content, presence: true, if: -> { message_type == "text" }
+  # message_type은 voice만 허용
+  validates :message_type, inclusion: { in: ["voice"] }
 
   # 음성 메시지일 경우 voice_file 필수
-  validates :voice_file, presence: true, if: -> { message_type == "voice" }
-
-  # 이미지 메시지일 경우 image_file 필수
-  validates :image_file, presence: true, if: -> { message_type == "image" }
+  validates :voice_file, presence: true
 
   # 파일 타입 검증
-  validate :validate_file_type, if: -> { voice_file.attached? || image_file.attached? }
+  validate :validate_voice_file_type, if: -> { voice_file.attached? }
 
   # 메시지 생성 후 처리
   after_create :process_message
 
-  # 음성 또는 이미지 파일이 첨부된 메시지 체크
+  # 음성 파일이 첨부된 메시지 체크
   def has_attachment?
-    voice_file.attached? || image_file.attached?
+    voice_file.attached?
   end
 
   # 메시지 타입에 따라 적절한 첨부 파일 체크
   def valid_attachment?
-    return content.present? if message_type == "text"
-    return voice_file.attached? if message_type == "voice"
-    return image_file.attached? if message_type == "image"
-    false
+    voice_file.attached?
   end
 
   # 컬렉션에서 중복된 메시지 제거
@@ -74,8 +64,6 @@ class Message < ApplicationRecord
   def preview
     if voice_file.attached?
       "음성 메시지"
-    elsif text.present?
-      text.truncate(30)
     elsif broadcast.present?
       "브로드캐스트 메시지"
     else
@@ -123,15 +111,9 @@ class Message < ApplicationRecord
   end
 
   # 첨부파일 타입 검증
-  def validate_file_type
-    if message_type == "voice" && voice_file.attached?
-      unless voice_file.content_type.in?(%w[audio/m4a audio/mp4 audio/mpeg audio/aac audio/wav audio/webm audio/x-m4a])
-        errors.add(:voice_file, "유효한 오디오 파일이 아닙니다.")
-      end
-    elsif message_type == "image" && image_file.attached?
-      unless image_file.content_type.in?(%w[image/jpeg image/png image/gif image/webp])
-        errors.add(:image_file, "유효한 이미지 파일이 아닙니다.")
-      end
+  def validate_voice_file_type
+    unless voice_file.content_type.in?(%w[audio/m4a audio/mp4 audio/mpeg audio/aac audio/wav audio/webm audio/x-m4a])
+      errors.add(:voice_file, "유효한 오디오 파일이 아닙니다.")
     end
   end
 

@@ -160,20 +160,30 @@ module Api
             return render json: { error: "이 대화에 메시지를 보낼 수 없습니다." }, status: :forbidden
           end
 
+          # 음성 파일 첨부 확인
+          unless params[:voice_file].present?
+            Rails.logger.error("음성 파일 없음: 메시지 전송 실패")
+            return render json: { 
+              error: "음성 파일이 필요합니다.",
+              request_id: request.request_id || SecureRandom.uuid
+            }, status: :bad_request
+          end
+
           # 메시지 생성
           @message = @conversation.messages.new(
             sender_id: current_user.id,
-            text: params[:text]
+            message_type: "voice"
           )
 
-          # 음성 파일 첨부가 있을 경우
-          if params[:voice_file].present?
-            begin
-              @message.voice_file.attach(params[:voice_file])
-            rescue => e
-              Rails.logger.error("음성 파일 첨부 오류: #{e.message}")
-              return render json: { error: "음성 파일 첨부에 실패했습니다." }, status: :unprocessable_entity
-            end
+          # 음성 파일 첨부
+          begin
+            @message.voice_file.attach(params[:voice_file])
+          rescue => e
+            Rails.logger.error("음성 파일 첨부 오류: #{e.message}")
+            return render json: { 
+              error: "음성 파일 첨부에 실패했습니다.",
+              request_id: request.request_id || SecureRandom.uuid
+            }, status: :unprocessable_entity
           end
 
           # 메시지 저장
@@ -190,19 +200,28 @@ module Api
               message: {
                 id: @message.id,
                 sender_id: @message.sender_id,
-                text: @message.text,
                 voice_url: @message.voice_file.attached? ? url_for(@message.voice_file) : nil,
                 created_at: @message.created_at
-              }
+              },
+              request_id: request.request_id || SecureRandom.uuid
             }, status: :created
           else
-            render json: { errors: @message.errors.full_messages }, status: :unprocessable_entity
+            render json: { 
+              errors: @message.errors.full_messages,
+              request_id: request.request_id || SecureRandom.uuid
+            }, status: :unprocessable_entity
           end
         rescue ActiveRecord::RecordNotFound
-          render json: { error: "대화를 찾을 수 없습니다." }, status: :not_found
+          render json: { 
+            error: "대화를 찾을 수 없습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :not_found
         rescue => e
           Rails.logger.error("메시지 전송 오류: #{e.message}")
-          render json: { error: "메시지 전송에 실패했습니다." }, status: :internal_server_error
+          render json: { 
+            error: "메시지 전송에 실패했습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :internal_server_error
         end
       end
 

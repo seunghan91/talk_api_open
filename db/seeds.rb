@@ -103,7 +103,7 @@ puts "대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[2].n
 # 메시지 생성
 puts "메시지 생성 시작..."
 
-if defined?(Message) && Message.table_exists? && Message.column_names.include?('message_type')
+if defined?(Message) && Message.table_exists?
   # 샘플 오디오 파일 경로
   base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://localhost:3000")
   audio_samples = [
@@ -148,38 +148,35 @@ if defined?(Message) && Message.table_exists? && Message.column_names.include?('
       puts "브로드캐스트 메시지 자동 생성됨: ID #{broadcast_message.id}"
     end
     
-    # 응답 메시지 생성
-    response_message = Message.create!(
-      conversation_id: conversation3.id,
-      sender_id: created_users[3].id,
-      content: "브로드캐스트 잘 받았습니다!",
-      message_type: "text"
-    )
-    puts "응답 메시지 생성됨: ID #{response_message.id}"
-    
-    # 일반 음성 메시지 생성
+    # 응답 음성 메시지 생성
     audio_path2 = Rails.root.join('public', 'audio_samples', 'sample_audio1..wav')
     if File.exist?(audio_path2)
+      response_message = Message.new(
+        conversation_id: conversation3.id,
+        sender_id: created_users[3].id,
+        message_type: "voice"
+      )
+      response_message.voice_file.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
+      response_message.save!
+      puts "응답 음성 메시지 생성됨: ID #{response_message.id}"
+    else
+      puts "응답 음성 파일을 찾을 수 없음: #{audio_path2}"
+    end
+    
+    # 일반 음성 메시지 생성
+    audio_path3 = Rails.root.join('public', 'audio_samples', 'sample_audio2.wav')
+    if File.exist?(audio_path3)
       voice_message = Message.new(
         conversation_id: conversation1.id,
         sender_id: created_users[0].id,
         message_type: "voice"
       )
-      voice_message.voice_file.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
+      voice_message.voice_file.attach(io: File.open(audio_path3), filename: 'sample_audio2.wav', content_type: 'audio/wav')
       voice_message.save!
       puts "음성 메시지 생성됨: ID #{voice_message.id}, 대화방: #{conversation1.id}"
     else
-      puts "음성 파일을 찾을 수 없음: #{audio_path2}"
+      puts "음성 파일을 찾을 수 없음: #{audio_path3}"
     end
-    
-    # 텍스트 메시지 생성
-    text_message = Message.create!(
-      conversation_id: conversation1.id,
-      sender_id: created_users[1].id,
-      content: "안녕하세요! 메시지 확인했습니다.",
-      message_type: "text"
-    )
-    puts "텍스트 메시지 생성됨: ID #{text_message.id}, 대화방: #{conversation1.id}"
   else
     puts "샘플 오디오 파일을 찾을 수 없음: #{audio_path}"
   end
