@@ -236,7 +236,7 @@ module Api
           end
 
           # 시도 횟수 증가
-          verification.increment_attempt_count!
+          verification.increment_attempt!
           
           # 코드 확인 - 공백 제거 후 비교
           if verification.code.to_s.strip == code.to_s.strip
