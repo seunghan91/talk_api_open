@@ -62,52 +62,54 @@ module Api
             }, status: :unprocessable_entity
           end
 
-          # 인증 코드 확인
+          # 베타 테스트 기간 동안 인증 검증 과정 우회
+          # 인증 레코드가 없는 경우 새로 생성하고 자동으로 인증됨으로 처리
           verification = PhoneVerification.find_by(phone_number: phone_number)
-
-          # 인증 레코드 자체가 없는 경우
           if verification.nil?
-            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시도 기록 없음")
-            return render json: { 
-              error: "전화번호 인증을 먼저 진행해주세요.",
-              verification_required: true,
-              verification_status: {
-                verified: false,
-                message: "인증이 필요합니다."
-              }
-            }, status: :unprocessable_entity
+            Rails.logger.info("베타 테스트 - 인증 없이 회원가입: #{phone_number}에 대한 자동 인증 생성")
+            verification = PhoneVerification.create!(
+              phone_number: phone_number,
+              code: "123456", # 임시 코드
+              expires_at: 1.hour.from_now,
+              verified: true,
+              attempt_count: 0
+            )
+          else
+            # 이미 인증 레코드가 있는 경우 자동으로 인증됨으로 설정
+            verification.update(verified: true)
           end
-
+          
+          # 아래 인증 검증 코드는 베타 테스트 기간 동안 주석 처리됨
           # 인증 검증
-          verified = verification.verified == true
-
-          unless verified
-            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
-            return render json: { 
-              error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
-              verification_required: true,
-              verification_status: {
-                verified: false,
-                can_resend: true,
-                message: "인증 코드 확인이 필요합니다."
-              }
-            }, status: :unprocessable_entity
-          end
-
-          # 인증 시간 확인 (추가 보안 - 인증 후 30분 이내만 회원가입 허용)
-          if verification.updated_at < 30.minutes.ago
-            Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
-            return render json: { 
-              error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
-              verification_required: true,
-              verification_status: {
-                verified: false,
-                can_resend: true,
-                expired: true,
-                message: "인증이 만료되었습니다."
-              }
-            }, status: :unprocessable_entity
-          end
+          # verified = verification.verified == true
+          # 
+          # unless verified
+          #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
+          #   return render json: { 
+          #     error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
+          #     verification_required: true,
+          #     verification_status: {
+          #       verified: false,
+          #       can_resend: true,
+          #       message: "인증 코드 확인이 필요합니다."
+          #     }
+          #   }, status: :unprocessable_entity
+          # end
+          # 
+          # # 인증 시간 확인 (추가 보안 - 인증 후 30분 이내만 회원가입 허용)
+          # if verification.updated_at < 30.minutes.ago
+          #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
+          #   return render json: { 
+          #     error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
+          #     verification_required: true,
+          #     verification_status: {
+          #       verified: false,
+          #       can_resend: true,
+          #       expired: true,
+          #       message: "인증이 만료되었습니다."
+          #     }
+          #   }, status: :unprocessable_entity
+          # end
 
           # 사용자 생성
           @user = User.new(user_params)
@@ -132,7 +134,7 @@ module Api
               message: "회원가입에 성공했습니다."
             }, status: :created
 
-            Rails.logger.info("회원가입 성공: 사용자 ID #{@user.id}")
+            Rails.logger.info("회원가입 성공: 사용자 ID #{@user.id} (베타 테스트 - 인증 없이 가입)")
           else
             Rails.logger.warn("회원가입 실패: #{params[:phone_number]} - #{@user.errors.full_messages.join(', ')}")
             render json: { error: @user.errors.full_messages.join(", ") }, status: :unprocessable_entity
@@ -204,85 +206,40 @@ module Api
           verification = PhoneVerification.find_by(phone_number: phone_number)
 
           if verification.nil?
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 해당 전화번호의 인증 정보가 없음")
-            return render json: { error: "인증 요청을 먼저 진행해주세요." }, status: :not_found
-          end
-
-          # 인증 데이터 로깅
-          Rails.logger.info("인증코드 정보: 전화번호=#{phone_number}, 저장코드=#{verification.code}, 만료시간=#{verification.expires_at}, 현재시간=#{Time.current}, 시도횟수=#{verification.attempt_count}")
-
-          # 만료 확인
-          if verification.expires_at < Time.current
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 만료된 인증 코드. 만료시간: #{verification.expires_at}, 현재시간: #{Time.current}")
-            return render json: { 
-              error: "인증 코드가 만료되었습니다. 다시 요청해주세요.",
-              expired: true,
-              can_resend: true
-            }, status: :bad_request
-          end
-
-          # 시도 횟수 초과 확인 (최대 5회)
-          if verification.attempts_exceeded?
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 시도 횟수 초과 (#{verification.attempt_count}/#{PhoneVerification::MAX_ATTEMPTS})")
-            return render json: { 
-              error: "인증 시도 횟수를 초과했습니다. 새로운 인증 코드를 요청해주세요.",
-              verification_status: {
-                verified: false,
-                attempt_count: verification.attempt_count,
-                max_attempts: PhoneVerification::MAX_ATTEMPTS,
-                can_resend: true
-              }
-            }, status: :too_many_requests
-          end
-
-          # 시도 횟수 증가
-          verification.increment_attempt!
-          
-          # 코드 확인 - 공백 제거 후 비교
-          if verification.code.to_s.strip == code.to_s.strip
-            # 인증 성공 처리 - 시도 횟수 초기화
-            verification.mark_as_verified!
-
-            # 사용자가 이미 존재하는지 확인
-            existing_user = User.find_by(phone_number: phone_number)
-
-            render json: { 
-              message: "인증에 성공했습니다.",
-              user_exists: existing_user.present?,
-              can_proceed_to_register: !existing_user.present?,
-              user: existing_user ? {
-                id: existing_user.id,
-                nickname: existing_user.nickname
-              } : nil,
-              verification_status: {
-                verified: true,
-                verified_at: Time.current,
-                phone_number: phone_number
-              }
-            }, status: :ok
-
-            Rails.logger.info("인증코드 확인 성공: #{phone_number}")
+            # 베타 테스트 - 인증 레코드가 없으면 자동 생성
+            Rails.logger.info("베타 테스트 - 인증 없이 확인: #{phone_number}에 대한 자동 인증 생성")
+            verification = PhoneVerification.create!(
+              phone_number: phone_number,
+              code: code,
+              expires_at: 1.hour.from_now,
+              verified: true,
+              attempt_count: 0
+            )
           else
-            # 실패 시 시도 횟수 증가
-            verification.increment_attempt!
-            
-            # 남은 시도 횟수 계산
-            remaining_attempts = verification.remaining_attempts
-
-            Rails.logger.warn("인증코드 확인 실패: #{phone_number} - 잘못된 인증 코드, 입력: '#{code}', 저장: '#{verification.code}', 남은 시도: #{remaining_attempts}")
-
-            render json: {
-              error: "인증 코드가 일치하지 않습니다.",
-              verification_status: {
-                verified: false,
-                attempt_count: verification.attempt_count,
-                remaining_attempts: remaining_attempts,
-                can_resend: remaining_attempts <= 2, # 남은 시도 횟수가 2회 이하면 재전송 권장
-                expires_at: verification.expires_at,
-                phone_number: phone_number
-              }
-            }, status: :bad_request
+            # 베타 테스트 - 코드와 상관없이 항상 인증 성공 처리
+            verification.mark_as_verified!
+            Rails.logger.info("베타 테스트 - 인증 코드 자동 승인: #{phone_number}")
           end
+
+          # 사용자가 이미 존재하는지 확인
+          existing_user = User.find_by(phone_number: phone_number)
+
+          render json: { 
+            message: "인증에 성공했습니다.",
+            user_exists: existing_user.present?,
+            can_proceed_to_register: !existing_user.present?,
+            user: existing_user ? {
+              id: existing_user.id,
+              nickname: existing_user.nickname
+            } : nil,
+            verification_status: {
+              verified: true,
+              verified_at: Time.current,
+              phone_number: phone_number
+            }
+          }, status: :ok
+
+          Rails.logger.info("인증코드 확인 성공: #{phone_number} (베타 테스트 - 자동 인증)")
         rescue => e
           Rails.logger.error("인증코드 확인 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { error: "인증 확인 중 오류가 발생했습니다." }, status: :internal_server_error
