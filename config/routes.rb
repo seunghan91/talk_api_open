@@ -123,16 +123,19 @@ Rails.application.routes.draw do
     post "auth/check_phone", to: "v1/auth#check_phone"
 
     # 사용자 관련 API
-    get "users/me", to: "v1/users#me"
-    get "users/profile", to: "v1/users#profile"
-    get "users/:id", to: "v1/users#show"
-    patch "users/me", to: "v1/users#update"
-    put "users/me", to: "v1/users#update"
-    post "users/change_password", to: "v1/users#change_password"
-    get "users/notification_settings", to: "v1/users#notification_settings"
-    post "users/notification_settings", to: "v1/users#update_notification_settings"
-    patch "users/notification_settings", to: "v1/users#update_notification_settings"
-    put "users/notification_settings", to: "v1/users#update_notification_settings"
+    get "users/me", to: "users#me"
+    get "users/profile", to: "users#profile"
+    get "users/:id", to: "users#show"
+    patch "users/me", to: "users#update"
+    put "users/me", to: "users#update"
+    post "users/change_password", to: "users#change_password"
+    get "users/notification_settings", to: "users#notification_settings"
+    post "users/notification_settings", to: "users#update_notification_settings"
+    patch "users/notification_settings", to: "users#update_notification_settings"
+    put "users/notification_settings", to: "users#update_notification_settings"
+    get "users/random_nickname", to: "users#generate_random_nickname"
+    post "users/change_nickname", to: "users#change_nickname"
+    post "users/update_profile", to: "users#update_profile"
 
     # 브로드캐스트 관련 레거시 API
     get "broadcasts", to: "v1/broadcasts#index"
@@ -149,10 +152,12 @@ Rails.application.routes.draw do
     post "conversations/:id/send_message", to: "v1/conversations#send_message"
 
     # 기타 레거시 API
-    get "me", to: "v1/users#me"
-    post "change_nickname", to: "v1/users#change_nickname"
-    get "generate_random_nickname", to: "v1/users#generate_random_nickname"
-    post "update_profile", to: "v1/users#update_profile"
-    post "users/update_profile", to: "v1/users#update_profile"
+    get "me", to: "users#me"
+    post "change_nickname", to: "users#change_nickname"
+    get "generate_random_nickname", to: "users#generate_random_nickname"
+    post "update_profile", to: "users#update_profile"
   end
+
+  # 관리자 페이지 마운트
+  # mount RailsAdmin::Engine => '/admin', as: 'rails_admin'
 end
