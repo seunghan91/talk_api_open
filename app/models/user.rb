@@ -100,6 +100,21 @@ class User < ApplicationRecord
                       .first
   end
 
+  # 성별 검증 부분 수정
+  validates :gender, inclusion: { 
+    in: %w[male female unspecified unknown other], 
+    message: "유효하지 않은 성별입니다. 허용값: male, female, unspecified, unknown, other" 
+  }, allow_nil: true
+
+  # 테스트를 위한 JWT 토큰 생성 메서드
+  def generate_token
+    payload = {
+      user_id: id,
+      exp: 24.hours.from_now.to_i
+    }
+    JWT.encode(payload, Rails.application.credentials.secret_key_base)
+  end
+
   private
 
   # 사용자 생성 시 지갑 자동 생성
