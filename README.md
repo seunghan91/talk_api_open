@@ -68,12 +68,48 @@ bin/rails server
 
 | 계정 | 전화번호 | 비밀번호 |
 |------|---------|---------|
-| 김철수 | 01011111111 | 123456 |
-| 이영희 | 01022222222 | 123456 |
-| 박지민 | 01033333333 | 123456 |
+| A - 김철수 | 01011111111 | test1234 |
+| B - 이영희 | 01022222222 | test1234 |
+| C - 박지민 | 01033333333 | test1234 |
+| D - 최수진 | 01044444444 | test1234 |
+| E - 정민준 | 01055555555 | test1234 |
 | 관리자 | 01099999999 | admin123 |
 
 이 계정들을 이용해 음성 메시지 전송 및 브로드캐스트 기능을 테스트할 수 있습니다.
+
+## 자동화된 테스트
+
+Talkk API는 RSpec을 사용하여 자동화된 테스트를 제공합니다. 
+
+### 테스트 설정
+```bash
+# RSpec 테스트 실행
+bundle exec rspec
+
+# 특정 디렉토리의 테스트 실행
+bundle exec rspec spec/requests/api/v1/
+
+# 특정 파일의 테스트 실행
+bundle exec rspec spec/requests/api/v1/auth_spec.rb
+
+# 특정 라인의 테스트 실행
+bundle exec rspec spec/requests/api/v1/users_spec.rb:10-20
+```
+
+### 테스트 구조
+- `spec/factories/`: 모델의 팩토리 정의
+- `spec/requests/api/v1/`: API v1 엔드포인트 테스트
+- `spec/models/`: 모델 단위 테스트
+- `spec/support/`: 테스트 헬퍼 및 공통 기능
+
+### Swagger 문서 생성
+```bash
+# Swagger 문서 생성
+RAILS_ENV=test bundle exec rake rswag:specs:swaggerize
+
+# 생성된 문서 확인
+# 브라우저에서 http://localhost:3000/api-docs 접속
+```
 
 ## 음성 메시지 처리 과정
 
@@ -95,6 +131,34 @@ Talkk API는 음성 메시지를 다음 단계로 처리합니다:
 4. **메시지 만료 처리**:
    - 브로드캐스트 메시지는 6일 후 자동 만료 (expired_at 설정)
    - 만료된 메시지는 더 이상 앱에 표시되지 않음
+
+## 시드 데이터
+
+Talkk API는 개발 및 테스트 목적으로 시드 데이터를 제공합니다. 시드 데이터에는 테스트 계정, 대화방, 브로드캐스트, 메시지 등이 포함됩니다.
+
+### 시드 데이터 생성
+```bash
+# 시드 데이터 생성
+bin/rails db:seed
+
+# 특정 환경에서 시드 데이터 생성
+RAILS_ENV=development bin/rails db:seed
+```
+
+### 시드 데이터 내용
+- 6개의 테스트 계정 (일반 사용자 5명, 관리자 1명)
+- 복수의 대화방
+- 샘플 브로드캐스트 및 메시지 (오디오 샘플 포함)
+- 지갑 및 거래 내역
+- 알림 예제
+
+### 오디오 샘플
+시드 데이터는 `public/audio_samples` 디렉토리의 오디오 샘플 파일을 사용합니다:
+- sample_audio.wav (브로드캐스트용)
+- sample_audio1..wav (메시지 응답용)
+- sample_audio2.wav (일반 메시지용)
+
+API 서버는 환경에 따라 적절한 URL로 오디오 파일을 제공합니다.
 
 ## 관리자 페이지
 
@@ -135,151 +199,55 @@ Talkk API는 RailsAdmin을 사용하여 관리자 페이지를 제공합니다. 
 - 목록 보기: 차단한 사용자, 차단된 사용자, 차단 일시 등 표시
 - 상세 보기: 차단 상세 정보 확인
 
-## 배포 가이드
-
-Talkk API는 다양한 방법으로 배포할 수 있습니다. 아래는 몇 가지 추천 배포 방법입니다.
-
-### 1. Render.com을 이용한 배포
-
-[Render](https://render.com/)는 Rails 애플리케이션을 쉽게 배포할 수 있는 클라우드 플랫폼입니다.
-
-#### 장점
-- 간편한 설정과 배포 과정
-- PostgreSQL 및 Redis 서비스 통합 제공
-- 무료 티어 제공 (제한적이지만 테스트에 충분)
-- Git 저장소와 연동하여 자동 배포 가능
-
-#### 배포 방법
-1. Render.com에 가입하고 새 Web Service 생성
-2. GitHub/GitLab 저장소 연결
-3. 환경 설정:
-   - 빌드 명령어: `bundle install`
-   - 시작 명령어: `bundle exec rails server -b 0.0.0.0`
-4. 데이터베이스 설정: Render PostgreSQL 서비스 생성 및 연결
-5. 환경 변수 설정 (DATABASE_URL, RAILS_MASTER_KEY 등)
-
-### 2. SSL 인증서 설정
-
-보안 연결을 위해 SSL 인증서를 설정하는 방법입니다.
-
-#### Render.com에서 SSL 설정
-Render.com은 모든 서비스에 자동으로 SSL을 제공합니다:
-
-1. 웹 서비스 생성 시 자동으로 Let's Encrypt SSL 인증서가 발급됨
-2. 커스텀 도메인을의 경우:
-   - Render 대시보드에서 웹 서비스 선택
-   - 'Settings' > 'Custom Domain' 섹션으로 이동
-   - 도메인 추가 및 DNS 설정 지침 따르기
-   - 도메인 확인 후 자동으로 SSL 인증서 발급
-
-#### 수동 SSL 설정 (자체 서버)
-자체 서버에 배포할 경우 Certbot을 사용한 Let's Encrypt SSL 설정:
-
-```bash
-# Certbot 설치
-sudo apt-get update
-sudo apt-get install certbot
-
-# Nginx와 함께 사용할 경우
-sudo apt-get install python3-certbot-nginx
-
-# SSL 인증서 발급
-sudo certbot --nginx -d yourdomain.com
-
-# 자동 갱신 확인
-sudo certbot renew --dry-run
-```
-
-#### Rails 애플리케이션 SSL 설정
-production.rb 파일에 다음 설정 추가:
-
-```ruby
-# config/environments/production.rb
-config.force_ssl = true
-```
-
-### 3. 영구 스토리지 설정
-
-Render.com에서 영구 스토리지 설정 방법:
-
-1. Render 대시보드에서 'Disks' 메뉴 선택
-2. 새 디스크 생성 (이름, 크기 지정)
-3. 웹 서비스에 디스크 연결 (마운트 경로 지정: 예 - `/mnt/activestorage`)
-4. storage.yml 파일 수정:
-
-```yaml
-# config/storage.yml
-production:
-  service: Disk
-  root: "/mnt/activestorage"
-```
-
-5. 환경 파일 수정:
-
-```ruby
-# config/environments/production.rb
-config.active_storage.service = :production
-```
-
-## 베타 테스트 환경 구성 가이드
-
-베타 테스트를 위한 환경을 구성하려면 다음 단계를 따르세요:
-
-1. **배포 환경 선택**: 위에서 설명한 배포 방법 중 하나를 선택하여 API 서버 배포
-2. **도메인 설정**: 필요한 경우 커스텀 도메인 연결
-3. **SSL 인증서**: HTTPS 활성화 (대부분의 클라우드 서비스에서 자동 제공)
-4. **모바일 앱 설정**: API 엔드포인트를 배포된 서버 URL로 업데이트
-5. **테스트 계정 생성**: `rails db:seed` 명령으로 테스터들을 위한 계정 생성
-6. **모니터링 설정**: 로그 및 성능 모니터링 도구 연결 (예: New Relic, Datadog)
-7. **피드백 시스템**: 테스터들이 피드백을 제출할 수 있는 시스템 구축 (예: Google Forms, Typeform)
-
-## 문제 해결
-
-배포 중 발생할 수 있는 일반적인 문제와 해결 방법:
-
-1. **데이터베이스 연결 오류**: 환경 변수 `DATABASE_URL`이 올바르게 설정되었는지 확인
-2. **Active Storage 설정**: 클라우드 스토리지 서비스(AWS S3, Google Cloud Storage 등) 연결 확인
-3. **Redis 연결 오류**: Redis URL 환경 변수 확인
-4. **Sidekiq 작업 실패**: Redis 연결 및 Sidekiq 프로세스 실행 여부 확인
-5. **CORS 오류**: `config/initializers/cors.rb` 파일에서 허용된 도메인 확인
-6. **음성 파일 저장 오류**: 스토리지 경로 권한 확인, 영구 디스크 마운트 상태 확인
-7. **SSL 인증서 문제**: 인증서 만료 여부 확인, DNS 설정 검증
-
 ## API 엔드포인트
 
 주요 API 엔드포인트는 다음과 같습니다:
 
-### 인증 관련
-- `POST /api/auth/request_code`: SMS 인증 코드 요청
-- `POST /api/auth/verify_code`: SMS 인증 코드 확인
-- `POST /api/auth/register`: 회원가입
-- `POST /api/auth/login`: 로그인
-- `POST /api/auth/logout`: 로그아웃
+### 인증 관련 (Auth)
+- `POST /api/v1/auth/request_code`: 인증 코드 요청
+- `POST /api/v1/auth/verify_code`: 인증 코드 확인
+- `POST /api/v1/auth/register`: 회원가입
+- `POST /api/v1/auth/login`: 로그인
 
-### 사용자 관련
-- `GET /api/users/profile`: 사용자 프로필 조회
-- `POST /api/users/update_profile`: 프로필 업데이트
-- `GET /api/users/notification_settings`: 알림 설정 조회
-- `POST /api/users/notification_settings`: 알림 설정 업데이트
+### 사용자 관련 (Users)
+- `GET /api/v1/users/profile`: 사용자 프로필 조회
+- `GET /api/v1/users/me`: 현재 로그인한 사용자 정보 조회
+- `POST /api/v1/users/change_nickname`: 닉네임 변경
+- `GET /api/v1/users/generate_random_nickname`: 랜덤 닉네임 생성
+- `POST /api/v1/users/update_profile`: 프로필 정보 업데이트
+- `GET /api/v1/users/notification_settings`: 알림 설정 조회
+- `PATCH /api/v1/users/notification_settings`: 알림 설정 업데이트
 
-### 브로드캐스트 관련
-- `GET /api/broadcasts`: 브로드캐스트 목록 조회
-- `POST /api/broadcasts`: 브로드캐스트 생성
-- `GET /api/broadcasts/:id`: 특정 브로드캐스트 조회
-- `POST /api/broadcasts/:id/reply`: 브로드캐스트에 답장
+### 브로드캐스트 관련 (Broadcasts)
+- `GET /api/v1/broadcasts`: 브로드캐스트 목록 조회
+- `POST /api/v1/broadcasts`: 브로드캐스트 생성
+- `GET /api/v1/broadcasts/:id`: 브로드캐스트 조회
+- `POST /api/v1/broadcasts/:id/reply`: 브로드캐스트에 답장
+- `GET /api/v1/broadcasts/example_broadcast`: 샘플 브로드캐스트 조회
 
-### 대화 관련
-- `GET /api/conversations`: 대화 목록 조회
-- `GET /api/conversations/:id`: 특정 대화 조회
-- `POST /api/conversations/:id/messages`: 대화에 메시지 전송
-- `DELETE /api/conversations/:id`: 대화방 삭제
+### 대화 관련 (Conversations)
+- `GET /api/v1/conversations`: 대화 목록 조회
+- `GET /api/v1/conversations/:id`: 대화 조회
+- `POST /api/v1/conversations/:id/send_message`: 메시지 전송
+- `POST /api/v1/conversations/:id/favorite`: 대화 즐겨찾기 추가
+- `POST /api/v1/conversations/:id/unfavorite`: 대화 즐겨찾기 제거
+- `DELETE /api/v1/conversations/:id`: 대화 삭제
 
-### 차단 및 신고 관련
-- `POST /api/reports`: 사용자 신고
-- `POST /api/blocks`: 사용자 차단
-- `DELETE /api/blocks/:id`: 차단 해제
+### 알림 관련 (Notifications)
+- `GET /api/v1/notifications`: 알림 목록 조회
+- `GET /api/v1/notifications/:id`: 알림 조회
+- `POST /api/v1/notifications/:id/mark_as_read`: 알림 읽음 표시
+- `POST /api/v1/notifications/mark_all_as_read`: 모든 알림 읽음 표시
+- `POST /api/v1/notifications/update_push_token`: 푸시 토큰 업데이트
 
-## API 설계 및 관리 가이드라인
+### 지갑 관련 (Wallets)
+- `GET /api/v1/wallets`: 지갑 정보 조회
+- `GET /api/v1/wallets/transactions`: 거래 내역 조회
+- `POST /api/v1/wallets/deposit`: 지갑 충전
+
+자세한 API 문서는 Swagger UI(`/api-docs`)에서 확인할 수 있습니다.
+
+## API 개발 가이드라인
 
 ### 1. API 버전 관리
 
@@ -388,6 +356,31 @@ bundle exec rspec spec/requests/api/v1/
 # API 문서 생성
 RAILS_ENV=test bundle exec rake rswag:specs:swaggerize
 ```
+
+## 최근 변경사항 및 개선 내용
+
+### 1. 닉네임 변경 기능 개선
+- API 경로 충돌 문제 해결: API v1과 레거시 경로 모두 정상 작동
+- 컨트롤러 액션 확인 및 추가: 누락된 액션 추가
+- 오류 메시지 개선
+
+### 2. 자동화된 테스트 환경 구성
+- RSpec 설정 및 팩토리 구성
+- 테스트 헬퍼 및 지원 클래스 추가
+- API 엔드포인트 테스트 케이스 작성
+- 인증 및 권한 검증 테스트
+
+### 3. 시드 데이터 개선
+- 샘플 오디오 파일 활용: 실제 음성 메시지 및 브로드캐스트 생성
+- 환경별 URL 설정: 개발, 테스트, 프로덕션 환경에 따른 적응형 경로
+- Broadcast 모델 속성 최적화: 불필요한 text 속성 제거
+- 시드 데이터 로깅 개선: 상세한 진행 상황 표시
+
+### 4. API 문서화
+- Swagger UI 통합 및 문서 업데이트
+- 새로운 엔드포인트 및 모델 추가
+- 샘플 요청/응답 개선
+- 레거시 API 엔드포인트 호환성 유지
 
 ---
 

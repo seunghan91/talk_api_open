@@ -53,6 +53,66 @@ RSpec.configure do |config|
               created_at: { type: 'string', format: 'date-time' }
             },
             required: ['id', 'nickname', 'phone_number']
+          },
+          broadcast: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              user_id: { type: 'integer' },
+              audio_url: { type: 'string' },
+              duration: { type: 'integer' },
+              private: { type: 'boolean' },
+              expired_at: { type: 'string', format: 'date-time' },
+              created_at: { type: 'string', format: 'date-time' },
+              user: { '$ref': '#/components/schemas/user' }
+            },
+            required: ['id', 'user_id', 'audio_url']
+          },
+          message: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              conversation_id: { type: 'integer' },
+              sender_id: { type: 'integer' },
+              receiver_id: { type: 'integer' },
+              broadcast_id: { type: 'integer' },
+              message_type: { type: 'string', enum: ['voice'] },
+              audio_url: { type: 'string' },
+              duration: { type: 'integer' },
+              is_read: { type: 'boolean' },
+              created_at: { type: 'string', format: 'date-time' },
+              sender: { '$ref': '#/components/schemas/user' }
+            },
+            required: ['id', 'conversation_id', 'sender_id', 'message_type']
+          },
+          conversation: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              user_a_id: { type: 'integer' },
+              user_b_id: { type: 'integer' },
+              last_message_at: { type: 'string', format: 'date-time' },
+              created_at: { type: 'string', format: 'date-time' },
+              user_a: { '$ref': '#/components/schemas/user' },
+              user_b: { '$ref': '#/components/schemas/user' },
+              favorited_by_user_a: { type: 'boolean' },
+              favorited_by_user_b: { type: 'boolean' }
+            },
+            required: ['id', 'user_a_id', 'user_b_id']
+          },
+          notification: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              user_id: { type: 'integer' },
+              title: { type: 'string' },
+              body: { type: 'string' },
+              notification_type: { type: 'string', enum: ['broadcast', 'message', 'system'] },
+              read: { type: 'boolean' },
+              metadata: { type: 'object' },
+              created_at: { type: 'string', format: 'date-time' }
+            },
+            required: ['id', 'user_id', 'notification_type']
           }
         },
         securitySchemes: {
