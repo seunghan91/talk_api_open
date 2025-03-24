@@ -104,23 +104,32 @@ puts "대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[2].n
 puts "메시지 생성 시작..."
 
 if defined?(Message) && Message.table_exists?
-  # 샘플 오디오 파일 경로
-  base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://localhost:3000")
+  # GitHub 저장소 기준 오디오 샘플 파일 경로 설정
+  # 실제 환경에 따라 동적으로 경로 생성
+  if Rails.env.production?
+    base_url = ENV.fetch("RENDER_EXTERNAL_URL", "https://talk-app-api.onrender.com")
+  else
+    base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://localhost:3000")
+  end
+  
   audio_samples = [
     "#{base_url}/audio_samples/sample_audio.wav",
-    "#{base_url}/audio_samples/sample_audio1..wav",
+    "#{base_url}/audio_samples/sample_audio1..wav", 
     "#{base_url}/audio_samples/sample_audio2.wav"
   ]
   
-  # 브로드캐스트 생성
+  puts "오디오 샘플 URL 설정: #{audio_samples.first}"
+  
+  # 브로드캐스트 생성 (text 속성 제거)
   broadcast1 = Broadcast.new(
     user_id: created_users[0].id,
-    text: "안녕하세요! 이것은 테스트 브로드캐스트입니다."
+    duration: 15 # 기본 오디오 길이 (초)
   )
   
   # 로컬 파일 첨부
   audio_path = Rails.root.join('public', 'audio_samples', 'sample_audio.wav')
   if File.exist?(audio_path)
+    puts "오디오 파일 발견: #{audio_path}"
     broadcast1.audio.attach(io: File.open(audio_path), filename: 'sample_audio.wav', content_type: 'audio/wav')
     broadcast1.save!
     puts "브로드캐스트 생성됨: ID #{broadcast1.id}, 발신자: #{created_users[0].nickname}"
@@ -141,20 +150,38 @@ if defined?(Message) && Message.table_exists?
         conversation_id: conversation3.id,
         sender_id: created_users[0].id,
         broadcast_id: broadcast1.id,
-        message_type: "voice"
+        message_type: "voice",
+        duration: 15,
+        audio_url: broadcast1.audio_url || audio_samples[0]
       )
       puts "브로드캐스트 메시지 수동 생성됨: ID #{broadcast_message.id}"
     else
       puts "브로드캐스트 메시지 자동 생성됨: ID #{broadcast_message.id}"
     end
     
-    # 응답 음성 메시지 생성
+    # 두번째 브로드캐스트 생성
+    broadcast2 = Broadcast.new(
+      user_id: created_users[1].id,
+      duration: 18,
+      private: true # 비공개 브로드캐스트
+    )
+    
     audio_path2 = Rails.root.join('public', 'audio_samples', 'sample_audio1..wav')
+    if File.exist?(audio_path2)
+      broadcast2.audio.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
+      broadcast2.save!
+      puts "비공개 브로드캐스트 생성됨: ID #{broadcast2.id}, 발신자: #{created_users[1].nickname}"
+    end
+    
+    # 응답 음성 메시지 생성
     if File.exist?(audio_path2)
       response_message = Message.new(
         conversation_id: conversation3.id,
         sender_id: created_users[3].id,
-        message_type: "voice"
+        receiver_id: created_users[0].id,
+        message_type: "voice",
+        duration: 18,
+        audio_url: audio_samples[1]
       )
       response_message.voice_file.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
       response_message.save!
@@ -169,7 +196,10 @@ if defined?(Message) && Message.table_exists?
       voice_message = Message.new(
         conversation_id: conversation1.id,
         sender_id: created_users[0].id,
-        message_type: "voice"
+        receiver_id: created_users[1].id,
+        message_type: "voice",
+        duration: 22,
+        audio_url: audio_samples[2]
       )
       voice_message.voice_file.attach(io: File.open(audio_path3), filename: 'sample_audio2.wav', content_type: 'audio/wav')
       voice_message.save!
