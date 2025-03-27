@@ -13,6 +13,9 @@ class Broadcast < ApplicationRecord
     # 음성 파일 첨부
     has_one_attached :audio
 
+    # 음성 파일 변경 시 duration 설정하는 콜백 추가
+    after_save :set_duration_from_audio, if: -> { audio.attached? && saved_change_to_audio_attachment? }
+
     # 유효성 검증 추가
     validates :user_id, presence: true
     validates :audio, presence: true
@@ -100,5 +103,26 @@ class Broadcast < ApplicationRecord
 
     def set_expired_at
       self.expired_at ||= 6.days.from_now
+    end
+    
+    # 음성 파일에서 재생 시간(duration) 설정
+    def set_duration_from_audio
+      return unless audio.attached?
+      
+      begin
+        # 음성 파일 정보 추출
+        audio_info = AudioProcessorService.get_audio_info(audio.blob.service.path_for(audio.key))
+        
+        if audio_info && audio_info[:duration]
+          # 반올림하여 정수로 저장 (초 단위)
+          update_column(:duration, audio_info[:duration].round)
+          Rails.logger.info("브로드캐스트 ID #{id}의 duration 값을 #{duration}초로 설정")
+        else
+          Rails.logger.warn("브로드캐스트 ID #{id}의 오디오 파일에서 duration을 추출할 수 없음")
+        end
+      rescue => e
+        # 오류가 발생해도 브로드캐스트 저장 자체는 실패하지 않도록 로그만 남김
+        Rails.logger.error("브로드캐스트 ID #{id}의 duration 설정 중 오류 발생: #{e.message}")
+      end
     end
 end

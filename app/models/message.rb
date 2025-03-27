@@ -7,6 +7,9 @@ class Message < ApplicationRecord
   # 파일 첨부 기능 활성화
   has_one_attached :voice_file
 
+  # 음성 파일 변경 시 duration 설정 콜백 추가
+  after_save :set_duration_from_voice_file, if: -> { voice_file.attached? && saved_change_to_voice_file_attachment? }
+
   # message_type은 voice만 허용
   validates :message_type, inclusion: { in: ["voice"] }
 
@@ -114,6 +117,27 @@ class Message < ApplicationRecord
   def validate_voice_file_type
     unless voice_file.content_type.in?(%w[audio/m4a audio/mp4 audio/mpeg audio/aac audio/wav audio/webm audio/x-m4a])
       errors.add(:voice_file, "유효한 오디오 파일이 아닙니다.")
+    end
+  end
+
+  # 음성 파일에서 재생 시간(duration) 설정
+  def set_duration_from_voice_file
+    return unless voice_file.attached?
+    
+    begin
+      # 음성 파일 정보 추출
+      audio_info = AudioProcessorService.get_audio_info(voice_file.blob.service.path_for(voice_file.key))
+      
+      if audio_info && audio_info[:duration]
+        # 반올림하여 정수로 저장 (초 단위)
+        update_column(:duration, audio_info[:duration].round)
+        Rails.logger.info("메시지 ID #{id}의 duration 값을 #{duration}초로 설정")
+      else
+        Rails.logger.warn("메시지 ID #{id}의 음성 파일에서 duration을 추출할 수 없음")
+      end
+    rescue => e
+      # 오류가 발생해도 메시지 저장 자체는 실패하지 않도록 로그만 남김
+      Rails.logger.error("메시지 ID #{id}의 duration 설정 중 오류 발생: #{e.message}")
     end
   end
 
