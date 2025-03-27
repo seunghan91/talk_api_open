@@ -44,7 +44,7 @@ gem "redis", "~> 4.0"
 # gem "turbo-rails"     # Hotwire 기능 (RailsAdmin UI에 도움될 수 있음)
 
 # 명시적으로 logger gem 추가
-gem "logger", "~> 1.6"
+gem "logger", "~> 1.7"
 
 # 알림을 위한 Expo push notification
 gem "exponent-server-sdk"
