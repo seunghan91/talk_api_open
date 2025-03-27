@@ -382,6 +382,84 @@ RAILS_ENV=test bundle exec rake rswag:specs:swaggerize
 - 샘플 요청/응답 개선
 - 레거시 API 엔드포인트 호환성 유지
 
+## EAS 빌드 문제 해결 가이드
+
+Expo Application Services(EAS)를 사용한 Android 앱 빌드 시 발생할 수 있는 문제와 해결 방법입니다.
+
+### 주요 문제
+
+#### 1. Keystore 생성 문제
+EAS 빌드 서비스는 Android 앱을 빌드할 때 앱 서명에 필요한 Keystore를 요구합니다. 하지만 EAS 빌드는 기본적으로 **비대화형 모드(--non-interactive mode)**로 실행되며, 이 모드에서는 새로운 Keystore를 생성할 수 없습니다.
+
+#### 2. cli.appVersionSource 설정 누락
+"The field 'cli.appVersionSource' is not set, but it will be required in the future" 경고는 EAS CLI 설정에서 앱 버전 소스가 지정되지 않았음을 의미합니다.
+
+### 해결 방법
+
+#### 방법 1: 기존 Keystore 사용
+
+이미 생성된 Keystore가 있는 경우:
+
+1. **Keystore 파일 확인**
+   - .jks 파일과 함께 해당 Keystore의 비밀번호, 키 별칭(alias), 키 비밀번호를 확인합니다.
+
+2. **EAS에 업로드**
+   ```bash
+   eas credentials
+   ```
+   이 명령어를 실행하면 Android credentials 관리 메뉴가 나타나며, 기존 Keystore를 업로드할 수 있습니다.
+
+3. **빌드 프로필 설정**
+   - eas.json 파일의 production 프로필에 업로드된 Keystore가 사용되도록 확인합니다.
+
+4. **빌드 재시도**
+   ```bash
+   eas build --platform android --profile production
+   ```
+
+#### 방법 2: 새로운 Keystore 생성 및 업로드
+
+기존 Keystore가 없는 경우:
+
+1. **로컬에서 EAS CLI 실행**
+   ```bash
+   npm install -g eas-cli
+   eas credentials
+   ```
+   메뉴에서 Android를 선택하고, "Add a new keystore" 옵션을 선택하여 새로운 Keystore를 생성합니다.
+   생성된 Keystore 정보(파일, 비밀번호, 별칭 등)는 안전하게 저장하세요.
+
+2. **EAS에 업로드**
+   - 생성된 Keystore가 자동으로 EAS에 업로드됩니다. 업로드가 완료되었는지 확인합니다.
+
+3. **빌드 재시도**
+   ```bash
+   eas build --platform android --profile production
+   ```
+
+#### cli.appVersionSource 설정 추가
+
+`eas.json` 파일에 다음 설정을 추가합니다:
+
+```json
+{
+  "cli": {
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "production": {
+      "android": {
+        "credentialsSource": "remote"
+      }
+    }
+  }
+}
+```
+
+- `"appVersionSource": "remote"`: EAS 서버에서 버전을 관리하도록 설정합니다.
+
+이 설정을 추가한 후, 빌드를 다시 시도하면 경고가 사라집니다.
+
 ---
 
 © 2024 Talkk. All rights reserved.
