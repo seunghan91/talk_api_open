@@ -7,16 +7,17 @@ module Api
 
       # 로그인 처리
       def login
-        # 로그 추가
-        Rails.logger.info("로그인 시도: #{params[:phone_number]}")
+        # 로그 추가 - 전체 파라미터 상세 기록
+        Rails.logger.info("로그인 요청 파라미터: #{params.inspect}")
+        Rails.logger.info("로그인 시도: #{params[:user][:phone_number]}")
 
         begin
           # 전화번호로 사용자 찾기
-          @user = User.find_by(phone_number: params[:phone_number])
+          @user = User.find_by(phone_number: params[:user][:phone_number])
 
           # 사용자가 없거나 비밀번호가 일치하지 않으면
-          unless @user && @user.authenticate(params[:password])
-            Rails.logger.warn("로그인 실패: #{params[:phone_number]} - 사용자가 없거나 비밀번호가 일치하지 않음")
+          unless @user && @user.authenticate(params[:user][:password])
+            Rails.logger.warn("로그인 실패: #{params[:user][:phone_number]} - 사용자가 없거나 비밀번호가 일치하지 않음")
             return render json: { error: "전화번호 또는 비밀번호가 올바르지 않습니다." }, status: :unauthorized
           end
 
@@ -48,8 +49,9 @@ module Api
 
       # 회원가입 처리
       def register
-        # 로그 추가
-        phone_number = params[:phone_number]
+        # 로그 추가 - 전체 파라미터 상세 기록
+        Rails.logger.info("회원가입 요청 파라미터: #{params.inspect}")
+        phone_number = params[:user][:phone_number]
         Rails.logger.info("회원가입 시도: #{phone_number}")
 
         begin
@@ -150,9 +152,10 @@ module Api
 
       # 인증 코드 요청
       def request_code
-        phone_number = params[:phone_number]
+        # 로그 추가 - 전체 파라미터 상세 기록
+        Rails.logger.info("인증코드 요청 파라미터: #{params.inspect}")
+        phone_number = params[:user][:phone_number]
 
-        # 로그 추가
         Rails.logger.info("인증코드 요청: #{phone_number}")
 
         # 전화번호 형식 검증
@@ -199,10 +202,11 @@ module Api
 
       # 인증 코드 확인
       def verify_code
-        phone_number = params[:phone_number]
-        code = params[:code]
+        # 로그 추가 - 전체 파라미터 상세 기록
+        Rails.logger.info("인증코드 확인 파라미터: #{params.inspect}")
+        phone_number = params[:user][:phone_number]
+        code = params[:user][:code]
 
-        # 로그 추가
         Rails.logger.info("인증코드 확인: #{phone_number}, 입력 코드: #{code}")
 
         begin
@@ -357,7 +361,8 @@ module Api
 
       # 허용된 파라미터 목록
       def user_params
-        params.permit(:phone_number, :password, :nickname, :gender)
+        # 중첩된 user 객체에서 허용된 파라미터만 추출
+        params.require(:user).permit(:phone_number, :password, :nickname, :gender)
       end
 
       # 한국 전화번호 유효성 검사
