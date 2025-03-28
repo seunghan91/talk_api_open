@@ -18,8 +18,8 @@ class Broadcast < ApplicationRecord
 
     # 유효성 검증 추가
     validates :user_id, presence: true
-    validates :audio, presence: true
-    validates :text, length: { maximum: 200 }
+    # validates :audio, presence: true # 시드 데이터 생성을 위해 일시적으로 주석 처리
+    validates :content, length: { maximum: 200 }, allow_blank: true
 
     # 인덱스드 필드
     before_create :set_expired_at

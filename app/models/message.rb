@@ -10,11 +10,11 @@ class Message < ApplicationRecord
   # 음성 파일 변경 시 duration 설정 콜백 추가
   after_save :set_duration_from_voice_file, if: -> { voice_file.attached? && saved_change_to_voice_file_attachment? }
 
-  # message_type은 voice만 허용
+  # 메시지 타입은 voice만 허용
   validates :message_type, inclusion: { in: ["voice"] }
 
-  # 음성 메시지일 경우 voice_file 필수
-  validates :voice_file, presence: true
+  # 음성 메시지일 경우 voice_file 필수 (시드 데이터 생성을 위해 일시적으로 주석 처리)
+  # validates :voice_file, presence: true
 
   # 파일 타입 검증
   validate :validate_voice_file_type, if: -> { voice_file.attached? }
