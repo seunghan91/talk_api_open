@@ -66,7 +66,7 @@ module Api
                 updated_at: conversation.updated_at
               }
             rescue => e
-              Rails.logger.error("대화 정보 변환 중 오류: 대화 ID #{conversation.id}, 오류: #{e.message}\\n#{e.backtrace.join(\\"\\n\\")}")
+              Rails.logger.error("대화 정보 변환 중 오류: 대화 ID #{conversation.id}, 오류: #{e.message}\n#{e.backtrace.join("\n")}")
               next nil # 오류 발생 시 해당 대화 제외
             end
           end.compact # nil 값 제거 (여전히 필요)
