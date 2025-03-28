@@ -37,14 +37,16 @@ module Api
               formatted_last_message = if last_message
                                      format_last_message(last_message)
                                    else
-                                     # 메시지가 없거나 모두 삭제된 경우 기본 정보
+                                     # 메시지가 없거나 모두 삭제된 경우 빈 음성 메시지로 표시 (텍스트 제거)
                                      Rails.logger.info("마지막 메시지 없음 또는 모두 삭제됨: 대화 ID #{conversation.id}")
                                      {
                                        id: nil,
-                                       content: "메시지가 없습니다.", # 클라이언트에서 적절히 표시할 내용
+                                       content: nil, # 텍스트 내용 제거
+                                       audio_url: nil, # 오디오 URL 없음
                                        sender_id: nil,
                                        created_at: conversation.updated_at, # 대화 업데이트 시간을 기준으로
-                                       is_read: true # 안 읽음 카운트가 0이 되도록
+                                       is_read: true, # 안 읽음 카운트가 0이 되도록
+                                       message_type: "voice" # 항상 음성 메시지 타입
                                      }
                                    end
 

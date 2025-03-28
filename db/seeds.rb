@@ -24,7 +24,7 @@ users_data = [
   { phone_number: "01033333333", nickname: "박지민", gender: "male", password: "password", password_confirmation: "password" },
   { phone_number: "01044444444", nickname: "최수진", gender: "female", password: "password", password_confirmation: "password" },
   { phone_number: "01055555555", nickname: "정민준", gender: "male", password: "password", password_confirmation: "password" },
-  { phone_number: "01099999999", nickname: "관리자", gender: "unknown", password: "admin123", password_confirmation: "admin123", admin: true } # 관리자 플래그 추가 (User 모델에 admin 컬럼 필요)
+  { phone_number: "01099999999", nickname: "관리자", gender: "unknown", password: "admin123", password_confirmation: "admin123" } # 관리자 계정
 ]
 
 created_users = users_data.map do |user_data|
@@ -61,15 +61,15 @@ unless sample_audio_paths.any?
 end
 
 # 함수: 오디오 파일 첨부 및 메시지 생성
-def create_voice_message(conversation, sender, receiver, audio_path, broadcast = nil)
+def create_voice_message(conversation, sender, receiver_user, audio_path, broadcast = nil)
   return unless File.exist?(audio_path)
 
   message = conversation.messages.new(
-    sender: sender,
-    receiver: receiver,
-    broadcast: broadcast,
+    sender_id: sender.id,
     message_type: broadcast ? "broadcast_response" : "voice",
-    duration: rand(5..60) # 임의의 오디오 길이 (초)
+    read: false, # 읽지 않음 상태로 초기화
+    duration: rand(5..60), # 임의의 오디오 길이 (초)
+    broadcast_id: broadcast&.id
   )
   
   # Active Storage로 파일 첨부
@@ -82,7 +82,7 @@ def create_voice_message(conversation, sender, receiver, audio_path, broadcast =
   if message.save
     puts "  - Created Message (ID: #{message.id}) in Conv ##{conversation.id} (Sender: #{sender.nickname}, Voice: #{File.basename(audio_path)})"
     # 메시지 생성 시 conversation의 updated_at 자동 갱신 확인 필요
-    # conversation.touch if conversation.respond_to?(:touch) # 수동 갱신 필요시
+    conversation.touch if conversation.respond_to?(:touch) # 수동 갱신
   else
     puts "  - FAILED to create message: #{message.errors.full_messages.join(', ')}"
   end
@@ -102,20 +102,22 @@ if conv1 && sample_audio_paths.any?
   sleep(0.1)
   msg3 = create_voice_message(conv1, user_cheolsu, user_younghee, sample_audio_paths.sample)
   
-  # msg2를 이영희가 읽음 처리 (Message 모델에 is_read 또는 last_read_at 컬럼 필요 가정)
+  # msg2를 읽음 처리 (Message 모델에 read 또는 read_at 컬럼 사용)
   if msg2 && msg2.respond_to?(:mark_as_read_by)
      msg2.mark_as_read_by(user_younghee) # 가상의 메서드, 실제 구현 필요
      puts "  - Marked message ##{msg2.id} as read by #{user_younghee.nickname}"
   elsif msg2 && msg2.respond_to?(:update)
-     # 또는 직접 업데이트 (is_read 컬럼이 있고, 받는 사람이 younghee일 때)
-     msg2.update(is_read: true) if msg2.receiver_id == user_younghee.id 
-     puts "  - Marked message ##{msg2.id} as read (assuming is_read field exists)"
+     # 직접 읽음 상태로 업데이트
+     msg2.update(read: true)
+     puts "  - Marked message ##{msg2.id} as read"
   end
   
-  # conv1을 김철수가 즐겨찾기 (Conversation 모델에 favorited_by_a/b 또는 Favorite 모델 필요)
-  if conv1.respond_to?(:update)
-    conv1.update(favorited_by_a: true) # user_a가 김철수라고 가정
-    puts "  - Favorited conversation ##{conv1.id} by #{user_cheolsu.nickname}"
+  # 즐겨찾기 기능은 모델에 컬럼이 없으므로 주석 처리
+  # puts "  - Note: Skipping conversation favoriting because the model doesn't have favorited_by_a/b fields"
+  
+  # 모델에 favorited_by? 메서드가 있는 경우에만 수행
+  if conv1.respond_to?(:favorited_by?)
+    puts "  - Conversation #{conv1.id} can be favorited using the favorited_by? method"
   end
 end
 
@@ -128,30 +130,52 @@ puts "  - Created empty conversation ##{conv2.id}" if conv2
 puts "Creating broadcast conversation: #{user_cheolsu.nickname} -> #{user_sujin.nickname}"
 if sample_audio_paths.any?
   audio_path_for_broadcast = sample_audio_paths.sample
-  broadcast = Broadcast.new(user: user_cheolsu, duration: rand(10..90))
-  broadcast.audio.attach(
-    io: File.open(audio_path_for_broadcast),
-    filename: File.basename(audio_path_for_broadcast),
-    content_type: 'audio/wav'
-  )
-  if broadcast.save
-    puts "  - Created Broadcast ##{broadcast.id} by #{user_cheolsu.nickname}"
-    # 방송에 대한 대화 생성 (Conversation.create_from_broadcast 또는 find_or_create_conversation 사용)
-    conv3 = Conversation.find_or_create_conversation(user_cheolsu.id, user_sujin.id, broadcast)
-    if conv3
-      puts "  - Created conversation ##{conv3.id} from broadcast"
-      # 방송 메시지가 자동으로 생성되지 않았다면 수동 생성 (find_or_create_conversation 내부에 로직이 있을 수 있음)
-      unless conv3.messages.exists?(broadcast_id: broadcast.id)
-         # 필요시 방송 메시지 수동 생성 로직 추가
-      end
-      sleep(0.1)
-      # 최수진의 답장 메시지 생성
-      create_voice_message(conv3, user_sujin, user_cheolsu, sample_audio_paths.sample, broadcast)
-    else 
-      puts "  - FAILED to create conversation from broadcast"
+  # Broadcast 모델에 맞게 필드 설정 (음성만 가능하도록 텍스트 콘텐츠 제거)
+  
+  begin
+    # 방법 1: 단순 생성 - 텍스트 content 제거
+    broadcast = Broadcast.new(
+      user_id: user_cheolsu.id, 
+      expired_at: 7.days.from_now,
+      active: true,
+      duration: rand(10..90)
+    )
+    
+    # 오디오 파일 첨부 시도
+    if defined?(ActiveStorage) && broadcast.respond_to?(:audio)
+      broadcast.audio.attach(
+        io: File.open(audio_path_for_broadcast),
+        filename: File.basename(audio_path_for_broadcast),
+        content_type: 'audio/wav'
+      )
     end
-  else
-    puts "  - FAILED to create broadcast: #{broadcast.errors.full_messages.join(', ')}"
+    
+    if broadcast.save
+      puts "  - Created Broadcast ##{broadcast.id} by #{user_cheolsu.nickname}"
+      
+      # 대화 생성 (conversation.broadcast_id를 설정할 수 있으면 설정)
+      conv3 = Conversation.find_or_create_conversation(user_cheolsu.id, user_sujin.id)
+      if conv3
+        puts "  - Created conversation ##{conv3.id} with #{user_sujin.nickname}"
+        # 방송용 메시지 생성 (음성만)
+        broadcast_message = conv3.messages.create(
+          sender_id: user_cheolsu.id,
+          broadcast_id: broadcast.id,
+          message_type: "broadcast",
+          read: false,
+          duration: broadcast.duration
+        )
+        puts "  - Created broadcast message #{broadcast_message.id} in conversation ##{conv3.id}" if broadcast_message
+        
+        # 답장 메시지 생성 (음성만)
+        response_message = create_voice_message(conv3, user_sujin, user_cheolsu, sample_audio_paths.sample)
+        puts "  - Created response message to broadcast" if response_message
+      end 
+    else
+      puts "  - FAILED to create broadcast: #{broadcast.errors.full_messages.join(', ')}"
+    end
+  rescue => e
+    puts "  - ERROR creating broadcast: #{e.message}"
   end
 end
 
@@ -163,34 +187,35 @@ if conv4 && sample_audio_paths.any?
   sleep(0.1)
   create_voice_message(conv4, user_sujin, user_younghee, sample_audio_paths.sample)
   
-  # 메시지 삭제 처리 (Message 모델에 deleted_by_sender/receiver 또는 deleted_at 컬럼 필요 가정)
-  if msg_to_delete && msg_to_delete.respond_to?(:mark_as_deleted_by)
-    msg_to_delete.mark_as_deleted_by(user_sujin) # 수신자(최수진)가 삭제
-    puts "  - Marked message ##{msg_to_delete.id} as deleted by #{user_sujin.nickname}"
-  elsif msg_to_delete && msg_to_delete.respond_to?(:update) # 또는 deleted_at 같은 필드 업데이트
-    # msg_to_delete.update(deleted_at: Time.current) # 예시
-    puts "  - Marked message ##{msg_to_delete.id} as deleted (implementation specific)"
+  # 메시지 삭제 처리 (실제 삭제 또는 read 필드로 대체)
+  if msg_to_delete
+    # 삭제를 시뮬레이션하기 위해 read 필드를 활용
+    msg_to_delete.update(read: true)
+    puts "  - Simulated message deletion by marking message ##{msg_to_delete.id} as read"
   end
 end
 
 # 시나리오 5: 김철수 <-> 정민준 (대화 자체가 삭제됨 - 김철수 측에서)
-puts "Creating conversation to be deleted: #{user_cheolsu.nickname} <-> #{created_users[4].nickname}" # user_sujin -> 정민준(created_users[4])
+puts "Creating conversation to be deleted: #{user_cheolsu.nickname} <-> #{created_users[4].nickname}"
 conv5 = Conversation.find_or_create_conversation(user_cheolsu.id, created_users[4].id)
 if conv5 && sample_audio_paths.any?
   create_voice_message(conv5, user_cheolsu, created_users[4], sample_audio_paths.sample)
   sleep(0.1)
   create_voice_message(conv5, created_users[4], user_cheolsu, sample_audio_paths.sample)
   
-  # 김철수가 대화 삭제 (Conversation 모델에 deleted_by_a/b 플래그 필요 가정)
-  if conv5.respond_to?(:update)
+  # 대화 삭제 처리 (deleted_by_a/b 필드가 있는 경우만)
+  if conv5.respond_to?(:deleted_by_a) || conv5.attributes.include?("deleted_by_a")
+    # 김철수가 대화 삭제
     if conv5.user_a_id == user_cheolsu.id
       conv5.update(deleted_by_a: true)
+      puts "  - Marked conversation ##{conv5.id} as deleted by #{user_cheolsu.nickname} (user_a)"
     elsif conv5.user_b_id == user_cheolsu.id
       conv5.update(deleted_by_b: true)
+      puts "  - Marked conversation ##{conv5.id} as deleted by #{user_cheolsu.nickname} (user_b)"
     end
-    puts "  - Marked conversation ##{conv5.id} as deleted by #{user_cheolsu.nickname}"
+  else
+    puts "  - Note: Conversation deletion not supported by the model (deleted_by_a/b fields not found)"
   end
 end
-
 
 puts "\n==== Seeding Complete ===="
