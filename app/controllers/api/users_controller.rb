@@ -272,79 +272,53 @@ module Api
       end
     end
 
-    # POST /api/users/change_nickname
-    def change_nickname
-      Rails.logger.info("닉네임 변경 요청: 사용자 ID #{current_user.id}, 새 닉네임: #{params[:nickname]}")
-
+    # GET /api/users/random_nickname
+    # 랜덤 닉네임을 생성하여 반환합니다.
+    # 생성된 닉네임은 즉시 저장되지 않습니다.
+    # 클라이언트는 이 닉네임을 사용자에게 제안하고,
+    # 사용자가 확정하면 /api/users/change_nickname 엔드포인트를 호출하여 저장해야 합니다.
+    def random_nickname
       begin
-        # 닉네임 유효성 검사
-        unless params[:nickname].present?
-          Rails.logger.warn("닉네임 변경 실패: 닉네임이 비어 있음")
-          return render json: { 
-            error: "닉네임은 비워둘 수 없습니다.",
-            request_id: request.request_id || SecureRandom.uuid
-          }, status: :unprocessable_entity
-        end
-
-        # 닉네임 글자 수 제한 확인
-        if params[:nickname].length < 2 || params[:nickname].length > 20
-          Rails.logger.warn("닉네임 변경 실패: 닉네임 길이 제한 위반 (#{params[:nickname].length}자)")
-          return render json: { 
-            error: "닉네임은 2자 이상 20자 이하여야 합니다.",
-            request_id: request.request_id || SecureRandom.uuid
-          }, status: :unprocessable_entity
-        end
-
-        # 특수 문자 필터링 (선택적)
-        if params[:nickname].match?(/[^\p{L}\p{N}\p{Z}]/i)
-          Rails.logger.warn("닉네임 변경 실패: 허용되지 않는 특수문자 포함")
-          return render json: { 
-            error: "닉네임에 특수문자를 사용할 수 없습니다.",
-            request_id: request.request_id || SecureRandom.uuid
-          }, status: :unprocessable_entity
-        end
-
-        # 닉네임 업데이트
-        if current_user.update(nickname: params[:nickname])
-          Rails.logger.info("닉네임 변경 성공: 사용자 ID #{current_user.id}, 새 닉네임: #{current_user.nickname}")
-          render json: { 
-            message: "닉네임이 성공적으로 변경되었습니다.",
-            nickname: current_user.nickname,
-            request_id: request.request_id || SecureRandom.uuid
-          }
-        else
-          Rails.logger.warn("닉네임 변경 실패: #{current_user.errors.full_messages.join(', ')}")
-          render json: { 
-            error: current_user.errors.full_messages.join(", "),
-            request_id: request.request_id || SecureRandom.uuid
-          }, status: :unprocessable_entity
-        end
+        nickname = generate_unique_random_nickname
+        Rails.logger.info("랜덤 닉네임 생성: #{nickname}")
+        render json: { nickname: nickname }, status: :ok
       rescue => e
-        Rails.logger.error("닉네임 변경 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { 
-          error: "닉네임을 변경하는 중 오류가 발생했습니다.",
-          request_id: request.request_id || SecureRandom.uuid
-        }, status: :internal_server_error
+        Rails.logger.error("랜덤 닉네임 생성 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "랜덤 닉네임을 생성하는 중 오류가 발생했습니다." }, status: :internal_server_error
       end
     end
 
-    # GET /api/users/generate_random_nickname
-    def generate_random_nickname
-      Rails.logger.info("랜덤 닉네임 생성 요청: 사용자 ID #{current_user.id}")
-      
+    # POST /api/users/change_nickname
+    # 사용자의 닉네임을 변경하고 저장합니다.
+    # random_nickname으로 제안된 닉네임을 사용자가 확정했을 때 호출됩니다.
+    def change_nickname
       begin
-        nickname = generate_random_nickname_string
-        Rails.logger.info("랜덤 닉네임 생성 성공: #{nickname}")
-        render json: { 
-          nickname: nickname,
-          request_id: request.request_id || SecureRandom.uuid
-        }
+        new_nickname = params.require(:nickname)
+
+        # 닉네임 유효성 검사 (예: 중복, 길이 등) - User 모델 콜백 또는 여기서 직접 수행
+        if new_nickname.blank? || new_nickname.length < 2 || new_nickname.length > 15
+          return render json: { error: "닉네임은 2자 이상 15자 이하이어야 합니다." }, status: :bad_request
+        end
+        
+        # 중복 검사 (User 모델의 유효성 검사 활용 권장)
+        if User.exists?(nickname: new_nickname) && current_user.nickname != new_nickname
+          return render json: { error: "이미 사용 중인 닉네임입니다." }, status: :conflict
+        end
+
+        Rails.logger.info("닉네임 변경 시도: 사용자 ID #{current_user.id}, 새 닉네임: #{new_nickname}")
+
+        if current_user.update(nickname: new_nickname)
+          Rails.logger.info("닉네임 변경 성공: 사용자 ID #{current_user.id}")
+          render json: { message: "닉네임이 성공적으로 변경되었습니다.", nickname: current_user.nickname }, status: :ok
+        else
+          Rails.logger.warn("닉네임 변경 실패: #{current_user.errors.full_messages.join(', ')}")
+          render json: { error: current_user.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        end
+      rescue ActionController::ParameterMissing
+        render json: { error: "닉네임 파라미터가 필요합니다." }, status: :bad_request
       rescue => e
-        Rails.logger.error("랜덤 닉네임 생성 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { 
-          error: "랜덤 닉네임을 생성하는 중 오류가 발생했습니다.",
-          request_id: request.request_id || SecureRandom.uuid
-        }, status: :internal_server_error
+        Rails.logger.error("닉네임 변경 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "닉네임을 변경하는 중 오류가 발생했습니다." }, status: :internal_server_error
       end
     end
 

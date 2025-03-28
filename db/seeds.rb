@@ -1,217 +1,196 @@
 # db/seeds.rb
 
-# 환경 설정
-environment_value = ENV['RAILS_ENV'] || 'development'
-puts "현재 실행 환경: #{environment_value}"
-puts "환경 설정 중..."
-system("bin/rails db:environment:set RAILS_ENV=#{environment_value}")
-puts "환경 설정 완료!"
+puts "==== Seeding Database ===="
 
-# 기존 사용자 및 데이터 재설정
-ActiveRecord::Base.connection.execute("TRUNCATE TABLE users RESTART IDENTITY CASCADE")
-ActiveRecord::Base.connection.execute("TRUNCATE TABLE conversations RESTART IDENTITY CASCADE")
-ActiveRecord::Base.connection.execute("TRUNCATE TABLE messages RESTART IDENTITY CASCADE")
-ActiveRecord::Base.connection.execute("TRUNCATE TABLE broadcasts RESTART IDENTITY CASCADE")
+# 0. 환경 변수 확인 및 설정 (필요시)
+puts "Environment: #{Rails.env}"
 
-# 새 테이블이 존재하는 경우 초기화
-begin
-  ActiveRecord::Base.connection.execute("TRUNCATE TABLE wallets RESTART IDENTITY CASCADE")
-  puts "지갑 테이블 초기화 완료!"
-rescue => e
-  puts "지갑 테이블 초기화 생략: #{e.message}"
+# 1. 기존 데이터 삭제 (CASCADE 옵션으로 관련 데이터 함께 삭제)
+puts "Truncating tables..."
+%w[users conversations messages broadcasts favorites notifications wallets transactions].each do |table_name|
+  begin
+    ActiveRecord::Base.connection.execute("TRUNCATE TABLE #{table_name} RESTART IDENTITY CASCADE")
+    puts "Truncated #{table_name}"
+  rescue ActiveRecord::StatementInvalid => e
+    puts "Skipping truncate for #{table_name}: #{e.message}"
+  end
 end
 
-begin
-  ActiveRecord::Base.connection.execute("TRUNCATE TABLE transactions RESTART IDENTITY CASCADE")
-  puts "트랜잭션 테이블 초기화 완료!"
-rescue => e
-  puts "트랜잭션 테이블 초기화 생략: #{e.message}"
-end
-
-begin
-  ActiveRecord::Base.connection.execute("TRUNCATE TABLE notifications RESTART IDENTITY CASCADE")
-  puts "알림 테이블 초기화 완료!"
-rescue => e
-  puts "알림 테이블 초기화 생략: #{e.message}"
-end
-
-# 테스트 계정 생성 (각 계정에 비밀번호 설정)
-users = [
-  # 베타 테스트 계정
-  { phone_number: "01011111111", nickname: "A - 김철수", gender: "male", password: "test1234", password_confirmation: "test1234" },
-  { phone_number: "01022222222", nickname: "B - 이영희", gender: "female", password: "test1234", password_confirmation: "test1234" },
-  { phone_number: "01033333333", nickname: "C - 박지민", gender: "male", password: "test1234", password_confirmation: "test1234" },
-  { phone_number: "01044444444", nickname: "D - 최수진", gender: "female", password: "test1234", password_confirmation: "test1234" },
-  { phone_number: "01055555555", nickname: "E - 정민준", gender: "male", password: "test1234", password_confirmation: "test1234" },
-
-  # 관리자 계정
-  { phone_number: "01099999999", nickname: "관리자", gender: "unknown", password: "admin123", password_confirmation: "admin123" }
+# 2. 사용자 생성
+puts "\nCreating users..."
+users_data = [
+  { phone_number: "01011111111", nickname: "김철수", gender: "male", password: "password", password_confirmation: "password" },
+  { phone_number: "01022222222", nickname: "이영희", gender: "female", password: "password", password_confirmation: "password" },
+  { phone_number: "01033333333", nickname: "박지민", gender: "male", password: "password", password_confirmation: "password" },
+  { phone_number: "01044444444", nickname: "최수진", gender: "female", password: "password", password_confirmation: "password" },
+  { phone_number: "01055555555", nickname: "정민준", gender: "male", password: "password", password_confirmation: "password" },
+  { phone_number: "01099999999", nickname: "관리자", gender: "unknown", password: "admin123", password_confirmation: "admin123", admin: true } # 관리자 플래그 추가 (User 모델에 admin 컬럼 필요)
 ]
 
-created_users = []
-users.each do |user_data|
+created_users = users_data.map do |user_data|
   user = User.create!(user_data)
-  created_users << user
-  puts "사용자 생성됨: #{user.nickname} (#{user.phone_number})"
+  puts "Created User: #{user.nickname} (ID: #{user.id})"
 
-  # 지갑 생성 (사용자 생성 후 자동 생성되도록 설정됨)
-  if defined?(Wallet) && Wallet.table_exists?
-    wallet = user.wallet
-    if wallet
-      puts "지갑 생성됨: #{user.nickname}의 지갑 (잔액: #{wallet.balance}원)"
-
-      # 테스트용 거래 내역 추가
-      if defined?(Transaction) && Transaction.table_exists?
-        tx = wallet.deposit(
-          1000,
-          description: '첫 충전 보너스',
-          payment_method: '시스템',
-          metadata: { type: 'bonus', system: true }
-        )
-        puts "거래 생성됨: #{user.nickname}의 첫 충전 보너스 +1,000원"
-      end
-    else
-      puts "지갑 생성 실패: #{user.nickname}"
+  # 지갑 생성 및 초기 충전 (Wallet 모델이 있는 경우)
+  if defined?(Wallet) && user.respond_to?(:wallet)
+    wallet = user.wallet || user.create_wallet(balance: 0)
+    puts "  - Wallet created (Balance: #{wallet.balance})"
+    if defined?(Transaction)
+      wallet.deposit(1000, description: "가입 축하 포인트", payment_method: "system")
+      puts "  - Added 1000 points bonus transaction."
     end
   end
 
-  # 테스트용 알림 생성
-  if defined?(Notification) && Notification.table_exists?
-    notification = user.create_notification(
-      'system',
-      '가입을 축하합니다! 5,000원 상당의 무료 체험권이 지급되었습니다.',
-      title: '가입 환영',
-      metadata: { type: 'welcome' }
-    )
-    puts "알림 생성됨: #{user.nickname}의 가입 환영 알림"
+  # 가입 환영 알림 (Notification 모델이 있는 경우)
+  if defined?(Notification) && user.respond_to?(:create_notification)
+    user.create_notification('system', '가입을 축하합니다! Talk App에 오신 것을 환영해요.', title: '환영합니다!')
+    puts "  - Created welcome notification."
   end
+  user
 end
 
-# 대화방 생성
-conversation1 = Conversation.create!(
-  user_a_id: created_users[0].id,
-  user_b_id: created_users[1].id
-)
-puts "대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[1].nickname}"
+user_cheolsu = created_users[0]
+user_younghee = created_users[1]
+user_jimin = created_users[2]
+user_sujin = created_users[3]
 
-conversation2 = Conversation.create!(
-  user_a_id: created_users[0].id,
-  user_b_id: created_users[2].id
-)
-puts "대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[2].nickname}"
+# 샘플 오디오 파일 경로 (public/audio_samples 디렉토리에 파일 필요)
+sample_audio_paths = Dir[Rails.root.join('public', 'audio_samples', 'sample_*.wav')]
+unless sample_audio_paths.any?
+  puts "\nWARN: No sample audio files found in public/audio_samples/. Voice message seeding will be limited."
+end
 
-# 메시지 생성
-puts "메시지 생성 시작..."
+# 함수: 오디오 파일 첨부 및 메시지 생성
+def create_voice_message(conversation, sender, receiver, audio_path, broadcast = nil)
+  return unless File.exist?(audio_path)
 
-if defined?(Message) && Message.table_exists?
-  # GitHub 저장소 기준 오디오 샘플 파일 경로 설정
-  # 실제 환경에 따라 동적으로 경로 생성
-  if Rails.env.production?
-    base_url = ENV.fetch("RENDER_EXTERNAL_URL", "https://talk-app-api.onrender.com")
-  else
-    base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://localhost:3000")
-  end
-  
-  audio_samples = [
-    "#{base_url}/audio_samples/sample_audio.wav",
-    "#{base_url}/audio_samples/sample_audio1..wav", 
-    "#{base_url}/audio_samples/sample_audio2.wav"
-  ]
-  
-  puts "오디오 샘플 URL 설정: #{audio_samples.first}"
-  
-  # 브로드캐스트 생성 (text 속성 제거)
-  broadcast1 = Broadcast.new(
-    user_id: created_users[0].id,
-    duration: 15 # 기본 오디오 길이 (초)
+  message = conversation.messages.new(
+    sender: sender,
+    receiver: receiver,
+    broadcast: broadcast,
+    message_type: broadcast ? "broadcast_response" : "voice",
+    duration: rand(5..60) # 임의의 오디오 길이 (초)
   )
   
-  # 로컬 파일 첨부
-  audio_path = Rails.root.join('public', 'audio_samples', 'sample_audio.wav')
-  if File.exist?(audio_path)
-    puts "오디오 파일 발견: #{audio_path}"
-    broadcast1.audio.attach(io: File.open(audio_path), filename: 'sample_audio.wav', content_type: 'audio/wav')
-    broadcast1.save!
-    puts "브로드캐스트 생성됨: ID #{broadcast1.id}, 발신자: #{created_users[0].nickname}"
-    
-    # 브로드캐스트를 이용한 대화방 생성 (이미 존재하면 기존 대화방 사용)
-    conversation3 = Conversation.find_or_create_conversation(
-      created_users[0].id, 
-      created_users[3].id, 
-      broadcast1
-    )
-    puts "브로드캐스트 대화방 생성됨: #{created_users[0].nickname} ↔ #{created_users[3].nickname}"
-    
-    # 브로드캐스트 관련 메시지가 자동 생성되었는지 확인
-    broadcast_message = conversation3.messages.find_by(broadcast_id: broadcast1.id)
-    unless broadcast_message
-      # 브로드캐스트 메시지 수동 생성
-      broadcast_message = Message.create!(
-        conversation_id: conversation3.id,
-        sender_id: created_users[0].id,
-        broadcast_id: broadcast1.id,
-        message_type: "voice",
-        duration: 15,
-        audio_url: broadcast1.audio_url || audio_samples[0]
-      )
-      puts "브로드캐스트 메시지 수동 생성됨: ID #{broadcast_message.id}"
-    else
-      puts "브로드캐스트 메시지 자동 생성됨: ID #{broadcast_message.id}"
-    end
-    
-    # 두번째 브로드캐스트 생성
-    broadcast2 = Broadcast.new(
-      user_id: created_users[1].id,
-      duration: 18,
-      private: true # 비공개 브로드캐스트
-    )
-    
-    audio_path2 = Rails.root.join('public', 'audio_samples', 'sample_audio1..wav')
-    if File.exist?(audio_path2)
-      broadcast2.audio.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
-      broadcast2.save!
-      puts "비공개 브로드캐스트 생성됨: ID #{broadcast2.id}, 발신자: #{created_users[1].nickname}"
-    end
-    
-    # 응답 음성 메시지 생성
-    if File.exist?(audio_path2)
-      response_message = Message.new(
-        conversation_id: conversation3.id,
-        sender_id: created_users[3].id,
-        receiver_id: created_users[0].id,
-        message_type: "voice",
-        duration: 18,
-        audio_url: audio_samples[1]
-      )
-      response_message.voice_file.attach(io: File.open(audio_path2), filename: 'sample_audio1.wav', content_type: 'audio/wav')
-      response_message.save!
-      puts "응답 음성 메시지 생성됨: ID #{response_message.id}"
-    else
-      puts "응답 음성 파일을 찾을 수 없음: #{audio_path2}"
-    end
-    
-    # 일반 음성 메시지 생성
-    audio_path3 = Rails.root.join('public', 'audio_samples', 'sample_audio2.wav')
-    if File.exist?(audio_path3)
-      voice_message = Message.new(
-        conversation_id: conversation1.id,
-        sender_id: created_users[0].id,
-        receiver_id: created_users[1].id,
-        message_type: "voice",
-        duration: 22,
-        audio_url: audio_samples[2]
-      )
-      voice_message.voice_file.attach(io: File.open(audio_path3), filename: 'sample_audio2.wav', content_type: 'audio/wav')
-      voice_message.save!
-      puts "음성 메시지 생성됨: ID #{voice_message.id}, 대화방: #{conversation1.id}"
-    else
-      puts "음성 파일을 찾을 수 없음: #{audio_path3}"
-    end
+  # Active Storage로 파일 첨부
+  message.voice_file.attach(
+    io: File.open(audio_path),
+    filename: File.basename(audio_path),
+    content_type: 'audio/wav' # 또는 실제 파일 타입에 맞게
+  )
+  
+  if message.save
+    puts "  - Created Message (ID: #{message.id}) in Conv ##{conversation.id} (Sender: #{sender.nickname}, Voice: #{File.basename(audio_path)})"
+    # 메시지 생성 시 conversation의 updated_at 자동 갱신 확인 필요
+    # conversation.touch if conversation.respond_to?(:touch) # 수동 갱신 필요시
   else
-    puts "샘플 오디오 파일을 찾을 수 없음: #{audio_path}"
+    puts "  - FAILED to create message: #{message.errors.full_messages.join(', ')}"
   end
-else
-  puts "메시지 테이블에 필요한 컬럼이 없습니다. 메시지 생성을 건너뜁니다."
+  message
 end
 
-puts "시드 데이터 생성 완료!"
+# 3. 대화 및 메시지 생성
+puts "\nCreating conversations and messages..."
+
+# 시나리오 1: 김철수 <-> 이영희 (여러 메시지, 읽음/안 읽음)
+puts "Creating conversation: #{user_cheolsu.nickname} <-> #{user_younghee.nickname}"
+conv1 = Conversation.find_or_create_conversation(user_cheolsu.id, user_younghee.id)
+if conv1 && sample_audio_paths.any?
+  create_voice_message(conv1, user_cheolsu, user_younghee, sample_audio_paths.sample)
+  sleep(0.1) # 시간차를 두어 생성 순서 보장
+  msg2 = create_voice_message(conv1, user_younghee, user_cheolsu, sample_audio_paths.sample)
+  sleep(0.1)
+  msg3 = create_voice_message(conv1, user_cheolsu, user_younghee, sample_audio_paths.sample)
+  
+  # msg2를 이영희가 읽음 처리 (Message 모델에 is_read 또는 last_read_at 컬럼 필요 가정)
+  if msg2 && msg2.respond_to?(:mark_as_read_by)
+     msg2.mark_as_read_by(user_younghee) # 가상의 메서드, 실제 구현 필요
+     puts "  - Marked message ##{msg2.id} as read by #{user_younghee.nickname}"
+  elsif msg2 && msg2.respond_to?(:update)
+     # 또는 직접 업데이트 (is_read 컬럼이 있고, 받는 사람이 younghee일 때)
+     msg2.update(is_read: true) if msg2.receiver_id == user_younghee.id 
+     puts "  - Marked message ##{msg2.id} as read (assuming is_read field exists)"
+  end
+  
+  # conv1을 김철수가 즐겨찾기 (Conversation 모델에 favorited_by_a/b 또는 Favorite 모델 필요)
+  if conv1.respond_to?(:update)
+    conv1.update(favorited_by_a: true) # user_a가 김철수라고 가정
+    puts "  - Favorited conversation ##{conv1.id} by #{user_cheolsu.nickname}"
+  end
+end
+
+# 시나리오 2: 김철수 <-> 박지민 (메시지 없음)
+puts "Creating empty conversation: #{user_cheolsu.nickname} <-> #{user_jimin.nickname}"
+conv2 = Conversation.find_or_create_conversation(user_cheolsu.id, user_jimin.id)
+puts "  - Created empty conversation ##{conv2.id}" if conv2
+
+# 시나리오 3: 김철수 -> 최수진 (방송 및 답장)
+puts "Creating broadcast conversation: #{user_cheolsu.nickname} -> #{user_sujin.nickname}"
+if sample_audio_paths.any?
+  audio_path_for_broadcast = sample_audio_paths.sample
+  broadcast = Broadcast.new(user: user_cheolsu, duration: rand(10..90))
+  broadcast.audio.attach(
+    io: File.open(audio_path_for_broadcast),
+    filename: File.basename(audio_path_for_broadcast),
+    content_type: 'audio/wav'
+  )
+  if broadcast.save
+    puts "  - Created Broadcast ##{broadcast.id} by #{user_cheolsu.nickname}"
+    # 방송에 대한 대화 생성 (Conversation.create_from_broadcast 또는 find_or_create_conversation 사용)
+    conv3 = Conversation.find_or_create_conversation(user_cheolsu.id, user_sujin.id, broadcast)
+    if conv3
+      puts "  - Created conversation ##{conv3.id} from broadcast"
+      # 방송 메시지가 자동으로 생성되지 않았다면 수동 생성 (find_or_create_conversation 내부에 로직이 있을 수 있음)
+      unless conv3.messages.exists?(broadcast_id: broadcast.id)
+         # 필요시 방송 메시지 수동 생성 로직 추가
+      end
+      sleep(0.1)
+      # 최수진의 답장 메시지 생성
+      create_voice_message(conv3, user_sujin, user_cheolsu, sample_audio_paths.sample, broadcast)
+    else 
+      puts "  - FAILED to create conversation from broadcast"
+    end
+  else
+    puts "  - FAILED to create broadcast: #{broadcast.errors.full_messages.join(', ')}"
+  end
+end
+
+# 시나리오 4: 이영희 <-> 최수진 (메시지 하나 삭제됨)
+puts "Creating conversation with deleted message: #{user_younghee.nickname} <-> #{user_sujin.nickname}"
+conv4 = Conversation.find_or_create_conversation(user_younghee.id, user_sujin.id)
+if conv4 && sample_audio_paths.any?
+  msg_to_delete = create_voice_message(conv4, user_younghee, user_sujin, sample_audio_paths.sample)
+  sleep(0.1)
+  create_voice_message(conv4, user_sujin, user_younghee, sample_audio_paths.sample)
+  
+  # 메시지 삭제 처리 (Message 모델에 deleted_by_sender/receiver 또는 deleted_at 컬럼 필요 가정)
+  if msg_to_delete && msg_to_delete.respond_to?(:mark_as_deleted_by)
+    msg_to_delete.mark_as_deleted_by(user_sujin) # 수신자(최수진)가 삭제
+    puts "  - Marked message ##{msg_to_delete.id} as deleted by #{user_sujin.nickname}"
+  elsif msg_to_delete && msg_to_delete.respond_to?(:update) # 또는 deleted_at 같은 필드 업데이트
+    # msg_to_delete.update(deleted_at: Time.current) # 예시
+    puts "  - Marked message ##{msg_to_delete.id} as deleted (implementation specific)"
+  end
+end
+
+# 시나리오 5: 김철수 <-> 정민준 (대화 자체가 삭제됨 - 김철수 측에서)
+puts "Creating conversation to be deleted: #{user_cheolsu.nickname} <-> #{created_users[4].nickname}" # user_sujin -> 정민준(created_users[4])
+conv5 = Conversation.find_or_create_conversation(user_cheolsu.id, created_users[4].id)
+if conv5 && sample_audio_paths.any?
+  create_voice_message(conv5, user_cheolsu, created_users[4], sample_audio_paths.sample)
+  sleep(0.1)
+  create_voice_message(conv5, created_users[4], user_cheolsu, sample_audio_paths.sample)
+  
+  # 김철수가 대화 삭제 (Conversation 모델에 deleted_by_a/b 플래그 필요 가정)
+  if conv5.respond_to?(:update)
+    if conv5.user_a_id == user_cheolsu.id
+      conv5.update(deleted_by_a: true)
+    elsif conv5.user_b_id == user_cheolsu.id
+      conv5.update(deleted_by_b: true)
+    end
+    puts "  - Marked conversation ##{conv5.id} as deleted by #{user_cheolsu.nickname}"
+  end
+end
+
+
+puts "\n==== Seeding Complete ===="

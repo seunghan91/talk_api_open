@@ -27,27 +27,30 @@ module Api
               
               unless other_user
                 Rails.logger.error("대화 상대 조회 실패: 대화 ID #{conversation.id}의 상대방을 찾을 수 없음")
-                next nil
+                next nil # 상대방 정보 없으면 대화 제외
               end
               
-              # 마지막 메시지 조회 - 삭제되지 않은 메시지만
+              # 마지막 메시지 조회 - 삭제되지 않은 메시지만 고려 (find_last_message 내부 로직에 따라)
               last_message = find_last_message(conversation)
               
-              # 마지막 메시지가 없는 경우 로그 추가
-              unless last_message
-                Rails.logger.warn("마지막 메시지 없음: 대화 ID #{conversation.id}")
-                next nil # 메시지가 없는 대화는 표시하지 않음
-              end
-              
-              # 브로드캐스트 관련 메시지 처리 보강
-              if last_message.broadcast_id.present?
-                broadcast = Broadcast.find_by(id: last_message.broadcast_id)
-                unless broadcast
-                  Rails.logger.warn("브로드캐스트 메시지 처리 실패: 존재하지 않는 브로드캐스트 ID #{last_message.broadcast_id}")
-                  # 브로드캐스트가 없더라도 대화는 표시
-                end
-              end
-              
+              # 마지막 메시지 포맷팅 또는 기본값 설정
+              formatted_last_message = if last_message
+                                     format_last_message(last_message)
+                                   else
+                                     # 메시지가 없거나 모두 삭제된 경우 기본 정보
+                                     Rails.logger.info("마지막 메시지 없음 또는 모두 삭제됨: 대화 ID #{conversation.id}")
+                                     {
+                                       id: nil,
+                                       content: "메시지가 없습니다.", # 클라이언트에서 적절히 표시할 내용
+                                       sender_id: nil,
+                                       created_at: conversation.updated_at, # 대화 업데이트 시간을 기준으로
+                                       is_read: true # 안 읽음 카운트가 0이 되도록
+                                     }
+                                   end
+
+              # 안 읽은 메시지 수 계산
+              unread_count = count_unread_messages(conversation)
+
               {
                 id: conversation.id,
                 with_user: {
@@ -55,16 +58,16 @@ module Api
                   nickname: other_user.nickname,
                   profile_image: other_user.profile_image.attached? ? url_for(other_user.profile_image) : nil
                 },
-                last_message: format_last_message(last_message),
-                unread_count: count_unread_messages(conversation),
+                last_message: formatted_last_message,
+                unread_count: unread_count,
                 favorited: conversation.favorited_by?(current_user.id),
                 updated_at: conversation.updated_at
               }
             rescue => e
-              Rails.logger.error("대화 정보 변환 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-              next nil
+              Rails.logger.error("대화 정보 변환 중 오류: 대화 ID #{conversation.id}, 오류: #{e.message}\\n#{e.backtrace.join(\\"\\n\\")}")
+              next nil # 오류 발생 시 해당 대화 제외
             end
-          end.compact # nil 값 제거
+          end.compact # nil 값 제거 (여전히 필요)
           
           # 정렬: 마지막 메시지 시간 기준 내림차순
           formatted_conversations.sort_by! { |c| -c[:updated_at].to_i }
