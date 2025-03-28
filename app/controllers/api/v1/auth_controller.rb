@@ -9,15 +9,29 @@ module Api
       def login
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("로그인 요청 파라미터: #{params.inspect}")
-        Rails.logger.info("로그인 시도: #{params[:user][:phone_number]}")
+        
+        # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
+        phone_number = params.dig(:user, :phone_number)
+        password = params.dig(:user, :password)
+        
+        # 필수 파라미터 확인
+        unless phone_number.present?
+          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+        end
+        
+        unless password.present?
+          return render json: { error: '비밀번호를 입력해 주세요.' }, status: :bad_request
+        end
+        
+        Rails.logger.info("로그인 시도: #{phone_number}")
 
         begin
           # 전화번호로 사용자 찾기
-          @user = User.find_by(phone_number: params[:user][:phone_number])
+          @user = User.find_by(phone_number: phone_number)
 
           # 사용자가 없거나 비밀번호가 일치하지 않으면
-          unless @user && @user.authenticate(params[:user][:password])
-            Rails.logger.warn("로그인 실패: #{params[:user][:phone_number]} - 사용자가 없거나 비밀번호가 일치하지 않음")
+          unless @user && @user.authenticate(password)
+            Rails.logger.warn("로그인 실패: #{phone_number} - 사용자가 없거나 비밀번호가 일치하지 않음")
             return render json: { error: "전화번호 또는 비밀번호가 올바르지 않습니다." }, status: :unauthorized
           end
 
@@ -51,7 +65,15 @@ module Api
       def register
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("회원가입 요청 파라미터: #{params.inspect}")
-        phone_number = params[:user][:phone_number]
+        
+        # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
+        phone_number = params.dig(:user, :phone_number)
+        
+        # 필수 파라미터 확인
+        unless phone_number.present?
+          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+        end
+        
         Rails.logger.info("회원가입 시도: #{phone_number}")
 
         begin
@@ -154,7 +176,14 @@ module Api
       def request_code
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("인증코드 요청 파라미터: #{params.inspect}")
-        phone_number = params[:user][:phone_number]
+        
+        # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
+        phone_number = params.dig(:user, :phone_number)
+        
+        # 필수 파라미터 확인
+        unless phone_number.present?
+          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+        end
 
         Rails.logger.info("인증코드 요청: #{phone_number}")
 
@@ -204,8 +233,19 @@ module Api
       def verify_code
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("인증코드 확인 파라미터: #{params.inspect}")
-        phone_number = params[:user][:phone_number]
-        code = params[:user][:code]
+        
+        # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
+        phone_number = params.dig(:user, :phone_number)
+        code = params.dig(:user, :code)
+        
+        # 필수 파라미터 확인
+        unless phone_number.present?
+          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+        end
+        
+        unless code.present?
+          return render json: { error: '인증코드를 입력해 주세요.' }, status: :bad_request
+        end
 
         Rails.logger.info("인증코드 확인: #{phone_number}, 입력 코드: #{code}")
 
@@ -255,7 +295,13 @@ module Api
 
       # 인증 코드 재전송 (편의성 향상)
       def resend_code
+        # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
         phone_number = params[:phone_number]
+        
+        # 필수 파라미터 확인
+        unless phone_number.present?
+          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+        end
 
         # 로그 추가
         Rails.logger.info("인증코드 재전송 요청: #{phone_number}")
@@ -326,7 +372,13 @@ module Api
 
       # 전화번호 존재 여부 확인
       def check_phone
+        # 방어적 코드 추가: params를 안전하게 접근
         phone_number = params[:phone_number]
+        
+        # 필수 파라미터 확인
+        unless phone_number.present?
+          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+        end
 
         # 로그 추가
         Rails.logger.info("전화번호 확인: #{phone_number}")
