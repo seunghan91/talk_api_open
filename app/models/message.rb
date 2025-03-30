@@ -56,14 +56,15 @@ class Message < ApplicationRecord
 
   # 메시지 삭제 처리 (실제 삭제는 수행하지 않고 삭제 플래그만 설정)
   def soft_delete_for_user!(user_id)
-    if sender_id == user_id
-      update(deleted_by_sender: true)
-    else
-      update(deleted_by_recipient: true)
+    # 대화 내에서 user_a인지 user_b인지 확인
+    if conversation.user_a_id == user_id
+      update(deleted_by_a: true)
+    elsif conversation.user_b_id == user_id
+      update(deleted_by_b: true)
     end
     
     # 양쪽 모두 삭제 처리된 경우 실제 삭제
-    destroy if deleted_by_sender && deleted_by_recipient
+    destroy if deleted_by_a && deleted_by_b
   end
 
   # 메시지 내용 요약 (미리보기용)
@@ -90,10 +91,12 @@ class Message < ApplicationRecord
   
   # 사용자가 메시지를 볼 수 있는지 확인
   def visible_to?(user_id)
-    if sender_id == user_id
-      !deleted_by_sender
+    if conversation.user_a_id == user_id
+      !deleted_by_a
+    elsif conversation.user_b_id == user_id
+      !deleted_by_b
     else
-      !deleted_by_recipient
+      false
     end
   end
 
