@@ -318,6 +318,7 @@ DEPENDENCIES
   bootsnap
   brakeman
   database_cleaner
+  database_cleaner-active_record
   debug
   exponent-server-sdk
   factory_bot_rails

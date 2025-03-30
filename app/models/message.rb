@@ -10,11 +10,14 @@ class Message < ApplicationRecord
   # 음성 파일 변경 시 duration 설정 콜백 추가
   after_save :set_duration_from_voice_file, if: -> { voice_file.attached? && saved_change_to_voice_file_attachment? }
 
-  # 메시지 타입은 voice만 허용
-  validates :message_type, inclusion: { in: ["voice"] }
+  # 메시지 타입 검증 - voice, broadcast, text 허용
+  validates :message_type, inclusion: { in: ["voice", "broadcast", "text"] }, allow_nil: true
+
+  # 기본 메시지 타입 설정
+  before_validation :set_default_message_type
 
   # 음성 메시지일 경우 voice_file 필수 (시드 데이터 생성을 위해 일시적으로 주석 처리)
-  # validates :voice_file, presence: true
+  # validates :voice_file, presence: true, if: -> { message_type == 'voice' && !broadcast_id.present? }
 
   # 파일 타입 검증
   validate :validate_voice_file_type, if: -> { voice_file.attached? }
@@ -94,6 +97,20 @@ class Message < ApplicationRecord
     end
   end
 
+  # 기본 메시지 타입 설정
+  def set_default_message_type
+    # message_type이 없을 때 설정
+    if message_type.nil?
+      if broadcast_id.present?
+        self.message_type = "broadcast"
+      elsif voice_file.attached?
+        self.message_type = "voice"
+      else
+        self.message_type = "text"
+      end
+    end
+  end
+
   private
 
   # 메시지 생성 후 처리 (푸시 알림 등)
@@ -101,7 +118,10 @@ class Message < ApplicationRecord
     # 상대방에게 푸시 알림 전송
     recipient_id = get_recipient_id
     # 여기에 푸시 알림 로직이 들어갈 수 있습니다
-    Rails.logger.info("메시지 생성 완료: ID #{id}, 수신자 ID: #{recipient_id}")
+    Rails.logger.info("메시지 생성 완료: ID #{id}, 수신자 ID: #{recipient_id}, 메시지 타입: #{message_type}, 브로드캐스트 ID: #{broadcast_id}")
+    
+    # 대화 마지막 업데이트 시간 갱신
+    conversation.touch
   end
 
   # 수신자 ID 찾기

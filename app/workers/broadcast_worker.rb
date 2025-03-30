@@ -1,9 +1,45 @@
 class BroadcastWorker
   include Sidekiq::Worker
-  sidekiq_options queue: :broadcasts, retry: 3
+  sidekiq_options queue: :broadcasts, retry: 3, backtrace: true
+
+  # Diagnostic method for verifying worker functionality
+  def self.verify_worker_setup
+    begin
+      # Check if worker can access the database
+      user_count = User.count
+      broadcast_count = Broadcast.count
+      conversation_count = Conversation.count
+      
+      # Verify Redis connection
+      redis_connection = Sidekiq.redis { |conn| conn.ping }
+      
+      {
+        status: "ok",
+        message: "BroadcastWorker setup verified",
+        database_access: true,
+        redis_connection: redis_connection == "PONG",
+        stats: {
+          users: user_count,
+          broadcasts: broadcast_count,
+          conversations: conversation_count
+        },
+        timestamp: Time.now.utc.iso8601
+      }
+    rescue => e
+      {
+        status: "error",
+        message: "BroadcastWorker verification failed",
+        error: e.message,
+        backtrace: e.backtrace.first(5),
+        timestamp: Time.now.utc.iso8601
+      }
+    end
+  end
 
   def perform(broadcast_id, recipient_count = 5)
     begin
+      # Log environment information for debugging
+      Rails.logger.info("Worker Environment: RAILS_ENV=#{ENV['RAILS_ENV']}, REDIS_URL=#{ENV['REDIS_URL']&.gsub(/:[^:]*@/, ':****@')}")
       Rails.logger.info("브로드캐스트 처리 시작: ID #{broadcast_id}, 수신자 수 #{recipient_count}")
 
       broadcast = Broadcast.find_by(id: broadcast_id)

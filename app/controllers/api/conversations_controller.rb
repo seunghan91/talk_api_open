@@ -7,17 +7,16 @@ module Api
       begin
         Rails.logger.info("대화 목록 조회 시작: 사용자 ID #{current_user.id}")
         
-        # 사용자별 대화 목록 캐싱 (1분 유효)
-        @conversations = Rails.cache.fetch("conversations-user-#{current_user.id}", expires_in: 1.minute) do
-          Rails.logger.debug("대화 목록 캐시 미스, DB에서 조회 중...")
-          conversations = Conversation.where("user_a_id = ? OR user_b_id = ?", current_user.id, current_user.id)
-                      .order(updated_at: :desc)
-                      .includes(:user_a, :user_b, messages: [:broadcast])
-                      .to_a
-          
-          Rails.logger.debug("대화 목록 DB 조회 완료: #{conversations.count}개 대화 찾음")
-          conversations
-        end
+        # 캐싱 임시 비활성화하고 삭제된 대화 제외 로직 추가
+        Rails.logger.debug("대화 목록 DB에서 조회 중...")
+        @conversations = Conversation
+          .where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)", 
+                current_user.id, false, current_user.id, false)
+          .order(updated_at: :desc)
+          .includes(:user_a, :user_b, messages: [:broadcast])
+          .to_a
+        
+        Rails.logger.debug("대화 목록 DB 조회 완료: #{@conversations.count}개 대화 찾음")
         
         Rails.logger.info("대화 목록 반환: #{@conversations.count}개")
         

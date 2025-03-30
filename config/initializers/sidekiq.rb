@@ -1,20 +1,21 @@
 require 'sidekiq'
 
+# Ensure we get a valid Redis URL
 redis_url = ENV['REDIS_URL'] || 'redis://localhost:6379/0'
+Rails.logger.info("Sidekiq initializing with Redis URL: #{redis_url.gsub(/:[^:]*@/, ':****@')}")
 
 Sidekiq.configure_server do |config|
   config.redis = { url: redis_url }
-
-  # sidekiq.yml 파일을 읽도록:
-  rails_root = Rails.root || File.dirname(__FILE__) + "/../.."
-  config_file = rails_root + "/config/sidekiq.yml"
-  if File.exist?(config_file)
-    yaml_data = YAML.load_file(config_file)
-    config.super_fetch! if yaml_data[:super_fetch]
-    # etc...
-  end
+  
+  # Additional error logging
+  Sidekiq.error_handlers << proc { |ex, ctx_hash|
+    Rails.logger.error("Sidekiq error: #{ex.message}\nContext: #{ctx_hash}")
+  }
 end
 
 Sidekiq.configure_client do |config|
   config.redis = { url: redis_url }
 end
+
+# Log Sidekiq initialization success
+Rails.logger.info("Sidekiq initialized successfully")

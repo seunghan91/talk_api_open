@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_03_17_044706) do
+ActiveRecord::Schema[7.0].define(version: 2025_05_20_000015) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -49,12 +49,26 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_17_044706) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "broadcast_recipients", force: :cascade do |t|
+    t.bigint "broadcast_id", null: false
+    t.bigint "user_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["broadcast_id", "user_id"], name: "index_broadcast_recipients_on_broadcast_id_and_user_id", unique: true
+    t.index ["broadcast_id"], name: "index_broadcast_recipients_on_broadcast_id"
+    t.index ["status"], name: "index_broadcast_recipients_on_status"
+    t.index ["user_id"], name: "index_broadcast_recipients_on_user_id"
+  end
+
   create_table "broadcasts", force: :cascade do |t|
     t.bigint "user_id", null: false
-    t.boolean "active", default: true
+    t.text "content"
     t.datetime "expired_at"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.boolean "active", default: true
+    t.integer "duration", default: 0, null: false
     t.index ["user_id"], name: "index_broadcasts_on_user_id"
   end
 
@@ -65,16 +79,44 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_17_044706) do
     t.boolean "favorite", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "broadcast_id"
+    t.boolean "deleted_by_a", default: false
+    t.boolean "deleted_by_b", default: false
+    t.index ["broadcast_id"], name: "index_conversations_on_broadcast_id"
+    t.index ["user_a_id"], name: "index_conversations_on_user_a_id"
+    t.index ["user_b_id"], name: "index_conversations_on_user_b_id"
   end
 
   create_table "messages", force: :cascade do |t|
     t.bigint "conversation_id", null: false
     t.bigint "sender_id", null: false
     t.boolean "read", default: false
+    t.string "message_type", default: "voice"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "broadcast_id"
+    t.integer "duration", default: 0, null: false
+    t.index ["broadcast_id"], name: "index_messages_on_broadcast_id"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
     t.index ["sender_id"], name: "index_messages_on_sender_id"
+  end
+
+  create_table "notifications", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.string "notification_type", null: false
+    t.string "title"
+    t.text "body", null: false
+    t.jsonb "metadata", default: {}
+    t.boolean "read", default: false
+    t.string "notifiable_type"
+    t.bigint "notifiable_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_notifications_on_created_at"
+    t.index ["notifiable_type", "notifiable_id"], name: "index_notifications_on_notifiable"
+    t.index ["notification_type"], name: "index_notifications_on_notification_type"
+    t.index ["read"], name: "index_notifications_on_read"
+    t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
   create_table "phone_verifications", force: :cascade do |t|
@@ -84,6 +126,9 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_17_044706) do
     t.boolean "verified", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.integer "attempt_count", default: 0, null: false
+    t.index ["user_id"], name: "index_phone_verifications_on_user_id"
   end
 
   create_table "reports", force: :cascade do |t|
@@ -92,6 +137,34 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_17_044706) do
     t.string "reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "transactions", force: :cascade do |t|
+    t.bigint "wallet_id", null: false
+    t.string "transaction_type", null: false
+    t.decimal "amount", precision: 10, scale: 2, null: false
+    t.string "description"
+    t.string "payment_method"
+    t.string "status", default: "completed", null: false
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_at"], name: "index_transactions_on_created_at"
+    t.index ["status"], name: "index_transactions_on_status"
+    t.index ["transaction_type"], name: "index_transactions_on_transaction_type"
+    t.index ["wallet_id"], name: "index_transactions_on_wallet_id"
+  end
+
+  create_table "user_settings", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.boolean "notification_enabled"
+    t.boolean "sound_enabled"
+    t.boolean "vibration_enabled"
+    t.string "theme"
+    t.string "language"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_user_settings_on_user_id"
   end
 
   create_table "users", force: :cascade do |t|
@@ -110,17 +183,42 @@ ActiveRecord::Schema[7.0].define(version: 2025_03_17_044706) do
     t.string "password_digest"
     t.boolean "receive_new_letter", default: true
     t.boolean "letter_receive_alarm", default: true
+    t.string "phone"
+    t.string "phone_bidx"
+    t.datetime "last_login_at"
+    t.boolean "push_enabled", default: true
+    t.boolean "broadcast_push_enabled", default: true
+    t.boolean "message_push_enabled", default: true
+    t.index ["phone_bidx"], name: "index_users_on_phone_bidx", unique: true
+  end
+
+  create_table "wallets", force: :cascade do |t|
+    t.bigint "user_id", null: false
+    t.decimal "balance", precision: 10, scale: 2, default: "0.0", null: false
+    t.integer "transaction_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["user_id"], name: "index_wallets_on_user_id"
   end
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "blocks", "users", column: "blocked_id"
   add_foreign_key "blocks", "users", column: "blocker_id"
+  add_foreign_key "broadcast_recipients", "broadcasts"
+  add_foreign_key "broadcast_recipients", "users"
   add_foreign_key "broadcasts", "users"
+  add_foreign_key "conversations", "broadcasts"
   add_foreign_key "conversations", "users", column: "user_a_id"
   add_foreign_key "conversations", "users", column: "user_b_id"
+  add_foreign_key "messages", "broadcasts"
   add_foreign_key "messages", "conversations"
   add_foreign_key "messages", "users", column: "sender_id"
+  add_foreign_key "notifications", "users"
+  add_foreign_key "phone_verifications", "users"
   add_foreign_key "reports", "users", column: "reported_id"
   add_foreign_key "reports", "users", column: "reporter_id"
+  add_foreign_key "transactions", "wallets"
+  add_foreign_key "user_settings", "users"
+  add_foreign_key "wallets", "users"
 end

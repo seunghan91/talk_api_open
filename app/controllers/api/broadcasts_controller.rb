@@ -86,8 +86,14 @@ module Api
           audio: broadcast_params[:audio]
         )
 
-        # 수신자 선택 로직 (무작위로 수신자 선택)
-        recipients = User.where.not(id: current_user.id).limit(recipient_count)
+        # DEBUG: 로그 추가
+        Rails.logger.info("현재 사용자: ID #{current_user.id}, #{current_user.nickname}")
+        Rails.logger.info("모든 사용자: #{User.all.map{|u| "ID #{u.id}: #{u.nickname}"}.join(', ')}")
+        Rails.logger.info("현재 모든 대화: #{Conversation.all.map{|c| "ID #{c.id}: #{c.user_a_id} <-> #{c.user_b_id}"}.join(', ')}")
+        
+        # 수신자 선택 로직 - 시스템의 모든 사용자를 선택 (무작위 선택 X)
+        recipients = User.where.not(id: current_user.id)
+        Rails.logger.info("선택된 수신자: #{recipients.map{|r| "ID #{r.id}: #{r.nickname}"}.join(', ')}")
 
         # 비동기 작업 실행 (Sidekiq)
         broadcast_id = nil

@@ -10,7 +10,9 @@ Rails.application.routes.draw do
 
   # 헬스 체크 엔드포인트
   get "/api/health_check", to: "health_check#index"
-  get "/health", to: proc { [ 200, {}, [ "ok" ] ] }
+  get "/health", to: "health_check#index"
+  get "/health/worker", to: "health_check#worker_status"
+  get "/health/conversations", to: "health_check#conversations_check"
 
   # 1) 웹용 루트
   root "pages#home"

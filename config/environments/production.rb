@@ -70,6 +70,9 @@ Rails.application.configure do
     expires_in: 1.day
   }
 
+  config.swagger_root = Rails.root.join('swagger').to_s
+  #정적접근 허용
+  config.public_file_server.enabled = true
   # Use a real queuing backend for Active Job (and separate queues per environment).
   config.active_job.queue_adapter = :sidekiq
   config.active_job.queue_name_prefix = "talkk_api_production"
