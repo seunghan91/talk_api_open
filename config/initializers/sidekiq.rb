@@ -31,17 +31,18 @@ Sidekiq.configure_server do |config|
     reconnect_attempts: 3
   }
   
-  # 오류 처리 확장
-  Sidekiq.error_handlers << proc { |ex, ctx_hash|
+  # 오류 처리 확장 - error_handlers는 Sidekiq 7.3.9에서 제거됨
+  # 대신 exception_handlers 사용 또는 로깅 직접 구현
+  config.on(:exception) do |ex, ctx_hash|
     job_info = ctx_hash[:job] || {}
     Rails.logger.error(
       "Sidekiq error: #{ex.class} - #{ex.message}\n" +
       "Job: #{job_info['class']} - #{job_info['jid']}\n" +
       "Args: #{job_info['args']}\n" +
       "Context: #{ctx_hash}\n" +
-      "Backtrace: #{ex.backtrace[0..5].join("\n")}"
+      "Backtrace: #{ex.backtrace ? ex.backtrace[0..5].join("\n") : 'No backtrace'}"
     )
-  }
+  end
   
   # Redis 연결 이벤트 수신기 추가
   config.on(:startup) do
