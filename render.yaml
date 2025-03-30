@@ -4,7 +4,7 @@ services:
     env: ruby
     runtime: ruby
     buildCommand: bundle config set frozen false && bundle install --without development test
-    startCommand: bundle exec puma -C config/puma.rb
+    startCommand: ./bin/render-start.sh
     buildFilter:
       paths:
         - Gemfile
@@ -12,6 +12,7 @@ services:
         - config/**
         - db/migrate/**
         - app/**
+        - bin/render-start.sh
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -70,6 +71,9 @@ services:
           property: connectionString
       - key: SIDEKIQ_CONCURRENCY
         value: "10"
+    dependsOn:
+      - talkk-api
+
   - type: redis
     name: talkk-redis
     ipAllowList: []

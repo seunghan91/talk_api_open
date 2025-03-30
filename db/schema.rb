@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_05_20_000015) do
+ActiveRecord::Schema[7.0].define(version: 2025_05_20_000016) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -96,6 +96,8 @@ ActiveRecord::Schema[7.0].define(version: 2025_05_20_000015) do
     t.datetime "updated_at", null: false
     t.bigint "broadcast_id"
     t.integer "duration", default: 0, null: false
+    t.boolean "deleted_by_a", default: false, null: false
+    t.boolean "deleted_by_b", default: false, null: false
     t.index ["broadcast_id"], name: "index_messages_on_broadcast_id"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
     t.index ["sender_id"], name: "index_messages_on_sender_id"
