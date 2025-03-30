@@ -51,10 +51,24 @@ Rails.application.configure do
   # Skip http-to-https redirect for the default health check endpoint.
   # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
-  # Log to STDOUT by default
-  config.logger = ::Logger.new(STDOUT)
-  config.logger.formatter = ::Logger::Formatter.new
-  config.active_record.verbose_query_logs = false
+  # Use default logging formatter so that PID and timestamp are not suppressed.
+  config.log_formatter = ::Logger::Formatter.new
+
+  # Use a different logger for distributed setups.
+  # require "syslog/logger"
+  # config.logger = ActiveSupport::TaggedLogging.new(Syslog::Logger.new "app-name")
+
+  if ENV["RAILS_LOG_TO_STDOUT"].present?
+    logger           = ActiveSupport::Logger.new(STDOUT)
+    logger.formatter = config.log_formatter
+    config.logger    = ActiveSupport::TaggedLogging.new(logger)
+    
+    # 배포 직후 디버깅을 위해 로그 레벨을 info로 설정 (나중에 warn으로 변경 가능)
+    config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info").to_sym
+    
+    # Redis 연결 로깅 활성화 (배포 후 확인용)
+    Redis.exists_returns_integer = true # 경고 제거
+  end
 
   # Prepend all log lines with the following tags.
   config.log_tags = [ :request_id ]
