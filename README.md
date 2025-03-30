@@ -460,6 +460,79 @@ EAS 빌드 서비스는 Android 앱을 빌드할 때 앱 서명에 필요한 Key
 
 이 설정을 추가한 후, 빌드를 다시 시도하면 경고가 사라집니다.
 
----
+## Render.com 배포 가이드
+
+### 1. 웹 서비스 설정
+
+1. Render 대시보드에서 **New** > **Web Service** 선택
+2. 저장소 선택 (GitHub 연결 필요)
+3. 기본 설정:
+   - **Name**: talk-api-production
+   - **Runtime**: Ruby
+   - **Build Command**: `bundle install`
+   - **Start Command**: `bundle exec puma -C config/puma.rb`
+   - **Plan**: 필요에 따라 선택 (Free 또는 Starter)
+
+4. 환경 변수 설정:
+   - `DATABASE_URL`: PostgreSQL 연결 문자열 (자동 생성 또는 직접 입력)
+   - `RAILS_ENV`: production
+   - `SECRET_KEY_BASE`: `rails secret`으로 생성한 값 입력
+   - `REDIS_URL`: 아래 "Redis 설정" 참조
+
+### 2. Redis 설정
+
+1. Redis 인스턴스 생성:
+   - Render.com에서 **New** > **Redis** 선택
+   - 이름과 플랜 선택
+   - **Create Redis** 클릭
+
+2. Redis URL 복사:
+   - 생성된 Redis 인스턴스 세부 정보에서 `External URL` 복사
+   - 형식: `redis://red-abcdefg123456:6379` (실제 URL 사용)
+
+3. 웹 서비스 환경 변수에 추가:
+   - `REDIS_URL`: 복사한 Redis URL
+
+### 3. Sidekiq 백그라운드 워커 설정
+
+1. Render 대시보드에서 **New** > **Background Worker** 선택
+2. 저장소 선택 (API 서버와 동일한 저장소)
+3. 기본 설정:
+   - **Name**: talk-api-sidekiq
+   - **Runtime**: Ruby
+   - **Build Command**: `bundle install`
+   - **Start Command**: `bundle exec sidekiq -C config/sidekiq.yml`
+   - **Plan**: 필요에 따라 선택 (Free 또는 Starter)
+
+4. 환경 변수 설정:
+   - 웹 서비스와 동일한 환경 변수 설정
+   - 특히 `REDIS_URL`이 웹 서비스와 동일하게 설정되어 있는지 확인
+
+### 배포 문제 해결
+
+#### Redis 연결 오류
+
+다음 오류가 발생하는 경우:
+```
+getaddrinfo: Name or service not known (redis://red-xxx:6379)
+```
+
+해결 방법:
+1. Render 대시보드에서 Redis 인스턴스 세부 정보 확인
+2. **External URL**을 복사하여 환경 변수 `REDIS_URL`에 설정
+3. 웹 서비스와 백그라운드 워커 모두 동일한 `REDIS_URL` 값을 가지고 있는지 확인
+4. 서비스 재시작
+
+#### Sidekiq 큐가 처리되지 않음
+
+해결 방법:
+1. `config/sidekiq.yml` 파일이 올바르게 설정되었는지 확인
+2. Redis URL이 정확한지 확인
+3. 백그라운드 워커 로그 확인하여 오류 메시지 확인
+4. 필요한 경우 백그라운드 워커 재시작
+
+## 로컬 개발 설정
+
+// ... 기존 내용 ...
 
 © 2024 Talkk. All rights reserved.

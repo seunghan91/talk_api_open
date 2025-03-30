@@ -48,54 +48,66 @@ class BroadcastWorker
 
       # 브로드캐스트 수신자와 대화 자동 생성 확인
       broadcast_recipients.each do |br|
-        # 대화 찾기
-        conversation = Conversation.where(
-          "user_a_id = ? AND user_b_id = ? OR user_a_id = ? AND user_b_id = ?",
-          broadcast.user_id, br.user_id, br.user_id, broadcast.user_id
-        ).first
-        
-        if conversation
-          Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화가 이미 존재함: ID #{conversation.id}")
+        begin
+          # 대화 찾기 또는 생성 - 항상 작은 ID를 user_a에, 큰 ID를 user_b에 배치
+          user_a_id = [broadcast.user_id, br.user_id].min
+          user_b_id = [broadcast.user_id, br.user_id].max
           
-          # 대화에 브로드캐스트 메시지 추가
-          message = Message.find_or_create_by(
-            conversation: conversation,
-            sender_id: broadcast.user_id,
-            broadcast_id: broadcast.id
-          )
+          # 대화 찾기
+          conversation = Conversation.where(
+            user_a_id: user_a_id,
+            user_b_id: user_b_id
+          ).first
           
-          if message.persisted?
-            Rails.logger.info("대화에 브로드캐스트 메시지 추가 성공: 메시지 ID #{message.id}")
-          else
-            Rails.logger.error("대화에 브로드캐스트 메시지 추가 실패: #{message.errors.full_messages.join(', ')}")
-          end
-        else
-          Rails.logger.error("브로드캐스트 수신자 (ID #{br.user_id})와 대화를 찾을 수 없음, 대화 자동 생성 로직 확인 필요")
-          
-          # 대화 생성 시도
-          conversation = Conversation.create(
-            user_a_id: [broadcast.user_id, br.user_id].min,
-            user_b_id: [broadcast.user_id, br.user_id].max
-          )
-          
-          if conversation.persisted?
-            Rails.logger.info("대화 자동 생성 성공: ID #{conversation.id}")
+          # 대화가 없으면 새로 생성
+          if conversation.nil?
+            Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화 생성 시작")
             
-            # 대화에 브로드캐스트 메시지 추가
-            message = Message.create(
-              conversation: conversation,
-              sender_id: broadcast.user_id,
-              broadcast_id: broadcast.id
+            # 대화 생성
+            conversation = Conversation.create!(
+              user_a_id: user_a_id,
+              user_b_id: user_b_id,
+              broadcast_id: broadcast.id  # 브로드캐스트 ID 추가
             )
             
-            if message.persisted?
-              Rails.logger.info("대화에 브로드캐스트 메시지 추가 성공: 메시지 ID #{message.id}")
-            else
-              Rails.logger.error("대화에 브로드캐스트 메시지 추가 실패: #{message.errors.full_messages.join(', ')}")
-            end
+            Rails.logger.info("대화 생성 성공: ID #{conversation.id}")
           else
-            Rails.logger.error("대화 자동 생성 실패: #{conversation.errors.full_messages.join(', ')}")
+            Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화가 이미 존재함: ID #{conversation.id}")
+            
+            # 브로드캐스트 ID 업데이트
+            unless conversation.broadcast_id.present?
+              conversation.update(broadcast_id: broadcast.id)
+            end
+            
+            # 삭제 플래그 초기화
+            if broadcast.user_id == user_a_id
+              conversation.update(deleted_by_a: false)
+            else
+              conversation.update(deleted_by_b: false)
+            end
+            
+            if br.user_id == user_a_id
+              conversation.update(deleted_by_a: false)
+            else
+              conversation.update(deleted_by_b: false)
+            end
           end
+          
+          # 대화에 브로드캐스트 메시지 추가
+          message = Message.create!(
+            conversation: conversation,
+            sender_id: broadcast.user_id,
+            broadcast_id: broadcast.id,
+            message_type: "broadcast"
+          )
+          
+          Rails.logger.info("대화에 브로드캐스트 메시지 추가 성공: 메시지 ID #{message.id}")
+          
+          # 대화 업데이트 시간 갱신
+          conversation.touch
+          
+        rescue => e
+          Rails.logger.error("대화 생성 또는 메시지 추가 실패: #{e.message}\n#{e.backtrace.join("\n")}")
         end
       end
 
@@ -130,10 +142,27 @@ class BroadcastWorker
   def select_optimal_recipients(sender, recipient_count)
     Rails.logger.info("피드백 기반 수신자 선택 알고리즘 실행 - 송신자: #{sender.id}, 요청 수신자 수: #{recipient_count}")
     
-    # 기본 필터: 활성 상태, 전화번호 있는 사용자
-    base_query = User.where.not(id: sender.id)
-                    .where(status: :active)
-                    .where.not(phone_number: nil)
+    # 디버깅: 무조건 더 많은 사용자를 선택하도록 수정
+    all_users = User.where.not(id: sender.id).to_a
+    
+    if all_users.empty?
+      Rails.logger.warn("사용 가능한 수신자가 없음, 서버 시드 데이터 확인 필요")
+      return []
+    end
+    
+    # 수신자가 부족한 경우 처리
+    if all_users.count < recipient_count
+      Rails.logger.info("사용 가능한 수신자가 #{all_users.count}명뿐이므로 요청 수 #{recipient_count}명에 미달")
+      return all_users
+    end
+    
+    # 모든 사용자를 선택하되, 최대 수신자 수 제한
+    return all_users.sample(recipient_count)
+    
+    # 기본 필터: 활성 상태, 전화번호 있는 사용자 (기존 코드 주석 처리)
+    # base_query = User.where.not(id: sender.id)
+    #                .where(status: :active)
+    #                .where.not(phone_number: nil)
 
     # 1. 과거 응답률 기반 점수 계산
     response_scores = calculate_response_scores(sender)

@@ -1,8 +1,9 @@
-:concurrency: 5
+:concurrency: <%= ENV.fetch("SIDEKIQ_CONCURRENCY", 5) %>
 :queues:
-  - default
-  - mailers
-  - critical
+  - [default, 1]
+  - [broadcasts, 2]
+  - [mailers, 1]
+:max_retries: 3
 
 # Redis URL (optional if you prefer environment variables)
 :redis:
