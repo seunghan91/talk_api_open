@@ -462,6 +462,105 @@ module Api
         end
       end
 
+      # GET /api/v1/users/:id
+      #
+      # @swagger
+      # /api/v1/users/{id}:
+      #   get:
+      #     summary: 특정 사용자 정보 조회
+      #     tags: [사용자]
+      #     security:
+      #       - bearerAuth: []
+      #     parameters:
+      #       - name: id
+      #         in: path
+      #         required: true
+      #         schema:
+      #           type: integer
+      #     responses:
+      #       200:
+      #         description: 성공적으로 사용자 정보 반환
+      #         content:
+      #           application/json:
+      #             schema:
+      #               type: object
+      #               properties:
+      #                 user:
+      #                   $ref: '#/components/schemas/User'
+      #       401:
+      #         description: 인증 실패
+      #       404:
+      #         description: 사용자를 찾을 수 없음
+      def show
+        Rails.logger.info("사용자 상세 정보 조회: 사용자 ID #{@user.id}")
+
+        begin
+          render json: {
+            user: {
+              id: @user.id,
+              nickname: @user.nickname,
+              gender: @user.gender || "unspecified",
+              created_at: @user.created_at,
+              updated_at: @user.updated_at
+            }
+          }, status: :ok
+        rescue => e
+          Rails.logger.error("사용자 상세 정보 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: "사용자 정보를 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
+      end
+
+      # POST /api/v1/users/:id/block
+      #
+      # @swagger
+      # /api/v1/users/{id}/block:
+      #   post:
+      #     summary: 특정 사용자 차단
+      #     tags: [사용자]
+      #     security:
+      #       - bearerAuth: []
+      #     parameters:
+      #       - name: id
+      #         in: path
+      #         required: true
+      #         schema:
+      #           type: integer
+      #     responses:
+      #       200:
+      #         description: 성공적으로 사용자 차단 완료
+      #       401:
+      #         description: 인증 실패
+      #       404:
+      #         description: 사용자를 찾을 수 없음
+      def block
+        Rails.logger.info("사용자 차단 요청: 차단 대상 사용자 ID #{@user.id}")
+
+        begin
+          # 이미 차단한 사용자인지 확인
+          existing_block = UserBlock.find_by(blocker_id: current_user.id, blocked_id: @user.id)
+          
+          if existing_block
+            Rails.logger.info("이미 차단된 사용자: 차단 대상 사용자 ID #{@user.id}")
+            render json: { message: "이미 차단된 사용자입니다." }, status: :ok
+            return
+          end
+          
+          # 차단 관계 생성
+          block = UserBlock.new(blocker_id: current_user.id, blocked_id: @user.id)
+          
+          if block.save
+            Rails.logger.info("사용자 차단 성공: 차단 대상 사용자 ID #{@user.id}")
+            render json: { message: "사용자가 성공적으로 차단되었습니다." }, status: :ok
+          else
+            Rails.logger.warn("사용자 차단 실패: #{block.errors.full_messages.join(', ')}")
+            render json: { error: block.errors.full_messages.join(", ") }, status: :unprocessable_entity
+          end
+        rescue => e
+          Rails.logger.error("사용자 차단 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { error: "사용자 차단 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
+      end
+
       private
 
       def set_user

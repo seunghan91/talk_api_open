@@ -138,6 +138,7 @@ Rails.application.routes.draw do
     get "users/random_nickname", to: "v1/users#generate_random_nickname"
     post "users/change_nickname", to: "v1/users#change_nickname"
     post "users/update_profile", to: "v1/users#update_profile"
+    post "users/:id/block", to: "v1/users#block"
 
     # 브로드캐스트 관련 레거시 API
     get "broadcasts", to: "v1/broadcasts#index"
