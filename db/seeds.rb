@@ -27,17 +27,34 @@ users_data = [
   { phone_number: "01099999999", nickname: "관리자", gender: "unknown", password: "admin123", password_confirmation: "admin123" } # 관리자 계정
 ]
 
+# 각 사용자별 초기 지갑 금액 설정
+wallet_balances = {
+  "01011111111" => 12500,  # 김철수
+  "01022222222" => 7800,   # 이영희
+  "01033333333" => 3200,   # 박지민
+  "01044444444" => 9500,   # 최수진
+  "01055555555" => 6000,   # 정민준
+  "01099999999" => 50000   # 관리자
+}
+
 created_users = users_data.map do |user_data|
   user = User.create!(user_data)
   puts "Created User: #{user.nickname} (ID: #{user.id})"
 
   # 지갑 생성 및 초기 충전 (Wallet 모델이 있는 경우)
   if defined?(Wallet) && user.respond_to?(:wallet)
+    initial_balance = wallet_balances[user_data[:phone_number]] || 5000
     wallet = user.wallet || user.create_wallet(balance: 0)
     puts "  - Wallet created (Balance: #{wallet.balance})"
+    
     if defined?(Transaction)
-      wallet.deposit(1000, description: "가입 축하 포인트", payment_method: "system")
-      puts "  - Added 1000 points bonus transaction."
+      # 기존 1000원 충전 대신 사용자별 설정된 금액으로 충전
+      wallet.deposit(initial_balance, description: "가입 축하 포인트", payment_method: "system")
+      puts "  - Added #{initial_balance} points bonus transaction."
+    else
+      # Transaction이 없는 경우 수동으로 잔액 설정
+      wallet.update(balance: initial_balance)
+      puts "  - Set wallet balance to #{initial_balance} points."
     end
   end
 
