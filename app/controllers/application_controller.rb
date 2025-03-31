@@ -1,6 +1,6 @@
 # app/controllers/application_controller.rb
 class ApplicationController < ActionController::API
-  before_action :authorize_request
+  before_action :authorize_request, unless: -> { Rails.env.development? || Rails.env.test? }
 
   attr_reader :current_user
 

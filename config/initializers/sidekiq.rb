@@ -32,8 +32,8 @@ Sidekiq.configure_server do |config|
   }
   
   # 오류 처리 확장 - error_handlers는 Sidekiq 7.3.9에서 제거됨
-  # 대신 exception_handlers 사용 또는 로깅 직접 구현
-  config.on(:exception) do |ex, ctx_hash|
+  # 대신 exception_handlers 사용
+  config.error_handlers << proc do |ex, ctx_hash|
     job_info = ctx_hash[:job] || {}
     Rails.logger.error(
       "Sidekiq error: #{ex.class} - #{ex.message}\n" +

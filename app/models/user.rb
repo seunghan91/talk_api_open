@@ -8,6 +8,7 @@ class User < ApplicationRecord
   # status 필드를 attribute로 선언
   attribute :status, :integer, default: 0
   attribute :gender, :integer, default: 1
+  attribute :is_admin, :boolean, default: false  # 관리자 여부
 
   enum :gender, { unknown: 0, male: 1, female: 2 }, prefix: true
   enum :status, { active: 0, suspended: 1, banned: 2 }, prefix: true
@@ -59,6 +60,11 @@ class User < ApplicationRecord
   # 차단 여부 확인 메서드
   def blocked?
     status_banned? || status_suspended?
+  end
+
+  # 관리자 여부 확인 메서드
+  def admin?
+    is_admin || id == 1  # ID가 1인 사용자는 기본 관리자
   end
 
   # 지갑 잔액 조회

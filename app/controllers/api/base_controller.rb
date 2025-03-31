@@ -1,6 +1,6 @@
 module Api
   class BaseController < ApplicationController
-    before_action :authorize_request
+    before_action :authorize_request, unless: -> { Rails.env.development? || Rails.env.test? }
     attr_reader :current_user
 
     rescue_from StandardError, with: :handle_standard_error

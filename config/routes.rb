@@ -29,82 +29,71 @@ Rails.application.routes.draw do
 
   # 2) API - 표준화된 v1 네임스페이스 사용
   namespace :api do
+    get 'test/index'
     namespace :v1 do
+      # 공지사항 관련 API
+      resources :announcement_categories, only: [:index, :create, :update, :destroy]
+      resources :announcements, only: [:index, :show, :create, :update, :destroy]
+
       # 인증 관련 API
-      namespace :auth do
-        post "request_code", to: "auth#request_code"
-        post "verify_code", to: "auth#verify_code"
-        post "resend_code", to: "auth#resend_code"
-        post "register", to: "auth#register"
-        post "login", to: "auth#login"
-        post "logout", to: "auth#logout"
-        post "check_phone", to: "auth#check_phone"
-      end
-
-      # 지갑 관련 API
-      resources :wallets, only: [] do
-        collection do
-          get "", to: "wallets#show"
-          get "transactions", to: "wallets#transactions"
-          post "deposit", to: "wallets#deposit"
-        end
-      end
-
-      # 알림 관련 API
-      resources :notifications, only: [ :index, :show ] do
-        member do
-          post :mark_as_read
-        end
-        collection do
-          post :mark_all_as_read
-          post :update_push_token
-          get :settings
-          post :update_settings
-        end
-      end
+      post "auth/request_code"
+      post "auth/verify_code"
+      post "auth/resend_code"
+      post "auth/register"
+      post "auth/login"
+      post "auth/logout"
+      post "auth/check_phone"
 
       # 사용자 관련 API
-      resources :users, only: [ :show, :update, :destroy ] do
-        collection do
-          get "me", to: "users#me"
-          get "profile", to: "users#profile"
-          patch "me", to: "users#update"
-          put "me", to: "users#update"
-          post "change_password", to: "users#change_password"
-          get "notification_settings", to: "users#notification_settings"
-          patch "notification_settings", to: "users#update_notification_settings"
-          put "notification_settings", to: "users#update_notification_settings"
-          post "change_nickname", to: "users#change_nickname"
-          get "generate_random_nickname", to: "users#generate_random_nickname"
-          post "update_profile", to: "users#update_profile"
-        end
-
-        member do
-          get "notification_settings", to: "users#notification_settings"
-          patch "notification_settings", to: "users#update_notification_settings"
-          put "notification_settings", to: "users#update_notification_settings"
-          post "report", to: "users#report"
-          post "block", to: "users#block"
-          post "unblock", to: "users#unblock"
-        end
-      end
-
+      get "users/me"
+      get "users/profile"
+      get "users/:id", to: "users#show"
+      patch "users/me", to: "users#update"
+      put "users/me", to: "users#update"
+      post "users/change_password"
+      get "users/notification_settings"
+      patch "users/notification_settings", to: "users#update_notification_settings"
+      put "users/notification_settings", to: "users#update_notification_settings"
+      
       # 브로드캐스트 관련 API
-      resources :broadcasts, only: [ :index, :create, :show ] do
+      resources :broadcasts, only: [:index, :show, :create] do
         member do
           post :reply
-        end
-        collection do
-          get :example_broadcast
         end
       end
 
       # 대화 관련 API
-      resources :conversations, only: [ :index, :show, :destroy ] do
+      resources :conversations, only: [:index, :show, :destroy] do
         member do
+          post :send_message
           post :favorite
           post :unfavorite
-          post :send_message
+          post :close
+        end
+      end
+
+      # 알림 관련 API
+      resources :notifications, only: [:index, :show, :update] do
+        collection do
+          put :mark_all_as_read
+          get :unread_count
+        end
+      end
+
+      # 설정 관련 API
+      resources :settings, only: [] do
+        collection do
+          get :notification_settings
+          put :update_notification_settings
+          patch :update_notification_settings
+        end
+      end
+
+      # 지갑 관련 API
+      resources :wallets, only: [:show] do
+        collection do
+          get :my_wallet
+          post :transfer
         end
       end
     end

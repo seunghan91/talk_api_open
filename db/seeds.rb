@@ -233,4 +233,102 @@ if conv5 && sample_audio_paths.any?
   end
 end
 
+# 공지사항 카테고리
+puts "Creating announcement categories..."
+categories = [
+  { name: '공지', description: '일반 공지사항' },
+  { name: '업데이트', description: '앱 업데이트 관련 공지' },
+  { name: '이벤트', description: '이벤트 관련 공지' }
+]
+
+categories.each do |category_attrs|
+  AnnouncementCategory.find_or_create_by!(name: category_attrs[:name]) do |category|
+    category.description = category_attrs[:description]
+  end
+end
+
+# 공지사항
+puts "Creating announcements..."
+announcements = [
+  {
+    title: '[공지] 서비스 이용 약관 변경 안내',
+    content: '안녕하세요. 보이스 챗 서비스를 이용해 주셔서 감사합니다.
+
+서비스 이용 약관이 다음과 같이 변경될 예정입니다.
+
+변경 사항: 개인정보 처리방침 업데이트
+적용일: 2023년 4월 1일
+
+자세한 내용은 본문을 참고해 주세요.',
+    category_name: '공지',
+    is_important: true,
+    is_published: true,
+    is_hidden: false,
+    published_at: 7.days.ago
+  },
+  {
+    title: '[업데이트] 앱 버전 2.0 출시 안내',
+    content: '안녕하세요. 보이스 챗 서비스를 이용해 주셔서 감사합니다.
+
+새로운 기능이 추가된 버전 2.0이 출시되었습니다.
+
+주요 업데이트:
+1. UI/UX 개선
+2. 음성 품질 향상
+3. 배터리 사용량 최적화
+
+앱스토어에서 업데이트를 진행해 주세요.',
+    category_name: '업데이트',
+    is_important: false,
+    is_published: true,
+    is_hidden: false,
+    published_at: 3.days.ago
+  },
+  {
+    title: '[이벤트] 신규 사용자 이벤트 안내',
+    content: '안녕하세요. 보이스 챗 서비스를 이용해 주셔서 감사합니다.
+
+신규 사용자를 위한 특별 이벤트를 진행합니다.
+
+이벤트 기간: 2023년 3월 15일 ~ 3월 31일
+이벤트 내용: 프리미엄 기능 2주 무료 이용권 지급
+
+많은 참여 부탁드립니다.',
+    category_name: '이벤트',
+    is_important: true,
+    is_published: true,
+    is_hidden: true,
+    published_at: 1.day.ago
+  },
+  {
+    title: '[공지] 서버 점검 안내',
+    content: '안녕하세요. 보이스 챗 서비스를 이용해 주셔서 감사합니다.
+
+서비스 안정화를 위한 서버 점검이 있을 예정입니다.
+
+점검 일시: 2023년 4월 10일 02:00 ~ 05:00 (한국 시간)
+점검 내용: 서버 최적화 및 보안 업데이트
+
+점검 시간 동안 서비스 이용이 제한됩니다. 양해 부탁드립니다.',
+    category_name: '공지',
+    is_important: true,
+    is_published: false,
+    is_hidden: false,
+    published_at: nil
+  }
+]
+
+announcements.each do |announcement_attrs|
+  category = AnnouncementCategory.find_by(name: announcement_attrs[:category_name])
+  
+  Announcement.find_or_create_by!(title: announcement_attrs[:title]) do |announcement|
+    announcement.content = announcement_attrs[:content]
+    announcement.category = category
+    announcement.is_important = announcement_attrs[:is_important]
+    announcement.is_published = announcement_attrs[:is_published]
+    announcement.is_hidden = announcement_attrs[:is_hidden]
+    announcement.published_at = announcement_attrs[:published_at]
+  end
+end
+
 puts "\n==== Seeding Complete ===="
