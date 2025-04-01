@@ -13,10 +13,7 @@ services:
       - talkk-api.onrender.com
     envVars:
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: singapore-redis
-          property: internalConnectionString
+        value: redis://red-cvlm54adbo4c7399oheg:6379 # Redis의 내부 URL을 직접 입력
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
@@ -33,19 +30,8 @@ services:
     numInstances: 1
     envVars:
       - key: REDIS_URL
-        fromService:
-          type: redis
-          name: singapore-redis
-          property: internalConnectionString
+        value: redis://red-cvlm54adbo4c7399oheg:6379 # Redis의 내부 URL을 직접 입력
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
         sync: false
-
-# Redis 서비스 설정
-databases:
-  - name: singapore-redis
-    databaseType: redis
-    region: singapore
-    plan: starter
-    ipAllowList: [] # 모든 IP 허용
