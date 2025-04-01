@@ -45,7 +45,7 @@ services:
 # Redis 서비스 설정
 databases:
   - name: singapore-redis
-    type: redis
+    databaseType: redis
     region: singapore
     plan: starter
     ipAllowList: [] # 모든 IP 허용
