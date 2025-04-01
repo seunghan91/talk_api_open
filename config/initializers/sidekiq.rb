@@ -7,7 +7,18 @@ def log_with_sanitized_url(message, url)
 end
 
 # Redis URL 확인 및 연결 정보 출력
-redis_url = ENV.fetch('REDIS_URL', 'redis://localhost:6379/0')
+# Redis URL을 환경 변수에서 가져오거나 기본값 설정
+# Render에서는 환경 변수 이름이 REDIS_URL 대신 RENDER_REDIS_URL 또는 
+# REDIS_HOST와 REDIS_PORT로 제공될 수 있음
+redis_url = if ENV['RENDER_REDIS_URL'].present?
+  ENV['RENDER_REDIS_URL']
+elsif ENV['REDIS_HOST'].present? && ENV['REDIS_PORT'].present?
+  "redis://#{ENV['REDIS_HOST']}:#{ENV['REDIS_PORT']}/0"
+elsif ENV['REDIS_URL'].present?
+  ENV['REDIS_URL']
+else
+  'redis://localhost:6379/0'
+end
 log_with_sanitized_url("Initializing with Redis URL:", redis_url)
 
 # Redis URL 구문 분석 (디버깅 목적)
@@ -28,7 +39,8 @@ Sidekiq.configure_server do |config|
     url: redis_url,
     network_timeout: 5,
     pool_timeout: 5,
-    reconnect_attempts: 3
+    reconnect_attempts: 3,
+    ssl: true
   }
   
   # 오류 처리 확장 - error_handlers는 Sidekiq 7.3.9에서 제거됨
@@ -60,7 +72,8 @@ Sidekiq.configure_client do |config|
     url: redis_url,
     network_timeout: 5,
     pool_timeout: 5,
-    reconnect_attempts: 3
+    reconnect_attempts: 3,
+    ssl: true
   }
 end
 
