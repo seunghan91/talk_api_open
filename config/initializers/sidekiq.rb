@@ -32,16 +32,27 @@ rescue URI::InvalidURIError => e
   Rails.logger.error("Sidekiq: Invalid Redis URL format: #{e.message}")
 end
 
+# SSL 필요 여부 자동 감지
+# rediss:// 프로토콜이거나 외부 render.com 도메인인 경우 SSL 필요
+is_external_url = redis_url.start_with?('rediss://') || 
+                 (redis_url.include?('.render.com') && !redis_url.include?('localhost'))
+
+Rails.logger.info("Sidekiq: Redis connection type: #{is_external_url ? 'External (SSL enabled)' : 'Internal (SSL disabled)'}")
+
 # 서버 구성 (워커)
 Sidekiq.configure_server do |config|
   # 향상된 옵션으로 Redis 구성
-  config.redis = { 
+  redis_options = { 
     url: redis_url,
     network_timeout: 5,
     pool_timeout: 5,
-    reconnect_attempts: 3,
-    ssl: true
+    reconnect_attempts: 3
   }
+  
+  # 외부 URL인 경우에만 SSL 활성화
+  redis_options[:ssl] = true if is_external_url
+  
+  config.redis = redis_options
   
   # 오류 처리 확장 - error_handlers는 Sidekiq 7.3.9에서 제거됨
   # 대신 exception_handlers 사용
@@ -68,13 +79,17 @@ end
 
 # 클라이언트 구성 (웹 프로세스)
 Sidekiq.configure_client do |config|
-  config.redis = { 
+  redis_options = { 
     url: redis_url,
     network_timeout: 5,
     pool_timeout: 5,
-    reconnect_attempts: 3,
-    ssl: true
+    reconnect_attempts: 3
   }
+  
+  # 외부 URL인 경우에만 SSL 활성화
+  redis_options[:ssl] = true if is_external_url
+  
+  config.redis = redis_options
 end
 
 # Sidekiq 설정 로깅
