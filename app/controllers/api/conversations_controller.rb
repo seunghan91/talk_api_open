@@ -7,14 +7,39 @@ module Api
       begin
         Rails.logger.info("대화 목록 조회 시작: 사용자 ID #{current_user.id}")
         
-        # 캐싱 임시 비활성화하고 삭제된 대화 제외 로직 추가
+        # 성능 모니터링 시작
+        start_time = Time.now
+        
+        # not_deleted_for 스코프 활용하여 삭제된 대화 제외
         Rails.logger.debug("대화 목록 DB에서 조회 중...")
         @conversations = Conversation
-          .where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)", 
-                current_user.id, false, current_user.id, false)
+          .for_user(current_user.id)
+          .not_deleted_for(current_user.id)
           .order(updated_at: :desc)
           .includes(:user_a, :user_b, messages: [:broadcast])
-          .to_a
+          
+        # 성능 모니터링 - 쿼리 완료 시간
+        query_time = Time.now - start_time
+        Rails.logger.debug("대화 목록 쿼리 완료: #{query_time.round(3)}초 소요")
+        
+        # 정렬 전 대화 ID 로깅 - 디버깅용
+        conversation_ids = @conversations.map(&:id)
+        Rails.logger.debug("조회된 대화 ID 목록: #{conversation_ids.inspect}")
+        
+        # nil 체크 추가
+        if @conversations.nil?
+          Rails.logger.error("대화 목록 조회 결과가 nil입니다.")
+          @conversations = []
+        end
+        
+        @conversations = @conversations.to_a
+        
+        # 대화 목록에 포함된 사용자 ID 로깅
+        user_ids = @conversations.map do |conv|
+          [conv.user_a_id, conv.user_b_id]
+        end.flatten.uniq
+        
+        Rails.logger.debug("대화 목록에 포함된 사용자 ID: #{user_ids.inspect}")
         
         Rails.logger.debug("대화 목록 DB 조회 완료: #{@conversations.count}개 대화 찾음")
         
@@ -65,7 +90,7 @@ module Api
                 message_type: last_message.message_type || "voice" # 기본값 제공
               },
               updated_at: conversation.updated_at,
-              favorite: conversation.favorite || false
+              favorite: conversation.favorited_by?(current_user.id) # favorited_by? 메소드 사용
             }
           rescue => e
             Rails.logger.error("대화 정보 변환 중 오류: #{e.message}\n#{e.backtrace.join("\n")}")
@@ -95,6 +120,13 @@ module Api
         return render json: { error: "권한이 없습니다." }, status: :forbidden
       end
 
+      # 대화방을 볼 때 사용자에게 가시성 설정
+      if conversation.user_a_id == current_user.id && conversation.deleted_by_a
+        conversation.update(deleted_by_a: false)
+      elsif conversation.user_b_id == current_user.id && conversation.deleted_by_b
+        conversation.update(deleted_by_b: false)
+      end
+
       # 대화별 메시지 캐싱 (30초 유효)
       messages = Rails.cache.fetch("conversation-messages-#{conversation.id}", expires_in: 30.seconds) do
         conversation.messages.order(created_at: :asc).includes(:sender).to_a
@@ -108,12 +140,19 @@ module Api
 
     def destroy
       conversation = Conversation.find(params[:id])
-      if participant?(conversation)
-        conversation.destroy
-        render json: { message: "대화방이 삭제되었습니다." }
-      else
-        render json: { error: "권한이 없습니다." }, status: :forbidden
+      
+      unless participant?(conversation)
+        return render json: { error: "권한이 없습니다." }, status: :forbidden
       end
+      
+      # 실제 삭제하지 않고 현재 사용자에게만 보이지 않도록 설정
+      if conversation.user_a_id == current_user.id
+        conversation.update(deleted_by_a: true)
+      elsif conversation.user_b_id == current_user.id
+        conversation.update(deleted_by_b: true)
+      end
+      
+      render json: { success: true, message: "대화방이 삭제되었습니다." }
     end
 
     def favorite
@@ -138,6 +177,13 @@ module Api
       # 대화방 참여자 확인
       unless participant?(conversation)
         return render json: { error: "권한이 없습니다." }, status: :forbidden
+      end
+
+      # 대화방이 삭제된 상태라면 가시성 복원 (응답 시 대화방 보이도록)
+      if conversation.user_a_id == current_user.id && conversation.deleted_by_a
+        conversation.update(deleted_by_a: false)
+      elsif conversation.user_b_id == current_user.id && conversation.deleted_by_b
+        conversation.update(deleted_by_b: false)
       end
 
       # 음성 파일 첨부 확인 (기본은 음성 메시지로 가정)

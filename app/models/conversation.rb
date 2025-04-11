@@ -52,7 +52,10 @@ class Conversation < ApplicationRecord
         conversation = create!(
           user_a_id: user_a_id, 
           user_b_id: user_b_id,
-          broadcast_id: broadcast&.id
+          broadcast_id: broadcast&.id,
+          # 기본 상태는 양쪽 모두 보이도록 설정
+          deleted_by_a: false,
+          deleted_by_b: false
         )
         
         # 브로드캐스트가 있을 경우 첫 메시지로 추가
@@ -65,9 +68,13 @@ class Conversation < ApplicationRecord
         end
       end
 
-      # 삭제 플래그 초기화
-      conversation.update(deleted_by_a: false) if conversation.user_a_id == user1_id
-      conversation.update(deleted_by_b: false) if conversation.user_b_id == user1_id
+      # 삭제 플래그 초기화 로직 수정: 요청한 사용자의 삭제 상태만 초기화
+      # 기존 코드의 문제: user_b_id와 user1_id를 비교하는 로직이 잘못됨
+      if user1_id == conversation.user_a_id
+        conversation.update(deleted_by_a: false)
+      elsif user1_id == conversation.user_b_id
+        conversation.update(deleted_by_b: false)
+      end
 
       conversation
     end
@@ -84,6 +91,14 @@ class Conversation < ApplicationRecord
       unless conversation&.persisted?
         Rails.logger.error("브로드캐스트에서 대화 생성 실패: 브로드캐스트 ID #{broadcast.id}, 수신자 ID #{recipient_id}")
         return nil
+      end
+      
+      # 브로드캐스트 수신자는 처음에는 대화방이 보이지 않도록 설정
+      # (답장하기 전까지 보이지 않음)
+      if conversation.user_a_id == recipient_id
+        conversation.update(deleted_by_a: true)
+      elsif conversation.user_b_id == recipient_id
+        conversation.update(deleted_by_b: true)
       end
       
       conversation

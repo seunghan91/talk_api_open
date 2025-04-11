@@ -164,13 +164,17 @@ module Api
         Rails.logger.info("음성 파일 타입: #{params[:voice_file].content_type}")
         Rails.logger.info("음성 파일 크기: #{params[:voice_file].size} 바이트")
 
-        # 대화 찾기 또는 생성
-        conversation = Conversation.find_or_create_by(
-          user_a_id: current_user.id,
-          user_b_id: broadcast.user_id
+        # 대화 찾기 또는 생성 - 수정됨
+        # 기존 find_or_create_by 대신 find_or_create_conversation 사용
+        conversation = Conversation.find_or_create_conversation(
+          current_user.id, 
+          broadcast.user_id,
+          broadcast
         )
 
-        Rails.logger.info("대화 ID: #{conversation.id}, 상대방 ID: #{broadcast.user_id}")
+        # 대화방 가시성 보장을 위한 로그 추가
+        Rails.logger.info("대화방 설정: ID #{conversation.id}, user_a_id: #{conversation.user_a_id}, user_b_id: #{conversation.user_b_id}")
+        Rails.logger.info("삭제 상태: deleted_by_a: #{conversation.deleted_by_a}, deleted_by_b: #{conversation.deleted_by_b}")
 
         # 메시지 생성
         message = conversation.messages.new(sender_id: current_user.id)

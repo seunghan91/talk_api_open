@@ -85,48 +85,27 @@ class BroadcastWorker
       # 브로드캐스트 수신자와 대화 자동 생성 확인
       broadcast_recipients.each do |br|
         begin
-          # 대화 찾기 또는 생성 - 항상 작은 ID를 user_a에, 큰 ID를 user_b에 배치
-          user_a_id = [broadcast.user_id, br.user_id].min
-          user_b_id = [broadcast.user_id, br.user_id].max
+          Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화 처리 시작")
           
-          # 대화 찾기
-          conversation = Conversation.where(
-            user_a_id: user_a_id,
-            user_b_id: user_b_id
-          ).first
+          # 대화 생성 - Conversation.find_or_create_conversation 메소드 사용
+          conversation = Conversation.find_or_create_conversation(
+            broadcast.user_id, 
+            br.user_id, 
+            broadcast
+          )
           
-          # 대화가 없으면 새로 생성
-          if conversation.nil?
-            Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화 생성 시작")
-            
-            # 대화 생성
-            conversation = Conversation.create!(
-              user_a_id: user_a_id,
-              user_b_id: user_b_id,
-              broadcast_id: broadcast.id  # 브로드캐스트 ID 추가
-            )
-            
-            Rails.logger.info("대화 생성 성공: ID #{conversation.id}")
-          else
-            Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화가 이미 존재함: ID #{conversation.id}")
-            
-            # 브로드캐스트 ID 업데이트
-            unless conversation.broadcast_id.present?
-              conversation.update(broadcast_id: broadcast.id)
-            end
-            
-            # 삭제 플래그 초기화
-            if broadcast.user_id == user_a_id
-              conversation.update(deleted_by_a: false)
-            else
-              conversation.update(deleted_by_b: false)
-            end
-            
-            if br.user_id == user_a_id
-              conversation.update(deleted_by_a: false)
-            else
-              conversation.update(deleted_by_b: false)
-            end
+          Rails.logger.info("대화 처리 완료: ID #{conversation.id}")
+          
+          # 브로드캐스트 발신자는 대화방이 보이도록, 수신자는 보이지 않도록 설정
+          # (수신자는 응답할 때만 대화방이 보임)
+          if conversation.user_a_id == br.user_id
+            # 수신자가 user_a인 경우
+            conversation.update(deleted_by_a: true)  # 수신자에게는 삭제된 상태로 설정
+            conversation.update(deleted_by_b: false) # 발신자에게는 보이도록 설정
+          elsif conversation.user_b_id == br.user_id
+            # 수신자가 user_b인 경우
+            conversation.update(deleted_by_b: true)  # 수신자에게는 삭제된 상태로 설정
+            conversation.update(deleted_by_a: false) # 발신자에게는 보이도록 설정
           end
           
           # 대화에 브로드캐스트 메시지 추가

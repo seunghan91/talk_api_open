@@ -1,7 +1,7 @@
 module Api
   module V1
     class NotificationsController < ApplicationController
-      before_action :authenticate_user!
+      before_action :authorize_request
       before_action :set_notification, only: [ :show, :mark_as_read ]
 
       # 알림 목록 조회
