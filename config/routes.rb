@@ -42,6 +42,7 @@ Rails.application.routes.draw do
       post "auth/register"
       post "auth/login"
       post "auth/logout"
+      post "auth/reset_password"
       post "auth/check_phone"
 
       # 사용자 관련 API
@@ -111,6 +112,7 @@ Rails.application.routes.draw do
     post "auth/register", to: "v1/auth#register"
     post "auth/login", to: "v1/auth#login"
     post "auth/logout", to: "v1/auth#logout"
+    post "auth/reset_password", to: "v1/auth#reset_password"
     post "auth/check_phone", to: "v1/auth#check_phone"
 
     # 사용자 관련 API

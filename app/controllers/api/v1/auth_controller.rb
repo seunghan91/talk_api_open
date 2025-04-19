@@ -216,11 +216,15 @@ module Api
           # 인증 코드를 로그에 기록 (디버깅용, 프로덕션에서도 로그에는 기록)
           Rails.logger.info("🔑 인증코드 발급: 전화번호=#{phone_number}, 코드=#{code}, 만료=#{verification.expires_at.strftime('%H:%M:%S')}")
 
+          # 이미 가입된 사용자인지 확인
+          user_exists = User.exists?(phone_number: phone_number)
+          
           # 모든 환경에서 코드를 응답에 포함 (요청에 따른 임시 변경)
           render json: { 
             message: "인증 코드가 발송되었습니다.", 
             code: code,
             expires_at: verification.expires_at,
+            user_exists: user_exists,  # 이미 가입된 사용자인지 여부
             note: "보안 주의: 모든 환경에서 코드가 직접 표시됩니다."
           }, status: :ok
         rescue => e
@@ -400,13 +404,73 @@ module Api
 
       # 로그아웃 처리
       def logout
-        # JWT는 서버에 저장되지 않으므로, 클라이언트에서 토큰 삭제하는 것이 중요
-        # 하지만 선택적으로 블랙리스트 등을 관리할 수 있음
+        # 현재 사용자의 토큰을 비활성화
+        current_user.update(authentication_token: nil) if current_user
+        
+        render json: { message: "로그아웃 되었습니다." }, status: :ok
+      end
 
-        # 로그 추가
-        Rails.logger.info("로그아웃: 사용자 ID #{current_user.id}")
-
-        render json: { message: "로그아웃되었습니다." }, status: :ok
+      # 비밀번호 재설정 기능
+      def reset_password
+        # 요청 파라미터 추출
+        phone_number = params.dig(:user, :phone_number)
+        new_password = params.dig(:user, :password)
+        
+        # 파라미터 유효성 검사
+        unless phone_number.present? && new_password.present?
+          render json: { error: "전화번호와 새 비밀번호가 필요합니다." }, status: :bad_request
+          return
+        end
+        
+        # 전화번호로 사용자 찾기
+        user = User.find_by(phone_number: phone_number)
+        
+        # 사용자가 존재하는지 확인
+        unless user
+          render json: { error: "해당 전화번호로 가입된 사용자가 없습니다." }, status: :not_found
+          return
+        end
+        
+        # 인증 코드 검증 여부 확인
+        verification = PhoneVerification.find_by(phone_number: phone_number, verified: true)
+        
+        # 인증되지 않은 전화번호인 경우
+        unless verification
+          render json: { error: "전화번호 인증이 필요합니다." }, status: :unauthorized
+          return
+        end
+        
+        # 비밀번호 유효성 검사 (최소 6자 이상)
+        if new_password.length < 6
+          render json: { error: "비밀번호는 최소 6자 이상이어야 합니다." }, status: :bad_request
+          return
+        end
+        
+        # 비밀번호 변경 시도
+        begin
+          # 비밀번호 변경
+          user.password = new_password
+          
+          if user.save
+            # 비밀번호 변경 성공 로그 기록
+            Rails.logger.info("\ud83d\udd11 비밀번호 변경 성공: 사용자=#{user.id}, 전화번호=#{phone_number.gsub(/\d(?=\d{4})/, '*')}")
+            
+            # 인증 코드 사용 후 삭제
+            verification.destroy
+            
+            render json: { 
+              message: "비밀번호가 성공적으로 변경되었습니다.", 
+              success: true 
+            }, status: :ok
+          else
+            # 저장 실패 시 오류 메시지 반환
+            render json: { error: user.errors.full_messages.join(", ") }, status: :unprocessable_entity
+          end
+        rescue => e
+          # 예외 발생 시 오류 처리
+          Rails.logger.error("\ud83d\udd34 비밀번호 변경 오류: #{e.message}")
+          render json: { error: "비밀번호 변경 중 오류가 발생했습니다." }, status: :internal_server_error
+        end
       end
 
       private

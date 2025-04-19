@@ -84,6 +84,9 @@ paths:
                   code:
                     type: string
                     description: 개발 환경에서만 제공됩니다.
+                  user_exists:
+                    type: boolean
+                    description: 전화번호로 가입된 사용자가 존재하는지 여부
                   note:
                     type: string
         '400':
@@ -157,7 +160,7 @@ paths:
                   type: string
                 gender:
                   type: string
-                  enum: [male, female, unspecified]
+                  enum: [male, female, unknown]
               required:
               - phone_number
               - nickname
@@ -183,6 +186,49 @@ paths:
                         type: string
         '400':
           description: 잘못된 요청 (전화번호 미인증 등)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  
+  /api/v1/auth/reset_password:
+    post:
+      summary: 비밀번호 재설정
+      tags:
+      - 인증
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  type: object
+                  properties:
+                    phone_number:
+                      type: string
+                    password:
+                      type: string
+              required:
+              - user
+      responses:
+        '200':
+          description: 비밀번호 재설정 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  success:
+                    type: boolean
+        '400':
+          description: 잘못된 요청
           content:
             application/json:
               schema:
