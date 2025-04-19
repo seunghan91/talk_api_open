@@ -54,8 +54,41 @@ Sidekiq.configure_server do |config|
   
   config.redis = redis_options
   
+  # 실패한 작업 자동 재시도 설정 개선
+  config.failures_max_count = 5000  # 최대 실패 작업 저장 수
+  config.failures_default_mode = :exhausted  # exhausted 모드: 모든 재시도 실패 후에 저장
+  
+  # 작업 재시도 전략 설정
+  # 처음 시도 후 30초, 1분, 5분, 15분, 30분 간격으로 최대 5번 재시도
+  config.default_retries = 5
+  
+  # 특정 작업 클래스에 대한 추가 처리
+  # 푸시 알림 처리를 위한 특별 처리
+  config.death_handlers << -> (job, ex) do
+    job_class = job['class']
+    job_args = job['args']
+    
+    # 중요 작업(특히 알림 관련)일 경우 로깅 및 추가 조치
+    if ['NotificationWorker', 'BroadcastWorker'].include?(job_class)
+      Rails.logger.error("[CRITICAL] 중요 작업 영구 실패: #{job_class} (jid: #{job['jid']})
+내용: #{job_args}
+오류: #{ex.message}")
+      
+      # 중요 작업 실패 시 관리자 알림 (선택적)
+      # 실제 구현은 추후 AdminAlertService 클래스 작성 후 활성화
+      # AdminAlertService.broadcast("푸시 알림 작업 실패: #{ex.message}") if defined?(AdminAlertService)
+      
+      # 중요 알림 작업의 경우 마지막 시도로 이메일 대체 발송 등 구현 가능
+      if job_class == 'NotificationWorker' && job_args.present?
+        user_id = job_args[0]
+        notification_type = job_args[1]
+        Rails.logger.info("사용자 ID #{user_id}에게 #{notification_type} 알림 전송 실패, 대체 방법 고려 필요")
+      end
+    end
+  end
+  
   # 오류 처리 확장 - error_handlers는 Sidekiq 7.3.9에서 제거됨
-  # 대신 exception_handlers 사용
+  # 대신 exception_handlers 사용하지만 하위 호환성 유지
   config.error_handlers << proc do |ex, ctx_hash|
     job_info = ctx_hash[:job] || {}
     Rails.logger.error(

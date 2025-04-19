@@ -368,10 +368,17 @@ module Api
 
       # 방송 목록 응답 포맷
       def broadcast_response(broadcast)
+        # 오디오 URL 유효 기간 설정 (환경 변수에서 가져오거나 기본값 7일 사용)
+        audio_url_expiry = ENV.fetch('AUDIO_URL_EXPIRY_DAYS', '7').to_i.days
+        
+        # 로그에 현재 설정된 만료 시간 기록 (디버깅용)
+        Rails.logger.debug("오디오 URL 만료 시간 설정: #{audio_url_expiry / 1.day}일")
+        
         {
           id: broadcast.id,
           text: broadcast.text,
-          audio_url: broadcast.audio_url,
+          # 서명된 URL 생성 - 콘텐츠 자체 만료 시간과 일관되게 설정
+          audio_url: broadcast.audio.attached? ? rails_blob_url(broadcast.audio, disposition: "attachment", expires_in: audio_url_expiry) : nil,
           sender: {
             id: broadcast.user_id,
             nickname: broadcast.user.nickname
