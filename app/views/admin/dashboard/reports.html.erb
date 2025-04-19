@@ -1,0 +1,131 @@
+<div class="row mb-4">
+  <div class="col-md-8">
+    <h1>uc2e0uace0 uad00ub9ac</h1>
+    <p class="text-muted">uc2e0uace0 uc811uc218 ubc0f ucc98ub9ac ud604ud669</p>
+  </div>
+  <div class="col-md-4 text-end">
+    <!-- uc0c1ud0dcubcc4 ud544ud130ub9c1 -->
+    <div class="btn-group">
+      <a href="<%= admin_reports_path %>" class="btn btn-outline-primary <%= params[:status].blank? ? 'active' : '' %>">uc804uccb4</a>
+      <a href="<%= admin_reports_path(status: 'pending') %>" class="btn btn-outline-warning <%= params[:status] == 'pending' ? 'active' : '' %>">ub300uae30uc911</a>
+      <a href="<%= admin_reports_path(status: 'resolved') %>" class="btn btn-outline-success <%= params[:status] == 'resolved' ? 'active' : '' %>">ucc98ub9acuc644ub8cc</a>
+      <a href="<%= admin_reports_path(status: 'rejected') %>" class="btn btn-outline-danger <%= params[:status] == 'rejected' ? 'active' : '' %>">uac70ubd80ub428</a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <% if @reports.any? %>
+      <div class="table-responsive">
+        <table class="table table-striped table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>uc2e0uace0uc790</th>
+              <th>ud53cuc2e0uace0uc790</th>
+              <th>uc720ud615</th>
+              <th>uc0acuc720</th>
+              <th>uc0c1ud0dc</th>
+              <th>uc2e0uace0uc77cuc2dc</th>
+              <th>uc791uc5c5</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @reports.each do |report| %>
+              <tr>
+                <td><%= report.id %></td>
+                <td>
+                  <% if report.reporter %>
+                    <%= report.reporter.nickname %>
+                    <small class="text-muted d-block">ID: <%= report.reporter_id %></small>
+                  <% else %>
+                    <span class="text-muted">uc0aduc81cub428</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% if report.reported %>
+                    <%= report.reported.nickname %>
+                    <small class="text-muted d-block">ID: <%= report.reported_id %></small>
+                  <% else %>
+                    <span class="text-muted">uc0aduc81cub428</span>
+                  <% end %>
+                </td>
+                <td>
+                  <% case report.report_type %>
+                  <% when "user" %>
+                    <span class="badge bg-primary">uc0acuc6a9uc790</span>
+                  <% when "broadcast" %>
+                    <span class="badge bg-info">ube0cub85cub4dcuce90uc2a4ud2b8</span>
+                  <% when "message" %>
+                    <span class="badge bg-secondary">uba54uc2dcuc9c0</span>
+                  <% end %>
+                </td>
+                <td><%= report.reason %></td>
+                <td>
+                  <% case report.status %>
+                  <% when "pending" %>
+                    <span class="badge bg-warning">ub300uae30uc911</span>
+                  <% when "processing" %>
+                    <span class="badge bg-info">ucc98ub9acuc911</span>
+                  <% when "resolved" %>
+                    <span class="badge bg-success">ucc98ub9acuc644ub8cc</span>
+                  <% when "rejected" %>
+                    <span class="badge bg-danger">uac70ubd80ub428</span>
+                  <% end %>
+                </td>
+                <td><%= report.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+                <td>
+                  <% if report.pending? %>
+                    <div class="btn-group">
+                      <!-- uc2e0uace0 ucc98ub9ac -->
+                      <%= button_to process_admin_report_path(report), method: :put, class: "btn btn-sm btn-success", form: { style: "display:inline-block;" } do %>
+                        ucc98ub9ac
+                      <% end %>
+                      
+                      <!-- uc2e0uace0 uac70ubd80 -->
+                      <%= button_to reject_admin_report_path(report), method: :put, class: "btn btn-sm btn-danger", form: { style: "display:inline-block;" } do %>
+                        uac70ubd80
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <span class="text-muted">ucc98ub9acuc644ub8cc</span>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+      
+      <!-- ud398uc774uc9c0ub124uc774uc158 -->
+      <div class="d-flex justify-content-center mt-4">
+        <%#= paginate @reports %>
+        <!-- Kaminari ud30cuc77cub9ac uc9c0uc6d0 ucd94uac00 ud544uc694 -->
+        <nav aria-label="Page navigation">
+          <ul class="pagination">
+            <% if @reports.respond_to?(:current_page) && @reports.total_pages > 1 %>
+              <li class="page-item <%= @reports.current_page == 1 ? 'disabled' : '' %>">
+                <a class="page-link" href="<%= admin_reports_path(page: @reports.current_page - 1) %>">uc774uc804</a>
+              </li>
+              
+              <% (1..@reports.total_pages).each do |page| %>
+                <li class="page-item <%= @reports.current_page == page ? 'active' : '' %>">
+                  <a class="page-link" href="<%= admin_reports_path(page: page) %>"><%= page %></a>
+                </li>
+              <% end %>
+              
+              <li class="page-item <%= @reports.current_page == @reports.total_pages ? 'disabled' : '' %>">
+                <a class="page-link" href="<%= admin_reports_path(page: @reports.current_page + 1) %>">ub2e4uc74c</a>
+              </li>
+            <% end %>
+          </ul>
+        </nav>
+      </div>
+    <% else %>
+      <div class="text-center py-5">
+        <p class="mb-0">ud574ub2f9 uc870uac74uc5d0 ub9deub294 uc2e0uace0 ub0b4uc5educ774 uc5c6uc2b5ub2c8ub2e4.</p>
+      </div>
+    <% end %>
+  </div>
+</div>

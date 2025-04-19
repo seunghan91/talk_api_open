@@ -152,4 +152,20 @@ Rails.application.routes.draw do
 
   # 관리자 페이지 마운트
   # mount RailsAdmin::Engine => '/admin', as: 'rails_admin'
+
+  # 커스텀 관리자 대시보드
+  namespace :admin do
+    # 대시보드 기본 페이지
+    root to: 'dashboard#index'
+    
+    # 신고 관리
+    get 'reports', to: 'dashboard#reports'
+    put 'reports/:id/process', to: 'dashboard#process_report', as: 'process_report'
+    put 'reports/:id/reject', to: 'dashboard#reject_report', as: 'reject_report'
+    
+    # 사용자 관리
+    get 'users', to: 'dashboard#users'
+    put 'users/:id/suspend', to: 'dashboard#suspend_user', as: 'suspend_user'
+    put 'users/:id/unsuspend', to: 'dashboard#unsuspend_user', as: 'unsuspend_user'
+  end
 end

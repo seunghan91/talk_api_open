@@ -49,6 +49,12 @@ RSpec.configure do |config|
               id: { type: 'integer' },
               nickname: { type: 'string' },
               phone_number: { type: 'string' },
+              gender: { type: 'string', enum: ['male', 'female', 'unknown'] },
+              age_group: { type: 'string', enum: ['20s', '30s', '40s', '50s'], nullable: true },
+              region: { type: 'string', nullable: true, description: '사용자 지역 정보 (국가/시도 형식)' },
+              blocked: { type: 'boolean', description: '계정 정지/차단 상태' },
+              warning_count: { type: 'integer', description: '누적 경고 횟수' },
+              profile_completed: { type: 'boolean', description: '프로필 완성도 상태' },
               last_login_at: { type: 'string', format: 'date-time' },
               created_at: { type: 'string', format: 'date-time' }
             },
@@ -107,12 +113,45 @@ RSpec.configure do |config|
               user_id: { type: 'integer' },
               title: { type: 'string' },
               body: { type: 'string' },
-              notification_type: { type: 'string', enum: ['broadcast', 'message', 'system'] },
+              notification_type: { type: 'string', enum: ['broadcast', 'message', 'system', 'account_warning', 'account_suspension', 'suspension_ended'] },
               read: { type: 'boolean' },
               metadata: { type: 'object' },
               created_at: { type: 'string', format: 'date-time' }
             },
             required: ['id', 'user_id', 'notification_type']
+          },
+          report: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              reporter_id: { type: 'integer' },
+              reported_id: { type: 'integer' },
+              report_type: { type: 'string', enum: ['user', 'broadcast', 'message'] },
+              reason: { type: 'string', enum: ['gender_impersonation', 'inappropriate_content', 'spam', 'harassment', 'other'] },
+              status: { type: 'string', enum: ['pending', 'processing', 'resolved', 'rejected'] },
+              related_id: { type: 'integer', nullable: true, description: '관련 브로드캐스트/메시지 ID' },
+              created_at: { type: 'string', format: 'date-time' },
+              updated_at: { type: 'string', format: 'date-time' },
+              reporter: { '$ref': '#/components/schemas/user' },
+              reported: { '$ref': '#/components/schemas/user' }
+            },
+            required: ['id', 'reporter_id', 'reported_id', 'report_type', 'reason', 'status']
+          },
+          user_suspension: {
+            type: 'object',
+            properties: {
+              id: { type: 'integer' },
+              user_id: { type: 'integer' },
+              reason: { type: 'string' },
+              suspended_at: { type: 'string', format: 'date-time' },
+              suspended_until: { type: 'string', format: 'date-time' },
+              suspended_by: { type: 'string' },
+              active: { type: 'boolean' },
+              created_at: { type: 'string', format: 'date-time' },
+              updated_at: { type: 'string', format: 'date-time' },
+              user: { '$ref': '#/components/schemas/user' }
+            },
+            required: ['id', 'user_id', 'reason', 'suspended_at', 'suspended_until']
           }
         },
         securitySchemes: {

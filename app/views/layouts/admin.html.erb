@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Talkk 관리자</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= stylesheet_link_tag "application", media: "all", 'data-turbolinks-track': 'reload' %>
+    <%= javascript_include_tag "application", 'data-turbolinks-track': 'reload' %>
+    <!-- 부트스트랩 추가 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  </head>
+
+  <body class="bg-light">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container">
+        <a class="navbar-brand" href="<%= admin_root_path rescue '#' %>">Talkk 관리자</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav">
+            <li class="nav-item">
+              <a class="nav-link" href="<%= admin_root_path rescue '#' %>">대시보드</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="<%= admin_reports_path rescue '#' %>">신고 관리</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="<%= admin_users_path rescue '#' %>">사용자 관리</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <div class="container mt-4">
+      <% flash.each do |type, message| %>
+        <div class="alert <%= type == 'error' ? 'alert-danger' : (type == 'success' ? 'alert-success' : 'alert-info') %>">
+          <%= message %>
+        </div>
+      <% end %>
+      
+      <%= yield %>
+    </div>
+
+    <!-- 부트스트랩 JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>

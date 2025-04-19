@@ -1,0 +1,156 @@
+<div class="row mb-4">
+  <div class="col-md-12">
+    <h1>Talkk 관리자 대시보드</h1>
+    <p class="text-muted">현재 시간: <%= Time.current.strftime("%Y-%m-%d %H:%M:%S") %></p>
+  </div>
+</div>
+
+<!-- 요약 통계 -->
+<div class="row mb-4">
+  <!-- 신고 통계 -->
+  <div class="col-md-3">
+    <div class="card bg-primary text-white">
+      <div class="card-body">
+        <h5 class="card-title">신고</h5>
+        <h2 class="card-text"><%= @pending_reports_count %></h2>
+        <p class="card-text">대기 중인 신고</p>
+        <p class="card-text">오늘: <%= @reports_today_count %></p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 정지 통계 -->
+  <div class="col-md-3">
+    <div class="card bg-danger text-white">
+      <div class="card-body">
+        <h5 class="card-title">계정 정지</h5>
+        <h2 class="card-text"><%= @active_suspensions_count %></h2>
+        <p class="card-text">현재 정지된 계정</p>
+        <p class="card-text">오늘: <%= @suspensions_today_count %></p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 사용자 통계 -->
+  <div class="col-md-3">
+    <div class="card bg-success text-white">
+      <div class="card-body">
+        <h5 class="card-title">사용자</h5>
+        <h2 class="card-text"><%= @users_count %></h2>
+        <p class="card-text">총 사용자</p>
+        <p class="card-text">오늘: <%= @users_today_count %></p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 브로드캐스트 통계 -->
+  <div class="col-md-3">
+    <div class="card bg-info text-white">
+      <div class="card-body">
+        <h5 class="card-title">브로드캐스트</h5>
+        <h2 class="card-text"><%= @broadcasts_count %></h2>
+        <p class="card-text">총 브로드캐스트</p>
+        <p class="card-text">오늘: <%= @broadcasts_today_count %></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- 최근 신고 목록 -->
+  <div class="col-md-6 mb-4">
+    <div class="card">
+      <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">최근 신고 내역</h5>
+      </div>
+      <div class="card-body">
+        <% if @recent_reports.any? %>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>신고자</th>
+                  <th>피신고자</th>
+                  <th>사유</th>
+                  <th>상태</th>
+                  <th>시간</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_reports.each do |report| %>
+                  <tr>
+                    <td><%= report.id %></td>
+                    <td><%= report.reporter.nickname %></td>
+                    <td><%= report.reported.nickname %></td>
+                    <td><%= report.reason %></td>
+                    <td>
+                      <% case report.status %>
+                      <% when "pending" %>
+                        <span class="badge bg-warning">대기중</span>
+                      <% when "processing" %>
+                        <span class="badge bg-info">처리중</span>
+                      <% when "resolved" %>
+                        <span class="badge bg-success">처리완료</span>
+                      <% when "rejected" %>
+                        <span class="badge bg-danger">거부됨</span>
+                      <% end %>
+                    </td>
+                    <td><%= report.created_at.strftime("%Y-%m-%d %H:%M") %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <div class="text-end">
+            <a href="<%= admin_reports_path %>" class="btn btn-primary btn-sm">모든 신고 보기</a>
+          </div>
+        <% else %>
+          <p class="text-center">최근 신고 내역이 없습니다.</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+  
+  <!-- 최근 정지된 계정 -->
+  <div class="col-md-6 mb-4">
+    <div class="card">
+      <div class="card-header bg-danger text-white">
+        <h5 class="mb-0">최근 정지된 계정</h5>
+      </div>
+      <div class="card-body">
+        <% if @recent_suspensions.any? %>
+          <div class="table-responsive">
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>사용자</th>
+                  <th>사유</th>
+                  <th>정지 시작</th>
+                  <th>정지 종료</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @recent_suspensions.each do |suspension| %>
+                  <tr>
+                    <td><%= suspension.id %></td>
+                    <td><%= suspension.user.nickname %></td>
+                    <td><%= suspension.reason %></td>
+                    <td><%= suspension.suspended_at.strftime("%Y-%m-%d %H:%M") %></td>
+                    <td><%= suspension.suspended_until.strftime("%Y-%m-%d %H:%M") %></td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+          <div class="text-end">
+            <a href="<%= admin_users_path(status: 'blocked') %>" class="btn btn-danger btn-sm">모든 정지 계정 보기</a>
+          </div>
+        <% else %>
+          <p class="text-center">최근 정지된 계정이 없습니다.</p>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

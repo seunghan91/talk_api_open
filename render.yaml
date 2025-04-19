@@ -13,7 +13,7 @@ services:
       - talkk-api.onrender.com
     envVars:
       - key: REDIS_URL
-        value: redis://red-cvlm54adbo4c7399oheg:6379 # Redis의 내부 URL을 직접 입력
+        value: redis://red-cvlm54adbo4c7399oheg # Redis의 내부 URL로 수정 (포트 제거)
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
@@ -30,7 +30,7 @@ services:
     numInstances: 1
     envVars:
       - key: REDIS_URL
-        value: redis://red-cvlm54adbo4c7399oheg:6379 # Redis의 내부 URL을 직접 입력
+        value: redis://red-cvlm54adbo4c7399oheg # Redis의 내부 URL로 수정 (포트 제거)
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
