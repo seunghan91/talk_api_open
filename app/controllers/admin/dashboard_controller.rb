@@ -2,9 +2,7 @@
 # 관리자 대시보드를 위한 컨트롤러
 # 신고/차단 관리 및 사용자 관리 기능 제공
 module Admin
-  class DashboardController < ApplicationController
-    before_action :authenticate_admin!
-    layout 'admin'
+  class DashboardController < Admin::BaseController
     
     # 대시보드 메인 페이지 - 전반적인 통계 정보 표시
     def index
