@@ -453,7 +453,7 @@ module Api
           
           if user.save
             # 비밀번호 변경 성공 로그 기록
-            Rails.logger.info("\ud83d\udd11 비밀번호 변경 성공: 사용자=#{user.id}, 전화번호=#{phone_number.gsub(/\d(?=\d{4})/, '*')}")
+            Rails.logger.info("[INFO] 비밀번호 변경 성공: 사용자=#{user.id}, 전화번호=#{phone_number.gsub(/\d(?=\d{4})/, '*')}")
             
             # 인증 코드 사용 후 삭제
             verification.destroy
@@ -468,7 +468,7 @@ module Api
           end
         rescue => e
           # 예외 발생 시 오류 처리
-          Rails.logger.error("\ud83d\udd34 비밀번호 변경 오류: #{e.message}")
+          Rails.logger.error("[ERROR] 비밀번호 변경 오류: #{e.message}")
           render json: { error: "비밀번호 변경 중 오류가 발생했습니다." }, status: :internal_server_error
         end
       end
