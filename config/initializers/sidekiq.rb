@@ -55,8 +55,8 @@ Sidekiq.configure_server do |config|
   config.redis = redis_options
   
   # 실패한 작업 자동 재시도 설정 개선
-  config.failures_max_count = 5000  # 최대 실패 작업 저장 수
-  config.failures_default_mode = :exhausted  # exhausted 모드: 모든 재시도 실패 후에 저장
+  # config.failures_max_count = 5000  # 최대 실패 작업 저장 수
+  # config.failures_default_mode = :exhausted  # exhausted 모드: 모든 재시도 실패 후에 저장
   
   # 작업 재시도 전략 설정
   # 처음 시도 후 30초, 1분, 5분, 15분, 30분 간격으로 최대 5번 재시도

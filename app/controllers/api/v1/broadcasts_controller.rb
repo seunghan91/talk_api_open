@@ -66,10 +66,10 @@ module Api
           Rails.logger.info "방송 생성 요청: 사용자 ID #{current_user.id}, 닉네임 #{current_user.nickname}"
 
           # 파라미터 유효성 검사
-          broadcast_params = params.require(:broadcast).permit(:audio, :text, :recipient_count)
+          broadcast_params = params.require(:broadcast).permit(:voice_file, :text, :recipient_count)
 
           # 음성 파일이 있는지 확인
-          unless broadcast_params[:audio].present?
+          unless broadcast_params[:voice_file].present?
             Rails.logger.warn "음성 파일이 없습니다: 사용자 ID #{current_user.id}"
             return render json: { 
               error: "음성 파일이 필요합니다.",
@@ -95,7 +95,7 @@ module Api
           )
           
           # 음성 파일 첨부
-          @broadcast.audio.attach(broadcast_params[:audio])
+          @broadcast.audio.attach(broadcast_params[:voice_file])
 
           # 트랜잭션 처리
           Broadcast.transaction do
@@ -227,12 +227,21 @@ module Api
 
           # 트랜잭션 처리로 일관성 보장
           ActiveRecord::Base.transaction do
-            # 대화 찾기 또는 생성
-            conversation = Conversation.find_or_create_conversation(
-              current_user.id, broadcast.user_id
-            )
+            # 대화 찾기 (BroadcastWorker에서 이미 생성했을 것임)
+            conversation = Conversation.between_users(current_user.id, broadcast.user_id).first
+            
+            # 만약 대화가 없다면 생성 (예외 상황 대비)
+            unless conversation
+              Rails.logger.warn("기존 대화를 찾을 수 없어 새로 생성: 사용자 #{current_user.id} <-> #{broadcast.user_id}")
+              conversation = Conversation.find_or_create_conversation(
+                current_user.id, broadcast.user_id
+              )
+            end
 
             Rails.logger.info("대화 ID: #{conversation.id}, 상대방 ID: #{broadcast.user_id}")
+
+            # 답장하는 사용자에게 대화방이 보이도록 설정
+            conversation.show_to!(current_user.id)
 
             # 메시지 생성
             message = conversation.messages.new(

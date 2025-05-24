@@ -98,15 +98,8 @@ class BroadcastWorker
           
           # 브로드캐스트 발신자는 대화방이 보이도록, 수신자는 보이지 않도록 설정
           # (수신자는 응답할 때만 대화방이 보임)
-          if conversation.user_a_id == br.user_id
-            # 수신자가 user_a인 경우
-            conversation.update(deleted_by_a: true)  # 수신자에게는 삭제된 상태로 설정
-            conversation.update(deleted_by_b: false) # 발신자에게는 보이도록 설정
-          elsif conversation.user_b_id == br.user_id
-            # 수신자가 user_b인 경우
-            conversation.update(deleted_by_b: true)  # 수신자에게는 삭제된 상태로 설정
-            conversation.update(deleted_by_a: false) # 발신자에게는 보이도록 설정
-          end
+          conversation.hide_from!(br.user_id)  # 수신자에게는 숨김
+          conversation.show_to!(broadcast.user_id)  # 발신자에게는 보임
           
           # 대화에 브로드캐스트 메시지 추가
           message = Message.create!(

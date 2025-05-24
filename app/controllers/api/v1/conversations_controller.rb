@@ -113,8 +113,7 @@ module Api
           end
           
           # 사용자가 삭제한 대화인지 확인
-          if (@conversation.user_a_id == current_user.id && @conversation.deleted_by_a) ||
-             (@conversation.user_b_id == current_user.id && @conversation.deleted_by_b)
+          unless @conversation.visible_to?(current_user.id)
             Rails.logger.warn("삭제된 대화 접근: 사용자 ID #{current_user.id}가 삭제한 대화 ID #{conversation_id}에 접근 시도")
             return render json: { 
               error: "삭제된 대화입니다.",
@@ -123,7 +122,8 @@ module Api
           end
           
           # 상대방 정보 조회
-          other_user = find_other_user(@conversation)
+          other_user_id = @conversation.other_user_id(current_user.id)
+          other_user = User.find_by(id: other_user_id)
           
           # 메시지 목록 조회 - 삭제되지 않은 메시지만
           messages = fetch_visible_messages
@@ -278,9 +278,11 @@ module Api
       # 사용자의 대화 찾기
       def find_user_conversations
         if current_user.status_active?
-          Conversation.where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)", 
-                            current_user.id, false, current_user.id, false)
-                     .order(updated_at: :desc)
+          # 새로운 스코프와 도우미 메서드 사용
+          Conversation.for_user(current_user.id)
+                     .select { |conv| conv.visible_to?(current_user.id) }
+                     .sort_by(&:updated_at)
+                     .reverse
         else
           Rails.logger.warn("비활성 사용자의 대화 목록 요청: 사용자 ID #{current_user.id}, 상태 #{current_user.status}")
           []

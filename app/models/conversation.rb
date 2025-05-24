@@ -36,6 +36,46 @@ class Conversation < ApplicationRecord
       end
     end
 
+    # 특정 사용자에게 대화가 보이는지 확인
+    def visible_to?(user_id)
+      if user_a_id == user_id
+        !deleted_by_a
+      elsif user_b_id == user_id
+        !deleted_by_b
+      else
+        false
+      end
+    end
+
+    # 특정 사용자에게 대화를 보이게 설정
+    def show_to!(user_id)
+      if user_a_id == user_id
+        update!(deleted_by_a: false)
+      elsif user_b_id == user_id
+        update!(deleted_by_b: false)
+      end
+    end
+
+    # 특정 사용자에게 대화를 숨기기 설정
+    def hide_from!(user_id)
+      if user_a_id == user_id
+        update!(deleted_by_a: true)
+      elsif user_b_id == user_id
+        update!(deleted_by_b: true)
+      end
+    end
+
+    # 상대방 사용자 ID 반환
+    def other_user_id(user_id)
+      if user_a_id == user_id
+        user_b_id
+      elsif user_b_id == user_id
+        user_a_id
+      else
+        nil
+      end
+    end
+
     # 사용자 정보를 올바르게 매핑하기 위한 메서드 추가
     def self.find_or_create_conversation(user1_id, user2_id, broadcast = nil)
       # 유효성 검사
@@ -68,13 +108,8 @@ class Conversation < ApplicationRecord
         end
       end
 
-      # 삭제 플래그 초기화 로직 수정: 요청한 사용자의 삭제 상태만 초기화
-      # 기존 코드의 문제: user_b_id와 user1_id를 비교하는 로직이 잘못됨
-      if user1_id == conversation.user_a_id
-        conversation.update(deleted_by_a: false)
-      elsif user1_id == conversation.user_b_id
-        conversation.update(deleted_by_b: false)
-      end
+      # 삭제 플래그 초기화: 요청한 사용자에게 대화가 보이도록 설정
+      conversation.show_to!(user1_id)
 
       conversation
     end
@@ -93,13 +128,9 @@ class Conversation < ApplicationRecord
         return nil
       end
       
-      # 브로드캐스트 수신자는 처음에는 대화방이 보이지 않도록 설정
-      # (답장하기 전까지 보이지 않음)
-      if conversation.user_a_id == recipient_id
-        conversation.update(deleted_by_a: true)
-      elsif conversation.user_b_id == recipient_id
-        conversation.update(deleted_by_b: true)
-      end
+          # 브로드캐스트 수신자는 처음에는 대화방이 보이지 않도록 설정
+    # (답장하기 전까지 보이지 않음)
+    conversation.hide_from!(recipient_id)
       
       conversation
     end
