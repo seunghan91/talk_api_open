@@ -60,7 +60,7 @@ Sidekiq.configure_server do |config|
   
   # 작업 재시도 전략 설정
   # 처음 시도 후 30초, 1분, 5분, 15분, 30분 간격으로 최대 5번 재시도
-  config.default_retries = 5
+  # config.default_retries = 5
   
   # 특정 작업 클래스에 대한 추가 처리
   # 푸시 알림 처리를 위한 특별 처리
