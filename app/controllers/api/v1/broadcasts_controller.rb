@@ -40,22 +40,120 @@ module Api
 
       def index
         begin
-          # 현재 사용자가 보낸 방송 목록 + 수신한 방송 목록
-          # N+1 쿼리 방지를 위해 includes 사용
-          @broadcasts = current_user.broadcasts
-                                   .includes(:user)  # 발신자 정보 미리 로드
-                                   .with_attached_audio  # 음성 파일 미리 로드
-                                   .order(created_at: :desc)
-                                   .limit(50)
+          # 쿼리 파라미터로 필터 옵션 받기
+          filter = params[:filter] || 'all' # all, sent, received
+          
+          case filter
+          when 'sent'
+            # 보낸 브로드캐스트만
+            @broadcasts = current_user.broadcasts
+                                     .includes(:user, broadcast_recipients: :user)
+                                     .with_attached_audio
+                                     .order(created_at: :desc)
+                                     .limit(50)
+          when 'received'
+            # 받은 브로드캐스트만
+            @broadcasts = Broadcast.joins(:broadcast_recipients)
+                                  .where(broadcast_recipients: { user_id: current_user.id })
+                                  .includes(:user)
+                                  .with_attached_audio
+                                  .order('broadcast_recipients.created_at DESC')
+                                  .limit(50)
+          else
+            # 모든 브로드캐스트 (보낸 것 + 받은 것)
+            sent_broadcasts = current_user.broadcasts.select(:id).to_sql
+            received_broadcasts = Broadcast.joins(:broadcast_recipients)
+                                         .where(broadcast_recipients: { user_id: current_user.id })
+                                         .select(:id).to_sql
+            
+            broadcast_ids = Broadcast.from("(#{sent_broadcasts} UNION #{received_broadcasts}) AS broadcasts").pluck(:id)
+            
+            @broadcasts = Broadcast.where(id: broadcast_ids)
+                                  .includes(:user, broadcast_recipients: :user)
+                                  .with_attached_audio
+                                  .order(created_at: :desc)
+                                  .limit(50)
+          end
 
           render json: {
             broadcasts: @broadcasts.map { |broadcast| broadcast_response(broadcast) },
+            filter: filter,
             request_id: request.request_id || SecureRandom.uuid
           }
         rescue => e
           Rails.logger.error("방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
           render json: { 
             error: "방송 목록을 조회하는 중 오류가 발생했습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :internal_server_error
+        end
+      end
+
+      # 받은 브로드캐스트 목록 조회 (별도 엔드포인트)
+      def received
+        begin
+          # 현재 사용자가 수신한 브로드캐스트 목록
+          @broadcasts = Broadcast.joins(:broadcast_recipients)
+                                .where(broadcast_recipients: { user_id: current_user.id })
+                                .includes(:user)
+                                .with_attached_audio
+                                .order('broadcast_recipients.created_at DESC')
+                                .page(params[:page])
+                                .per(20)
+
+          # 각 브로드캐스트의 수신 상태 포함
+          broadcasts_with_status = @broadcasts.map do |broadcast|
+            recipient = broadcast.broadcast_recipients.find { |r| r.user_id == current_user.id }
+            broadcast_data = broadcast_response(broadcast)
+            broadcast_data[:recipient_status] = recipient.status
+            broadcast_data[:received_at] = recipient.created_at
+            broadcast_data
+          end
+
+          render json: {
+            broadcasts: broadcasts_with_status,
+            pagination: {
+              current_page: @broadcasts.current_page,
+              total_pages: @broadcasts.total_pages,
+              total_count: @broadcasts.total_count
+            },
+            request_id: request.request_id || SecureRandom.uuid
+          }
+        rescue => e
+          Rails.logger.error("수신 방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+          render json: { 
+            error: "수신 방송 목록을 조회하는 중 오류가 발생했습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :internal_server_error
+        end
+      end
+
+      # 브로드캐스트 읽음 상태 업데이트
+      def mark_as_read
+        begin
+          broadcast = Broadcast.find(params[:id])
+          recipient = BroadcastRecipient.find_by!(
+            broadcast_id: broadcast.id, 
+            user_id: current_user.id
+          )
+          
+          # 상태를 'read'로 업데이트
+          recipient.update!(status: :read) if recipient.delivered?
+          
+          render json: {
+            message: "브로드캐스트가 읽음 처리되었습니다.",
+            status: recipient.status,
+            request_id: request.request_id || SecureRandom.uuid
+          }
+        rescue ActiveRecord::RecordNotFound
+          render json: { 
+            error: "브로드캐스트를 찾을 수 없거나 권한이 없습니다.",
+            request_id: request.request_id || SecureRandom.uuid
+          }, status: :not_found
+        rescue => e
+          Rails.logger.error("브로드캐스트 읽음 처리 중 오류 발생: #{e.message}")
+          render json: { 
+            error: "브로드캐스트 읽음 처리 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
         end

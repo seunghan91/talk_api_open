@@ -150,57 +150,85 @@ class BroadcastWorker
   def select_optimal_recipients(sender, recipient_count)
     Rails.logger.info("피드백 기반 수신자 선택 알고리즘 실행 - 송신자: #{sender.id}, 요청 수신자 수: #{recipient_count}")
     
-    # 디버깅: 무조건 더 많은 사용자를 선택하도록 수정
-    all_users = User.where.not(id: sender.id).to_a
+    # 차단된 사용자 ID 목록 가져오기
+    blocked_user_ids = get_blocked_user_ids(sender)
     
-    if all_users.empty?
-      Rails.logger.warn("사용 가능한 수신자가 없음, 서버 시드 데이터 확인 필요")
-      return []
+    # 기본 필터: 활성 상태, 전화번호 있는 사용자, 차단되지 않은 사용자
+    base_query = User.where.not(id: [sender.id] + blocked_user_ids)
+                     .where(status: :active)
+                     .where.not(phone_number: nil)
+    
+    # 테스트 계정 처리 개선
+    if sender.phone_number&.start_with?('+8210')
+      # 테스트 계정인 경우 다른 테스트 계정들을 우선 선택
+      test_users = base_query.where("phone_number LIKE ?", '+8210%')
+      
+      if test_users.count >= recipient_count
+        Rails.logger.info("테스트 계정 우선 선택: #{test_users.count}명 중 #{recipient_count}명 선택")
+        return test_users.order("RANDOM()").limit(recipient_count)
+      else
+        # 테스트 계정이 부족하면 일반 사용자도 포함
+        Rails.logger.info("테스트 계정 부족, 일반 사용자 포함하여 선택")
+      end
     end
     
-    # 수신자가 부족한 경우 처리
-    if all_users.count < recipient_count
-      Rails.logger.info("사용 가능한 수신자가 #{all_users.count}명뿐이므로 요청 수 #{recipient_count}명에 미달")
-      return all_users
+    # 최근 활동 사용자 필터링 (30일 이내 활동)
+    recent_active_users = base_query.where("last_sign_in_at > ?", 30.days.ago)
+    
+    # 최근 브로드캐스트 수신자 제외 (24시간 이내)
+    recent_broadcast_recipients = BroadcastRecipient.joins(:broadcast)
+                                                   .where(recipient_id: recent_active_users.pluck(:id))
+                                                   .where("broadcast_recipients.created_at > ?", 24.hours.ago)
+                                                   .pluck(:recipient_id).uniq
+    
+    # 최근 수신자를 일부 제외 (완전 제외가 아닌 가중치 감소)
+    recent_active_users = recent_active_users.where.not(id: recent_broadcast_recipients.sample(recent_broadcast_recipients.size / 2))
+    
+    if recent_active_users.count < recipient_count
+      Rails.logger.info("최근 활동 사용자 부족 (#{recent_active_users.count}명), 전체 활성 사용자로 확대")
+      recent_active_users = base_query
     end
     
-    # 모든 사용자를 선택하되, 최대 수신자 수 제한
-    return all_users.sample(recipient_count)
-    
-    # 기본 필터: 활성 상태, 전화번호 있는 사용자 (기존 코드 주석 처리)
-    # base_query = User.where.not(id: sender.id)
-    #                .where(status: :active)
-    #                .where.not(phone_number: nil)
-
     # 1. 과거 응답률 기반 점수 계산
-    response_scores = calculate_response_scores(sender)
+    response_scores = calculate_response_scores(sender, recent_active_users.pluck(:id))
     
     # 2. 최근 상호작용 기반 점수 계산
-    interaction_scores = calculate_interaction_scores(sender)
+    interaction_scores = calculate_interaction_scores(sender, recent_active_users.pluck(:id))
     
     # 3. 사용자 선호도 반영 (성별, 나이대, 지역 등)
-    preference_scores = calculate_preference_scores(sender)
+    preference_scores = calculate_preference_scores(sender, recent_active_users.pluck(:id))
+    
+    # 4. 최근 활동도 점수 계산
+    activity_scores = calculate_activity_scores(recent_active_users.pluck(:id))
     
     # 모든 활성 사용자 ID와 초기 점수 (0점) 매핑
-    all_active_users = base_query.pluck(:id)
+    all_active_users = recent_active_users.pluck(:id)
     user_scores = all_active_users.each_with_object({}) { |user_id, scores| scores[user_id] = 0.0 }
     
-    # 각 점수 결합 (가중치 적용)
-    response_weight = 0.5   # 응답률 가중치
-    interaction_weight = 0.3 # 상호작용 가중치
-    preference_weight = 0.2  # 선호도 가중치
+    # 각 점수 결합 (가중치 적용) - 활동도 가중치 증가
+    response_weight = 0.25    # 응답률 가중치
+    interaction_weight = 0.25 # 상호작용 가중치
+    preference_weight = 0.2   # 선호도 가중치
+    activity_weight = 0.3     # 활동도 가중치 (증가)
     
     all_active_users.each do |user_id|
       # 각 점수 요소가 nil인 경우 0으로 처리
       response_score = response_scores[user_id] || 0
       interaction_score = interaction_scores[user_id] || 0
       preference_score = preference_scores[user_id] || 0
+      activity_score = activity_scores[user_id] || 0
+      
+      # 최근 브로드캐스트 수신자인 경우 점수 감소
+      if recent_broadcast_recipients.include?(user_id)
+        activity_score *= 0.5
+      end
       
       # 최종 점수 계산
       user_scores[user_id] = 
         (response_score * response_weight) + 
-        (interaction_score * interaction_weight) + 
-        (preference_score * preference_weight)
+        (interaction_score * interaction_weight) +
+        (preference_score * preference_weight) +
+        (activity_score * activity_weight)
     end
     
     # 높은 점수 순으로 정렬하여 사용자 ID 배열 생성
@@ -261,7 +289,7 @@ class BroadcastWorker
   end
   
   # 과거 응답률 기반 점수 계산
-  def calculate_response_scores(sender)
+  def calculate_response_scores(sender, user_ids)
     scores = {}
     
     # 최근 3개월 내 브로드캐스트 데이터 조회
@@ -309,7 +337,7 @@ class BroadcastWorker
   end
   
   # 상호작용 기반 점수 계산
-  def calculate_interaction_scores(sender)
+  def calculate_interaction_scores(sender, user_ids)
     scores = {}
     
     # 송신자와 다른 사용자들 간의 대화 조회
@@ -346,7 +374,7 @@ class BroadcastWorker
   end
   
   # 선호도 기반 점수 계산
-  def calculate_preference_scores(sender)
+  def calculate_preference_scores(sender, user_ids)
     scores = {}
     
     # 송신자의 선호 속성 추출 (성별, 나이대, 지역 등)
@@ -355,7 +383,7 @@ class BroadcastWorker
     sender_region = sender.region
     
     # 활성 사용자들의 속성과 매칭해 점수 계산
-    User.where(status: :active).where.not(id: sender.id).find_each do |user|
+    User.where(id: user_ids).find_each do |user|
       score = 0
       
       # 성별 점수 (다른 성별 선호 가정)
@@ -378,6 +406,44 @@ class BroadcastWorker
     end
     
     scores
+  end
+  
+  # 최근 활동도 점수 계산
+  def calculate_activity_scores(user_ids)
+    scores = {}
+    
+    User.where(id: user_ids).find_each do |user|
+      # 마지막 로그인 시간 기반 점수
+      if user.last_sign_in_at
+        days_since_login = (Time.current - user.last_sign_in_at) / 1.day
+        
+        # 로그인 시간에 따른 점수 (최근일수록 높은 점수)
+        scores[user.id] = case days_since_login
+                          when 0..1 then 100    # 24시간 이내
+                          when 1..3 then 80     # 3일 이내
+                          when 3..7 then 60     # 1주일 이내
+                          when 7..14 then 40    # 2주일 이내
+                          when 14..30 then 20   # 30일 이내
+                          else 5                # 30일 이상
+                          end
+      else
+        scores[user.id] = 0
+      end
+    end
+    
+    scores
+  end
+  
+  # 차단된 사용자 ID 목록 가져오기
+  def get_blocked_user_ids(user)
+    # 양방향 차단 관계 확인
+    blocked_by_user = Block.where(blocker_id: user.id).pluck(:blocked_id)
+    blocked_user = Block.where(blocked_id: user.id).pluck(:blocker_id)
+    
+    # 중복 제거하여 반환
+    blocked_ids = (blocked_by_user + blocked_user).uniq
+    Rails.logger.info("사용자 #{user.id}의 차단 목록: #{blocked_ids.size}명 (차단함: #{blocked_by_user.size}명, 차단당함: #{blocked_user.size}명)")
+    blocked_ids
   end
   
   # 가중치 기반 샘플링 함수

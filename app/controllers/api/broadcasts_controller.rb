@@ -7,7 +7,7 @@ module Api
 
     def index
       begin
-        # 현재 사용자가 보낸 방송 목록 + 수신한 방송 목록
+        # 현재 사용자가 보낸 방송 목록만 조회
         @broadcasts = current_user.broadcasts.order(created_at: :desc).limit(50)
 
         render json: {
@@ -16,6 +16,31 @@ module Api
       rescue => e
         Rails.logger.error("방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
         render json: { error: "방송 목록을 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
+    end
+
+    # 수신한 브로드캐스트 목록 조회
+    def received
+      begin
+        # 현재 사용자가 수신한 방송 목록 조회
+        received_broadcasts = Broadcast.joins(:broadcast_recipients)
+                                     .where(broadcast_recipients: { recipient_id: current_user.id })
+                                     .where('broadcasts.created_at > ?', 6.days.ago) # 6일 이내 브로드캐스트만
+                                     .order(created_at: :desc)
+                                     .limit(50)
+
+        render json: {
+          broadcasts: received_broadcasts.map do |broadcast|
+            recipient = broadcast.broadcast_recipients.find_by(recipient_id: current_user.id)
+            broadcast_response(broadcast).merge(
+              status: recipient.status,
+              received_at: recipient.created_at
+            )
+          end
+        }
+      rescue => e
+        Rails.logger.error("수신 방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "수신 방송 목록을 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
       end
     end
 
@@ -144,6 +169,29 @@ module Api
     def show
       @broadcast = Broadcast.find(params[:id])
       render json: @broadcast
+    end
+
+    # 브로드캐스트를 읽음으로 표시
+    def mark_as_read
+      begin
+        broadcast = Broadcast.find(params[:id])
+        recipient = broadcast.broadcast_recipients.find_by(recipient_id: current_user.id)
+        
+        unless recipient
+          return render json: { error: "이 브로드캐스트의 수신자가 아닙니다." }, status: :forbidden
+        end
+        
+        if recipient.update(status: 'read')
+          render json: { message: "브로드캐스트가 읽음으로 표시되었습니다." }, status: :ok
+        else
+          render json: { error: "상태 업데이트에 실패했습니다." }, status: :unprocessable_entity
+        end
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: "브로드캐스트를 찾을 수 없습니다." }, status: :not_found
+      rescue => e
+        Rails.logger.error("브로드캐스트 읽음 처리 중 오류: #{e.message}")
+        render json: { error: "읽음 처리 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
     end
 
     def reply

@@ -58,8 +58,12 @@ Rails.application.routes.draw do
       
       # 브로드캐스트 관련 API
       resources :broadcasts, only: [:index, :show, :create] do
+        collection do
+          get :received
+        end
         member do
           post :reply
+          patch :mark_as_read
         end
       end
 
@@ -133,9 +137,11 @@ Rails.application.routes.draw do
 
     # 브로드캐스트 관련 레거시 API
     get "broadcasts", to: "v1/broadcasts#index"
+    get "broadcasts/received", to: "v1/broadcasts#received"
     post "broadcasts", to: "v1/broadcasts#create"
     get "broadcasts/:id", to: "v1/broadcasts#show"
     post "broadcasts/:id/reply", to: "v1/broadcasts#reply"
+    patch "broadcasts/:id/mark_as_read", to: "v1/broadcasts#mark_as_read"
 
     # 대화 관련 레거시 API
     get "conversations", to: "v1/conversations#index"
