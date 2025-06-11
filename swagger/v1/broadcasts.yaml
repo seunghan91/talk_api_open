@@ -1,0 +1,236 @@
+openapi: 3.0.0
+info:
+  title: Broadcasts API
+  version: 1.0.0
+  description: Talkk 브로드캐스트 시스템 API
+
+paths:
+  /api/v1/broadcasts:
+    get:
+      summary: 내가 보낸 브로드캐스트 목록 조회
+      tags:
+        - Broadcasts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  broadcasts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Broadcast'
+    
+    post:
+      summary: 새 브로드캐스트 생성
+      tags:
+        - Broadcasts
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - audio_url
+                - duration
+                - recipient_count
+              properties:
+                audio_url:
+                  type: string
+                  description: 오디오 파일 URL
+                duration:
+                  type: integer
+                  description: 오디오 길이 (초)
+                  minimum: 1
+                  maximum: 30
+                recipient_count:
+                  type: integer
+                  description: 수신자 수
+                  minimum: 1
+                  maximum: 100
+      responses:
+        '201':
+          description: 브로드캐스트 생성 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Broadcast'
+  
+  /api/v1/broadcasts/received:
+    get:
+      summary: 내가 받은 브로드캐스트 목록 조회
+      description: 최근 6일 이내에 받은 브로드캐스트 목록을 반환합니다.
+      tags:
+        - Broadcasts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  broadcasts:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/Broadcast'
+                        - type: object
+                          properties:
+                            recipient_status:
+                              type: string
+                              enum: [delivered, read, replied]
+                              description: 수신자의 브로드캐스트 상태
+                            received_at:
+                              type: string
+                              format: date-time
+                              description: 브로드캐스트를 받은 시간
+  
+  /api/v1/broadcasts/{id}:
+    get:
+      summary: 브로드캐스트 상세 조회
+      tags:
+        - Broadcasts
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BroadcastDetail'
+  
+  /api/v1/broadcasts/{id}/mark_as_read:
+    put:
+      summary: 브로드캐스트를 읽음으로 표시
+      description: 수신한 브로드캐스트를 읽음 상태로 변경합니다. 이미 답장한 경우에는 변경할 수 없습니다.
+      tags:
+        - Broadcasts
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: 성공적으로 읽음 처리됨
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "브로드캐스트를 읽음으로 표시했습니다"
+        '404':
+          description: 브로드캐스트를 찾을 수 없거나 수신자가 아님
+        '422':
+          description: 이미 답장한 브로드캐스트는 읽음 처리할 수 없음
+  
+  /api/v1/broadcasts/{id}/reply:
+    post:
+      summary: 브로드캐스트에 답장
+      tags:
+        - Broadcasts
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - audio_url
+                - duration
+              properties:
+                audio_url:
+                  type: string
+                duration:
+                  type: integer
+      responses:
+        '201':
+          description: 답장 성공
+
+components:
+  schemas:
+    Broadcast:
+      type: object
+      properties:
+        id:
+          type: integer
+        audio_url:
+          type: string
+        duration:
+          type: integer
+        recipient_count:
+          type: integer
+        status:
+          type: string
+          enum: [pending, sent, failed]
+        created_at:
+          type: string
+          format: date-time
+        user:
+          $ref: '#/components/schemas/User'
+    
+    BroadcastDetail:
+      allOf:
+        - $ref: '#/components/schemas/Broadcast'
+        - type: object
+          properties:
+            recipients:
+              type: array
+              items:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  status:
+                    type: string
+                    enum: [delivered, read, replied]
+                  conversation_id:
+                    type: integer
+                    nullable: true
+    
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        nickname:
+          type: string
+        profile_image_url:
+          type: string
+          nullable: true
+  
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
