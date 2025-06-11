@@ -75,7 +75,7 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432
         run: |
           bin/rails db:create
-          bin/rails db:schema:load
+          bin/rails db:migrate
 
       - name: Run tests
         env:
