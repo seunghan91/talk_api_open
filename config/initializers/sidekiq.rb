@@ -51,9 +51,7 @@ Sidekiq.configure_server do |config|
     url: redis_url,
     network_timeout: 10,
     pool_timeout: 10,
-    reconnect_attempts: 5,
-    reconnect_delay: 1.5,
-    reconnect_delay_max: 30.0
+    reconnect_attempts: 5
   }
 
   # 외부 URL인 경우에만 SSL 활성화
@@ -131,9 +129,7 @@ Sidekiq.configure_client do |config|
     url: redis_url,
     network_timeout: 10,
     pool_timeout: 10,
-    reconnect_attempts: 5,
-    reconnect_delay: 1.5,
-    reconnect_delay_max: 30.0
+    reconnect_attempts: 5
   }
 
   # 외부 URL인 경우에만 SSL 활성화
