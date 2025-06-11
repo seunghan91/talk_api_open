@@ -13,11 +13,21 @@ services:
       - talkk-api.onrender.com
     envVars:
       - key: REDIS_URL
-        value: redis://red-cvlm54adbo4c7399oheg # Redis의 내부 URL로 수정 (포트 제거)
+        fromService:
+          type: redis
+          name: talkk-redis
+          property: connectionString
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
         sync: false
+
+# Redis/Valkey 서비스 정의  
+databases:
+  - name: talkk-redis
+    plan: starter
+    region: singapore
+    maxmemoryPolicy: allkeys-lru
 
   # Sidekiq 워커 설정
   - type: worker
@@ -30,7 +40,10 @@ services:
     numInstances: 1
     envVars:
       - key: REDIS_URL
-        value: redis://red-cvlm54adbo4c7399oheg # Redis의 내부 URL로 수정 (포트 제거)
+        fromService:
+          type: redis
+          name: talkk-redis
+          property: connectionString
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
