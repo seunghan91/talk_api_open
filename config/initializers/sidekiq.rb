@@ -8,14 +8,19 @@ end
 
 # Redis URL 확인 및 연결 정보 출력
 # Redis URL을 환경 변수에서 가져오거나 기본값 설정
-# Render에서는 환경 변수 이름이 REDIS_URL 대신 RENDER_REDIS_URL 또는
-# REDIS_HOST와 REDIS_PORT로 제공될 수 있음
+# Render Redis 인증 방식 변경에 대응
 redis_url = if ENV["RENDER_REDIS_URL"].present?
   ENV["RENDER_REDIS_URL"]
 elsif ENV["REDIS_HOST"].present? && ENV["REDIS_PORT"].present?
   "redis://#{ENV['REDIS_HOST']}:#{ENV['REDIS_PORT']}/0"
 elsif ENV["REDIS_URL"].present?
-  ENV["REDIS_URL"]
+  url = ENV["REDIS_URL"]
+  # Render Redis URL 형식 수정: username이 있으면 제거하고 password만 유지
+  if url.match?(/redis[s]?:\/\/[^:@]+:[^@]+@/)
+    # redis://username:password@host:port -> redis://:password@host:port
+    url = url.gsub(/redis(s)?:\/\/[^:@]+:/, 'redis\1://:')
+  end
+  url
 else
   "redis://localhost:6379/0"
 end
@@ -44,15 +49,25 @@ Sidekiq.configure_server do |config|
   # 향상된 옵션으로 Redis 구성
   redis_options = {
     url: redis_url,
-    network_timeout: 5,
-    pool_timeout: 5,
-    reconnect_attempts: 3
+    network_timeout: 10,
+    pool_timeout: 10,
+    reconnect_attempts: 5,
+    reconnect_delay: 1.5,
+    reconnect_delay_max: 30.0
   }
 
   # 외부 URL인 경우에만 SSL 활성화
   redis_options[:ssl] = true if is_external_url
-
-  config.redis = redis_options
+  
+  # Redis 연결 테스트
+  begin
+    config.redis = redis_options
+    Rails.logger.info("Sidekiq: Redis 연결 성공!")
+  rescue => e
+    Rails.logger.error("Sidekiq: Redis 연결 실패 - #{e.message}")
+    Rails.logger.error("Redis URL: #{redis_url.gsub(/:[^:]*@/, ":****@")}")
+    raise e
+  end
 
   # 실패한 작업 자동 재시도 설정 개선
   # config.failures_max_count = 5000  # 최대 실패 작업 저장 수
@@ -114,15 +129,24 @@ end
 Sidekiq.configure_client do |config|
   redis_options = {
     url: redis_url,
-    network_timeout: 5,
-    pool_timeout: 5,
-    reconnect_attempts: 3
+    network_timeout: 10,
+    pool_timeout: 10,
+    reconnect_attempts: 5,
+    reconnect_delay: 1.5,
+    reconnect_delay_max: 30.0
   }
 
   # 외부 URL인 경우에만 SSL 활성화
   redis_options[:ssl] = true if is_external_url
 
-  config.redis = redis_options
+  begin
+    config.redis = redis_options
+    Rails.logger.info("Sidekiq Client: Redis 연결 성공!")
+  rescue => e
+    Rails.logger.error("Sidekiq Client: Redis 연결 실패 - #{e.message}")
+    Rails.logger.error("Redis URL: #{redis_url.gsub(/:[^:]*@/, ":****@")}")
+    # 클라이언트 연결 실패는 웹 서버를 중단하지 않음
+  end
 end
 
 # Sidekiq 설정 로깅

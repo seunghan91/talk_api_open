@@ -35,10 +35,21 @@ class HealthCheckController < ActionController::API
   def redis_connected?
     begin
       redis_url = ENV["REDIS_URL"] || "redis://localhost:6379/0"
-      redis = Redis.new(url: redis_url)
+      
+      # Render Redis URL 형식 수정 적용
+      if redis_url.match?(/redis[s]?:\/\/[^:@]+:[^@]+@/)
+        # redis://username:password@host:port -> redis://:password@host:port
+        redis_url = redis_url.gsub(/redis(s)?:\/\/[^:@]+:/, 'redis\1://:')
+      end
+      
+      redis_options = { url: redis_url }
+      redis_options[:ssl] = true if redis_url.start_with?("rediss://") || redis_url.include?(".render.com")
+      
+      redis = Redis.new(redis_options)
       redis.ping == "PONG"
     rescue => e
       Rails.logger.error("Redis connection check failed: #{e.message}")
+      Rails.logger.error("Redis URL format: #{redis_url&.gsub(/:[^:]*@/, ":****@")}")
       false
     end
   end
