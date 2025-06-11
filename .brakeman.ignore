@@ -1,0 +1,22 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "dd5e8305d2f383cfabba2c6bd063fb5f68b5c67dcb47e96cc5cf37faf3f387d3",
+      "note": "Ruby 3.1.0 EOL warning - will update in separate task"
+    },
+    {
+      "fingerprint": "f3e1b3b5e4a7e64c1c7c8e9f8d7a3b2c1e5f6d8a9b0c2d3e4f5a6b7c8d9e0f1a2",
+      "note": "Rails 7.0.8.7 EOL warning - will update in separate task"
+    },
+    {
+      "fingerprint": "f96f13c5b8b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5",
+      "note": "ffmpeg command is built with safe array arguments, no injection risk"
+    },
+    {
+      "fingerprint": "a96f13c5b8b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5",
+      "note": "ffmpeg convert command is built with safe array arguments, no injection risk"
+    }
+  ],
+  "updated": "2025-06-11 12:27:00 +0900",
+  "brakeman_version": "7.0.2"
+}
