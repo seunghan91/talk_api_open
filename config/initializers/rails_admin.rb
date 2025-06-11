@@ -9,7 +9,7 @@ if defined?(RailsAdmin)
     # 관리자 인증 설정 (JWT 토큰 기반)
     config.authenticate_with do
       authenticate_or_request_with_http_basic do |username, password|
-        username == ENV.fetch("RAILS_ADMIN_USERNAME", "admin") && 
+        username == ENV.fetch("RAILS_ADMIN_USERNAME", "admin") &&
         password == ENV.fetch("RAILS_ADMIN_PASSWORD", Rails.application.credentials.dig(:rails_admin, :password) || "default_password")
       end
     end
