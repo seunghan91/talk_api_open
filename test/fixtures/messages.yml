@@ -4,8 +4,24 @@
 # model remove the "{}" from the fixture names and add the columns immediately
 # below each fixture, per the syntax in the comments below
 #
-one: {}
-# column: value
-#
-two: {}
-# column: value
+one:
+  conversation: one
+  sender: one
+  message_type: text
+  deleted_by_a: false
+  deleted_by_b: false
+
+two:
+  conversation: one
+  sender: two
+  message_type: voice
+  deleted_by_a: false
+  deleted_by_b: false
+
+three:
+  conversation: two
+  sender: one
+  broadcast: one
+  message_type: broadcast
+  deleted_by_a: false
+  deleted_by_b: false
