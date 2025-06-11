@@ -23,6 +23,16 @@ class HealthCheckController < ActionController::API
     render json: conversation_stats
   end
 
+  def debug_redis
+    render json: {
+      redis_url_env: ENV["REDIS_URL"],
+      render_redis_url_env: ENV["RENDER_REDIS_URL"],
+      redis_host_env: ENV["REDIS_HOST"],
+      redis_port_env: ENV["REDIS_PORT"],
+      all_redis_related: ENV.select { |k, v| k.downcase.include?("redis") }
+    }
+  end
+
   private
 
   def database_connected?
