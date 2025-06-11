@@ -13,7 +13,7 @@ services:
       - talkk-api.onrender.com
     envVars:
       - key: REDIS_URL
-        value: redis://localhost:6379/0  # 임시: 로컬 Redis (실시간 기능 비활성화)
+        value: redis://red-cvlm54adbo4c7399oheg:6379
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
@@ -36,8 +36,8 @@ databases:
   startCommand: bundle exec sidekiq
   numInstances: 1
   envVars:
-    - key: REDIS_URL
-      value: redis://localhost:6379/0  # 임시: 로컬 Redis (백그라운드 작업 비활성화)
+          - key: REDIS_URL
+        value: redis://red-cvlm54adbo4c7399oheg:6379
     - key: RAILS_ENV
       value: production
     - key: RAILS_MASTER_KEY
