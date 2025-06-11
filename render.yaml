@@ -13,8 +13,7 @@ services:
       - talkk-api.onrender.com
     envVars:
       - key: REDIS_URL
-        fromService:
-          type: redis
+        fromDatabase:
           name: talkk-redis
           property: connectionString
       - key: RAILS_ENV
@@ -22,29 +21,28 @@ services:
       - key: RAILS_MASTER_KEY
         sync: false
 
-# Redis/Valkey 서비스 정의  
+# Redis/Valkey 데이터베이스 정의
 databases:
   - name: talkk-redis
     plan: starter
     region: singapore
     maxmemoryPolicy: allkeys-lru
 
-  # Sidekiq 워커 설정
-  - type: worker
-    name: talkk-sidekiq
-    env: ruby
-    region: singapore
-    plan: starter
-    buildCommand: bundle install
-    startCommand: bundle exec sidekiq
-    numInstances: 1
-    envVars:
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: talkk-redis
-          property: connectionString
-      - key: RAILS_ENV
-        value: production
-      - key: RAILS_MASTER_KEY
-        sync: false
+# Sidekiq 워커 설정
+- type: worker
+  name: talkk-sidekiq
+  env: ruby
+  region: singapore
+  plan: starter
+  buildCommand: bundle install
+  startCommand: bundle exec sidekiq
+  numInstances: 1
+  envVars:
+    - key: REDIS_URL
+      fromDatabase:
+        name: talkk-redis
+        property: connectionString
+    - key: RAILS_ENV
+      value: production
+    - key: RAILS_MASTER_KEY
+      sync: false

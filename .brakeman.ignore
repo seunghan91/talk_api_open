@@ -1,22 +1,22 @@
 {
   "ignored_warnings": [
     {
-      "fingerprint": "dd5e8305d2f383cfabba2c6bd063fb5f68b5c67dcb47e96cc5cf37faf3f387d3",
+      "fingerprint": "edf687f759ec9765bd5db185dbc615c80af77d6e7e19386fc42934e7a80307af",
       "note": "Ruby 3.1.0 EOL warning - will update in separate task"
     },
     {
-      "fingerprint": "f3e1b3b5e4a7e64c1c7c8e9f8d7a3b2c1e5f6d8a9b0c2d3e4f5a6b7c8d9e0f1a2",
+      "fingerprint": "d84924377155b41e094acae7404ec2e521629d86f97b0ff628e3d1b263f8101c",
       "note": "Rails 7.0.8.7 EOL warning - will update in separate task"
     },
     {
-      "fingerprint": "f96f13c5b8b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5",
-      "note": "ffmpeg command is built with safe array arguments, no injection risk"
+      "fingerprint": "00d29e7e02f3930c5b0dc21aa9eec746dddb27b58167416746bdbb7977c413d2",
+      "note": "ffmpeg command in audio_processor_service.rb:26 is built with safe array arguments, no injection risk"
     },
     {
-      "fingerprint": "a96f13c5b8b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5c5b5",
-      "note": "ffmpeg convert command is built with safe array arguments, no injection risk"
+      "fingerprint": "51406f1f1abd755d7985d46a0fb9f70f34d939fb2782b453f3c78c6ede36635c",
+      "note": "ffmpeg convert command in audio_processor_service.rb:85 is built with safe array arguments, no injection risk"
     }
   ],
-  "updated": "2025-06-11 12:27:00 +0900",
+  "updated": "2025-06-11 12:35:00 +0900",
   "brakeman_version": "7.0.2"
 }

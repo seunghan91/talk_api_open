@@ -56,7 +56,7 @@ Sidekiq.configure_server do |config|
 
   # 외부 URL인 경우에만 SSL 활성화
   redis_options[:ssl] = true if is_external_url
-  
+
   # Redis 연결 테스트
   begin
     config.redis = redis_options
