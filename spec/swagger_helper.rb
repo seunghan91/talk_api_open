@@ -49,8 +49,8 @@ RSpec.configure do |config|
               id: { type: 'integer' },
               nickname: { type: 'string' },
               phone_number: { type: 'string' },
-              gender: { type: 'string', enum: ['male', 'female', 'unknown'] },
-              age_group: { type: 'string', enum: ['20s', '30s', '40s', '50s'], nullable: true },
+              gender: { type: 'string', enum: [ 'male', 'female', 'unknown' ] },
+              age_group: { type: 'string', enum: [ '20s', '30s', '40s', '50s' ], nullable: true },
               region: { type: 'string', nullable: true, description: '사용자 지역 정보 (국가/시도 형식)' },
               blocked: { type: 'boolean', description: '계정 정지/차단 상태' },
               warning_count: { type: 'integer', description: '누적 경고 횟수' },
@@ -58,7 +58,7 @@ RSpec.configure do |config|
               last_login_at: { type: 'string', format: 'date-time' },
               created_at: { type: 'string', format: 'date-time' }
             },
-            required: ['id', 'nickname', 'phone_number']
+            required: [ 'id', 'nickname', 'phone_number' ]
           },
           broadcast: {
             type: 'object',
@@ -72,7 +72,7 @@ RSpec.configure do |config|
               created_at: { type: 'string', format: 'date-time' },
               user: { '$ref': '#/components/schemas/user' }
             },
-            required: ['id', 'user_id', 'audio_url']
+            required: [ 'id', 'user_id', 'audio_url' ]
           },
           message: {
             type: 'object',
@@ -82,14 +82,14 @@ RSpec.configure do |config|
               sender_id: { type: 'integer' },
               receiver_id: { type: 'integer' },
               broadcast_id: { type: 'integer' },
-              message_type: { type: 'string', enum: ['voice'] },
+              message_type: { type: 'string', enum: [ 'voice' ] },
               audio_url: { type: 'string' },
               duration: { type: 'integer' },
               is_read: { type: 'boolean' },
               created_at: { type: 'string', format: 'date-time' },
               sender: { '$ref': '#/components/schemas/user' }
             },
-            required: ['id', 'conversation_id', 'sender_id', 'message_type']
+            required: [ 'id', 'conversation_id', 'sender_id', 'message_type' ]
           },
           conversation: {
             type: 'object',
@@ -104,7 +104,7 @@ RSpec.configure do |config|
               favorited_by_user_a: { type: 'boolean' },
               favorited_by_user_b: { type: 'boolean' }
             },
-            required: ['id', 'user_a_id', 'user_b_id']
+            required: [ 'id', 'user_a_id', 'user_b_id' ]
           },
           notification: {
             type: 'object',
@@ -113,12 +113,12 @@ RSpec.configure do |config|
               user_id: { type: 'integer' },
               title: { type: 'string' },
               body: { type: 'string' },
-              notification_type: { type: 'string', enum: ['broadcast', 'message', 'system', 'account_warning', 'account_suspension', 'suspension_ended'] },
+              notification_type: { type: 'string', enum: [ 'broadcast', 'message', 'system', 'account_warning', 'account_suspension', 'suspension_ended' ] },
               read: { type: 'boolean' },
               metadata: { type: 'object' },
               created_at: { type: 'string', format: 'date-time' }
             },
-            required: ['id', 'user_id', 'notification_type']
+            required: [ 'id', 'user_id', 'notification_type' ]
           },
           report: {
             type: 'object',
@@ -126,16 +126,16 @@ RSpec.configure do |config|
               id: { type: 'integer' },
               reporter_id: { type: 'integer' },
               reported_id: { type: 'integer' },
-              report_type: { type: 'string', enum: ['user', 'broadcast', 'message'] },
-              reason: { type: 'string', enum: ['gender_impersonation', 'inappropriate_content', 'spam', 'harassment', 'other'] },
-              status: { type: 'string', enum: ['pending', 'processing', 'resolved', 'rejected'] },
+              report_type: { type: 'string', enum: [ 'user', 'broadcast', 'message' ] },
+              reason: { type: 'string', enum: [ 'gender_impersonation', 'inappropriate_content', 'spam', 'harassment', 'other' ] },
+              status: { type: 'string', enum: [ 'pending', 'processing', 'resolved', 'rejected' ] },
               related_id: { type: 'integer', nullable: true, description: '관련 브로드캐스트/메시지 ID' },
               created_at: { type: 'string', format: 'date-time' },
               updated_at: { type: 'string', format: 'date-time' },
               reporter: { '$ref': '#/components/schemas/user' },
               reported: { '$ref': '#/components/schemas/user' }
             },
-            required: ['id', 'reporter_id', 'reported_id', 'report_type', 'reason', 'status']
+            required: [ 'id', 'reporter_id', 'reported_id', 'report_type', 'reason', 'status' ]
           },
           user_suspension: {
             type: 'object',
@@ -151,7 +151,7 @@ RSpec.configure do |config|
               updated_at: { type: 'string', format: 'date-time' },
               user: { '$ref': '#/components/schemas/user' }
             },
-            required: ['id', 'user_id', 'reason', 'suspended_at', 'suspended_until']
+            required: [ 'id', 'user_id', 'reason', 'suspended_at', 'suspended_until' ]
           }
         },
         securitySchemes: {

@@ -4,7 +4,7 @@ RSpec.describe 'API V1 Reports', type: :request do
   path '/api/v1/reports' do
     get '사용자 신고 목록 조회' do
       tags 'Reports'
-      security [bearer_auth: []]
+      security [ bearer_auth: [] ]
       produces 'application/json'
       parameter name: :page, in: :query, type: :integer, required: false, description: '페이지 번호'
       parameter name: :per_page, in: :query, type: :integer, required: false, description: '페이지당 결과 수'
@@ -35,7 +35,7 @@ RSpec.describe 'API V1 Reports', type: :request do
 
     post '신고 생성' do
       tags 'Reports'
-      security [bearer_auth: []]
+      security [ bearer_auth: [] ]
       consumes 'application/json'
       produces 'application/json'
       parameter name: :report_params, in: :body, schema: {
@@ -45,14 +45,14 @@ RSpec.describe 'API V1 Reports', type: :request do
             type: :object,
             properties: {
               reported_id: { type: :integer, description: '신고할 사용자 ID' },
-              report_type: { type: :string, enum: ['user', 'broadcast', 'message'], description: '신고 유형' },
-              reason: { type: :string, enum: ['gender_impersonation', 'inappropriate_content', 'spam', 'harassment', 'other'], description: '신고 사유' },
+              report_type: { type: :string, enum: [ 'user', 'broadcast', 'message' ], description: '신고 유형' },
+              reason: { type: :string, enum: [ 'gender_impersonation', 'inappropriate_content', 'spam', 'harassment', 'other' ], description: '신고 사유' },
               related_id: { type: :integer, nullable: true, description: '관련 브로드캐스트/메시지 ID (report_type이 user가 아닌 경우 필수)' }
             },
-            required: ['reported_id', 'report_type', 'reason']
+            required: [ 'reported_id', 'report_type', 'reason' ]
           }
         },
-        required: ['report']
+        required: [ 'report' ]
       }
 
       response '201', '신고가 성공적으로 생성됨' do
@@ -85,7 +85,7 @@ RSpec.describe 'API V1 Reports', type: :request do
 
     get '신고 상세 조회' do
       tags 'Reports'
-      security [bearer_auth: []]
+      security [ bearer_auth: [] ]
       produces 'application/json'
 
       response '200', '성공적으로 신고를 조회함' do
@@ -112,7 +112,7 @@ RSpec.describe 'API V1 Reports', type: :request do
 
     post '사용자 차단' do
       tags 'Users', 'Blocking'
-      security [bearer_auth: []]
+      security [ bearer_auth: [] ]
       produces 'application/json'
 
       response '200', '성공적으로 사용자를 차단함' do
@@ -139,14 +139,14 @@ RSpec.describe 'API V1 Reports', type: :request do
       end
     end
   end
-  
+
   # 자신의 차단 목록 조회
   path '/api/v1/users/blocks' do
     get '내가 차단한 사용자 목록 조회' do
       tags 'Users', 'Blocking'
-      security [bearer_auth: []]
+      security [ bearer_auth: [] ]
       produces 'application/json'
-      
+
       response '200', '성공적으로 차단 목록을 조회함' do
         schema type: :object, properties: {
           blocks: {
@@ -178,7 +178,7 @@ RSpec.describe 'API V1 Reports', type: :request do
 
     post '사용자 차단 해제' do
       tags 'Users', 'Blocking'
-      security [bearer_auth: []]
+      security [ bearer_auth: [] ]
       produces 'application/json'
 
       response '200', '성공적으로 사용자 차단을 해제함' do

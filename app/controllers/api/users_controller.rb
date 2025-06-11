@@ -299,7 +299,7 @@ module Api
         if new_nickname.blank? || new_nickname.length < 2 || new_nickname.length > 15
           return render json: { error: "닉네임은 2자 이상 15자 이하이어야 합니다." }, status: :bad_request
         end
-        
+
         # 중복 검사 (User 모델의 유효성 검사 활용 권장)
         if User.exists?(nickname: new_nickname) && current_user.nickname != new_nickname
           return render json: { error: "이미 사용 중인 닉네임입니다." }, status: :conflict
@@ -333,16 +333,16 @@ module Api
 
     def generate_random_nickname_string
       # 형용사와 명사 리스트
-      adjectives = ["행복한", "즐거운", "멋진", "신나는", "귀여운", "활발한", "친절한", "사랑스러운", "따뜻한", "밝은", 
-                    "달콤한", "재미있는", "유쾌한", "상냥한", "다정한", "명랑한", "화사한", "산뜻한", "희망찬", "푸른"]
-      nouns = ["고양이", "강아지", "토끼", "여우", "사자", "호랑이", "코끼리", "판다", "곰", "기린", 
-               "늑대", "양", "소", "말", "원숭이", "다람쥐", "펭귄", "코알라", "햄스터", "사슴"]
-      
+      adjectives = [ "행복한", "즐거운", "멋진", "신나는", "귀여운", "활발한", "친절한", "사랑스러운", "따뜻한", "밝은",
+                    "달콤한", "재미있는", "유쾌한", "상냥한", "다정한", "명랑한", "화사한", "산뜻한", "희망찬", "푸른" ]
+      nouns = [ "고양이", "강아지", "토끼", "여우", "사자", "호랑이", "코끼리", "판다", "곰", "기린",
+               "늑대", "양", "소", "말", "원숭이", "다람쥐", "펭귄", "코알라", "햄스터", "사슴" ]
+
       # 랜덤 선택
       adjective = adjectives.sample
       noun = nouns.sample
       number = rand(1..999)
-      
+
       # 닉네임 조합
       "#{adjective}#{noun}#{number}"
     end

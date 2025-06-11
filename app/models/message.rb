@@ -11,7 +11,7 @@ class Message < ApplicationRecord
   after_save :set_duration_from_voice_file, if: -> { voice_file.attached? && saved_change_to_voice_file_attachment? }
 
   # 메시지 타입 검증 - voice, broadcast, text 허용
-  validates :message_type, inclusion: { in: ["voice", "broadcast", "text"] }, allow_nil: true
+  validates :message_type, inclusion: { in: [ "voice", "broadcast", "text" ] }, allow_nil: true
 
   # 기본 메시지 타입 설정
   before_validation :set_default_message_type
@@ -36,7 +36,7 @@ class Message < ApplicationRecord
   end
 
   # 컬렉션에서 중복된 메시지 제거
-  scope :unique_by_broadcast, -> { select('DISTINCT ON (broadcast_id) *').where.not(broadcast_id: nil) }
+  scope :unique_by_broadcast, -> { select("DISTINCT ON (broadcast_id) *").where.not(broadcast_id: nil) }
 
   # 브로드캐스트 관련 메시지인지 확인
   def broadcast?
@@ -62,7 +62,7 @@ class Message < ApplicationRecord
     elsif conversation.user_b_id == user_id
       update(deleted_by_b: true)
     end
-    
+
     # 양쪽 모두 삭제 처리된 경우 실제 삭제
     destroy if deleted_by_a && deleted_by_b
   end
@@ -88,7 +88,7 @@ class Message < ApplicationRecord
     return nil unless broadcast
     broadcast.voice_file.attached? ? broadcast.voice_file.url : nil
   end
-  
+
   # 사용자가 메시지를 볼 수 있는지 확인
   def visible_to?(user_id)
     if conversation.user_a_id == user_id
@@ -122,7 +122,7 @@ class Message < ApplicationRecord
     recipient_id = get_recipient_id
     # 여기에 푸시 알림 로직이 들어갈 수 있습니다
     Rails.logger.info("메시지 생성 완료: ID #{id}, 수신자 ID: #{recipient_id}, 메시지 타입: #{message_type}, 브로드캐스트 ID: #{broadcast_id}")
-    
+
     # 대화 마지막 업데이트 시간 갱신
     conversation.touch
   end
@@ -146,11 +146,11 @@ class Message < ApplicationRecord
   # 음성 파일에서 재생 시간(duration) 설정
   def set_duration_from_voice_file
     return unless voice_file.attached?
-    
+
     begin
       # 음성 파일 정보 추출
       audio_info = AudioProcessorService.get_audio_info(voice_file.blob.service.path_for(voice_file.key))
-      
+
       if audio_info && audio_info[:duration]
         # 반올림하여 정수로 저장 (초 단위)
         update_column(:duration, audio_info[:duration].round)

@@ -13,7 +13,7 @@ module Api
           # 샘플 오디오 파일 URL 생성
           base_url = ENV.fetch("RENDER_EXTERNAL_URL", "http://#{request.host_with_port}")
           sample_audio_url = "#{base_url}/audio_samples/sample_audio.wav"
-          
+
           # 샘플 브로드캐스트 응답 생성
           render json: {
             example_broadcast: {
@@ -31,7 +31,7 @@ module Api
           }
         rescue => e
           Rails.logger.error("예제 브로드캐스트 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "예제 브로드캐스트를 조회하는 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -41,23 +41,23 @@ module Api
       def index
         begin
           # 쿼리 파라미터로 필터 옵션 받기
-          filter = params[:filter] || 'all' # all, sent, received
-          
+          filter = params[:filter] || "all" # all, sent, received
+
           case filter
-          when 'sent'
+          when "sent"
             # 보낸 브로드캐스트만
             @broadcasts = current_user.broadcasts
                                      .includes(:user, broadcast_recipients: :user)
                                      .with_attached_audio
                                      .order(created_at: :desc)
                                      .limit(50)
-          when 'received'
+          when "received"
             # 받은 브로드캐스트만
             @broadcasts = Broadcast.joins(:broadcast_recipients)
                                   .where(broadcast_recipients: { user_id: current_user.id })
                                   .includes(:user)
                                   .with_attached_audio
-                                  .order('broadcast_recipients.created_at DESC')
+                                  .order("broadcast_recipients.created_at DESC")
                                   .limit(50)
           else
             # 모든 브로드캐스트 (보낸 것 + 받은 것)
@@ -65,9 +65,9 @@ module Api
             received_broadcasts = Broadcast.joins(:broadcast_recipients)
                                          .where(broadcast_recipients: { user_id: current_user.id })
                                          .select(:id).to_sql
-            
+
             broadcast_ids = Broadcast.from("(#{sent_broadcasts} UNION #{received_broadcasts}) AS broadcasts").pluck(:id)
-            
+
             @broadcasts = Broadcast.where(id: broadcast_ids)
                                   .includes(:user, broadcast_recipients: :user)
                                   .with_attached_audio
@@ -82,7 +82,7 @@ module Api
           }
         rescue => e
           Rails.logger.error("방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "방송 목록을 조회하는 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -97,7 +97,7 @@ module Api
                                 .where(broadcast_recipients: { user_id: current_user.id })
                                 .includes(:user)
                                 .with_attached_audio
-                                .order('broadcast_recipients.created_at DESC')
+                                .order("broadcast_recipients.created_at DESC")
                                 .page(params[:page])
                                 .per(20)
 
@@ -121,7 +121,7 @@ module Api
           }
         rescue => e
           Rails.logger.error("수신 방송 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "수신 방송 목록을 조회하는 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -133,26 +133,26 @@ module Api
         begin
           broadcast = Broadcast.find(params[:id])
           recipient = BroadcastRecipient.find_by!(
-            broadcast_id: broadcast.id, 
+            broadcast_id: broadcast.id,
             user_id: current_user.id
           )
-          
+
           # 상태를 'read'로 업데이트
           recipient.update!(status: :read) if recipient.delivered?
-          
+
           render json: {
             message: "브로드캐스트가 읽음 처리되었습니다.",
             status: recipient.status,
             request_id: request.request_id || SecureRandom.uuid
           }
         rescue ActiveRecord::RecordNotFound
-          render json: { 
+          render json: {
             error: "브로드캐스트를 찾을 수 없거나 권한이 없습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :not_found
         rescue => e
           Rails.logger.error("브로드캐스트 읽음 처리 중 오류 발생: #{e.message}")
-          render json: { 
+          render json: {
             error: "브로드캐스트 읽음 처리 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -169,7 +169,7 @@ module Api
           # 음성 파일이 있는지 확인
           unless broadcast_params[:voice_file].present?
             Rails.logger.warn "음성 파일이 없습니다: 사용자 ID #{current_user.id}"
-            return render json: { 
+            return render json: {
               error: "음성 파일이 필요합니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :bad_request
@@ -191,7 +191,7 @@ module Api
           @broadcast = current_user.broadcasts.new(
             text: broadcast_text
           )
-          
+
           # 음성 파일 첨부
           @broadcast.audio.attach(broadcast_params[:voice_file])
 
@@ -217,7 +217,7 @@ module Api
               }, status: :created
             else
               Rails.logger.warn("방송 생성 실패: #{@broadcast.errors.full_messages.join(', ')}")
-              render json: { 
+              render json: {
                 error: @broadcast.errors.full_messages.join(", "),
                 request_id: request.request_id || SecureRandom.uuid
               }, status: :unprocessable_entity
@@ -225,7 +225,7 @@ module Api
           end
         rescue ActionController::ParameterMissing => e
           Rails.logger.warn("파라미터 누락: #{e.message}")
-          render json: { 
+          render json: {
             error: "필수 파라미터가 누락되었습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :bad_request
@@ -245,7 +245,7 @@ module Api
           }, status: :service_unavailable
         rescue => e
           Rails.logger.error("방송 생성 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "방송을 전송하는 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -257,29 +257,29 @@ module Api
           @broadcast = Broadcast.includes(:user)
                                .with_attached_audio
                                .find_by(id: params[:id])
-                               
+
           unless @broadcast
-            return render json: { 
+            return render json: {
               error: "방송을 찾을 수 없습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :not_found
           end
-          
+
           # 권한 검사: 자신의 방송이거나 수신한 방송인지 확인
           unless @broadcast.user_id == current_user.id || is_recipient?(@broadcast)
-            return render json: { 
+            return render json: {
               error: "이 방송에 접근할 권한이 없습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :forbidden
           end
-          
+
           render json: {
             broadcast: broadcast_detail_response(@broadcast),
             request_id: request.request_id || SecureRandom.uuid
           }
         rescue => e
           Rails.logger.error("방송 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "방송을 조회하는 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -292,18 +292,18 @@ module Api
 
         begin
           broadcast = Broadcast.find_by(id: params[:id])
-          
+
           unless broadcast
             Rails.logger.error("방송을 찾을 수 없음: ID #{params[:id]}")
-            return render json: { 
+            return render json: {
               error: "방송을 찾을 수 없습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :not_found
           end
-          
+
           # 권한 검사: 수신한 방송인지 확인
           unless is_recipient?(broadcast)
-            return render json: { 
+            return render json: {
               error: "이 방송에 답장할 권한이 없습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :forbidden
@@ -312,7 +312,7 @@ module Api
           # 음성 파일 첨부 확인
           unless params[:voice_file].present?
             Rails.logger.warn("음성 파일 없음: 답장 실패")
-            return render json: { 
+            return render json: {
               error: "음성 파일이 필요합니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :bad_request
@@ -327,7 +327,7 @@ module Api
           ActiveRecord::Base.transaction do
             # 대화 찾기 (BroadcastWorker에서 이미 생성했을 것임)
             conversation = Conversation.between_users(current_user.id, broadcast.user_id).first
-            
+
             # 만약 대화가 없다면 생성 (예외 상황 대비)
             unless conversation
               Rails.logger.warn("기존 대화를 찾을 수 없어 새로 생성: 사용자 #{current_user.id} <-> #{broadcast.user_id}")
@@ -367,7 +367,7 @@ module Api
               broadcast_id: broadcast.id,
               user_id: current_user.id
             )
-            
+
             if broadcast_recipient
               broadcast_recipient.update(status: :replied)
             end
@@ -390,19 +390,19 @@ module Api
           end
         rescue ActiveRecord::RecordNotFound
           Rails.logger.error("방송을 찾을 수 없음: ID #{params[:id]}")
-          render json: { 
+          render json: {
             error: "방송을 찾을 수 없습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :not_found
         rescue ActiveRecord::RecordInvalid => e
           Rails.logger.error("유효성 검사 실패: #{e.message}")
-          render json: { 
+          render json: {
             error: "답장 처리 중 유효성 검사에 실패했습니다: #{e.message}",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :unprocessable_entity
         rescue => e
           Rails.logger.error("답장 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "답장 처리 중 오류가 발생했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -415,7 +415,7 @@ module Api
       def ensure_user_active
         unless current_user.status_active?
           Rails.logger.warn("비활성 사용자의 방송 접근 시도: 사용자 ID #{current_user.id}, 상태 #{current_user.status}")
-          render json: { 
+          render json: {
             error: "현재 계정 상태로는 이 기능을 사용할 수 없습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :forbidden
@@ -423,13 +423,13 @@ module Api
         end
         true
       end
-      
+
       # 테스트 계정 여부 확인
       def is_test_account?
         current_user.phone_number.match?(/^010\d{8}$/) &&
         current_user.phone_number.gsub(/\D/, "").match?(/^010(1|2|3|4|5){2}+\1{6}$/)
       end
-      
+
       # 테스트 계정 방송 처리
       def handle_test_account_broadcast(broadcast_text, recipient_count)
         Rails.logger.info "테스트 계정 방송 처리: #{current_user.phone_number}"
@@ -467,7 +467,7 @@ module Api
           request_id: request.request_id || SecureRandom.uuid
         }, status: :created
       end
-      
+
       # 현재 사용자가 방송의 수신자인지 확인
       def is_recipient?(broadcast)
         BroadcastRecipient.exists?(broadcast_id: broadcast.id, user_id: current_user.id)
@@ -476,11 +476,11 @@ module Api
       # 방송 목록 응답 포맷
       def broadcast_response(broadcast)
         # 오디오 URL 유효 기간 설정 (환경 변수에서 가져오거나 기본값 7일 사용)
-        audio_url_expiry = ENV.fetch('AUDIO_URL_EXPIRY_DAYS', '7').to_i.days
-        
+        audio_url_expiry = ENV.fetch("AUDIO_URL_EXPIRY_DAYS", "7").to_i.days
+
         # 로그에 현재 설정된 만료 시간 기록 (디버깅용)
         Rails.logger.debug("오디오 URL 만료 시간 설정: #{audio_url_expiry / 1.day}일")
-        
+
         {
           id: broadcast.id,
           text: broadcast.text,
@@ -493,11 +493,11 @@ module Api
           created_at: broadcast.created_at
         }
       end
-      
+
       # 방송 상세 응답 포맷
       def broadcast_detail_response(broadcast)
         response = broadcast_response(broadcast)
-        
+
         # 수신자 목록 추가 (본인이 발신자인 경우에만)
         if broadcast.user_id == current_user.id
           recipients = BroadcastRecipient.includes(:user)
@@ -509,16 +509,16 @@ module Api
               status: br.status
             }
           end
-          
+
           response[:recipients] = recipients
         end
-        
+
         # 본인이 수신자인 경우 상태 추가
         if broadcast.user_id != current_user.id
           recipient = BroadcastRecipient.find_by(broadcast_id: broadcast.id, user_id: current_user.id)
           response[:status] = recipient&.status
         end
-        
+
         response
       end
     end

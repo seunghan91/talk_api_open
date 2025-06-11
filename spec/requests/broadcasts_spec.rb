@@ -60,7 +60,7 @@ RSpec.describe 'Broadcasts API', type: :request do
       produces 'application/json'
       parameter name: :text, in: :formData, type: :string, description: 'Broadcast text'
       parameter name: :audio, in: :formData, type: :file, description: 'Audio file'
-      
+
       response '201', 'Broadcast created successfully' do
         schema type: :object,
           properties: {
@@ -172,4 +172,4 @@ RSpec.describe 'Broadcasts API', type: :request do
       end
     end
   end
-end 
+end

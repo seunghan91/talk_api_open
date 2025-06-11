@@ -4,15 +4,15 @@ FactoryBot.define do
     code { rand(100000..999999).to_s }
     expires_at { 5.minutes.from_now }
     verified { false }
-    
+
     association :user, factory: :user, optional: true
-    
+
     trait :verified do
       verified { true }
     end
-    
+
     trait :expired do
       expires_at { 5.minutes.ago }
     end
   end
-end 
+end

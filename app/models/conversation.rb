@@ -7,24 +7,24 @@ class Conversation < ApplicationRecord
 
     # 인덱스 활용을 위한 스코프 추가
     scope :between_users, ->(user1_id, user2_id) do
-      where("(user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)", 
-            [user1_id, user2_id].min, [user1_id, user2_id].max,
-            [user1_id, user2_id].max, [user1_id, user2_id].min)
+      where("(user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?)",
+            [ user1_id, user2_id ].min, [ user1_id, user2_id ].max,
+            [ user1_id, user2_id ].max, [ user1_id, user2_id ].min)
     end
-    
+
     scope :for_user, ->(user_id) do
       where("user_a_id = ? OR user_b_id = ?", user_id, user_id)
     end
-    
+
     scope :not_deleted_for, ->(user_id) do
-      where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)", 
+      where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)",
             user_id, false, user_id, false)
     end
-    
+
     scope :with_broadcast, ->(broadcast_id) do
       where(broadcast_id: broadcast_id)
     end
-    
+
     # 대화가 즐겨찾기되었는지 확인
     def favorited_by?(user_id)
       if user_a_id == user_id
@@ -80,24 +80,24 @@ class Conversation < ApplicationRecord
     def self.find_or_create_conversation(user1_id, user2_id, broadcast = nil)
       # 유효성 검사
       return nil if user1_id == user2_id
-      
+
       # 항상 작은 ID를 user_a_id로, 큰 ID를 user_b_id로 저장
-      user_a_id = [user1_id, user2_id].min
-      user_b_id = [user1_id, user2_id].max
+      user_a_id = [ user1_id, user2_id ].min
+      user_b_id = [ user1_id, user2_id ].max
 
       conversation = between_users(user_a_id, user_b_id).first
 
       # 대화가 존재하지 않으면 새로 생성
       unless conversation
         conversation = create!(
-          user_a_id: user_a_id, 
+          user_a_id: user_a_id,
           user_b_id: user_b_id,
           broadcast_id: broadcast&.id,
           # 기본 상태는 양쪽 모두 보이도록 설정
           deleted_by_a: false,
           deleted_by_b: false
         )
-        
+
         # 브로드캐스트가 있을 경우 첫 메시지로 추가
         if broadcast.present?
           conversation.messages.create!(
@@ -113,25 +113,25 @@ class Conversation < ApplicationRecord
 
       conversation
     end
-    
-    # 브로드캐스트로부터 대화 생성 
+
+    # 브로드캐스트로부터 대화 생성
     def self.create_from_broadcast(broadcast, recipient_id)
       # 브로드캐스트 발신자와 수신자 ID 확인
       sender_id = broadcast.user_id
-      
+
       # 대화 찾기 또는 생성
       conversation = find_or_create_conversation(sender_id, recipient_id, broadcast)
-      
+
       # 대화 생성에 실패한 경우
       unless conversation&.persisted?
         Rails.logger.error("브로드캐스트에서 대화 생성 실패: 브로드캐스트 ID #{broadcast.id}, 수신자 ID #{recipient_id}")
         return nil
       end
-      
-          # 브로드캐스트 수신자는 처음에는 대화방이 보이지 않도록 설정
+
+    # 브로드캐스트 수신자는 처음에는 대화방이 보이지 않도록 설정
     # (답장하기 전까지 보이지 않음)
     conversation.hide_from!(recipient_id)
-      
+
       conversation
     end
 

@@ -39,14 +39,14 @@ class ReportHandlerService
   # 성별 위장 신고 처리
   def self.handle_gender_impersonation(report)
     reported_user = report.reported
-    count = Report.where(reported: reported_user, reason: "gender_impersonation", status: [:resolved]).count
+    count = Report.where(reported: reported_user, reason: "gender_impersonation", status: [ :resolved ]).count
 
     if count >= GENDER_IMPERSONATION_THRESHOLD
       # 1회 이상 누적 시 계정 정지
       suspend_user(reported_user, 1.day, "성별 위장 신고 #{count}회 누적")
       # 관리자에게 알림
       notify_admin(
-        "성별 위장 신고로 사용자 정지", 
+        "성별 위장 신고로 사용자 정지",
         "사용자 ID: #{reported_user.id}, 닉네임: #{reported_user.nickname}, 신고 누적: #{count}회"
       )
     end
@@ -55,14 +55,14 @@ class ReportHandlerService
   # 불건전 콘텐츠 신고 처리
   def self.handle_inappropriate_content(report)
     reported_user = report.reported
-    count = Report.where(reported: reported_user, reason: "inappropriate_content", status: [:resolved]).count
+    count = Report.where(reported: reported_user, reason: "inappropriate_content", status: [ :resolved ]).count
 
     if count >= INAPPROPRIATE_CONTENT_THRESHOLD
       # 3회 이상 누적 시 계정 정지 (3일)
       suspend_user(reported_user, 3.days, "불건전 콘텐츠 신고 #{count}회 누적")
       # 관리자에게 알림
       notify_admin(
-        "불건전 콘텐츠 신고로 사용자 정지", 
+        "불건전 콘텐츠 신고로 사용자 정지",
         "사용자 ID: #{reported_user.id}, 닉네임: #{reported_user.nickname}, 신고 누적: #{count}회"
       )
     elsif count >= 1
@@ -74,14 +74,14 @@ class ReportHandlerService
   # 일반 신고 처리
   def self.handle_general_report(report)
     reported_user = report.reported
-    count = Report.where(reported: reported_user, status: [:resolved]).count
+    count = Report.where(reported: reported_user, status: [ :resolved ]).count
 
     if count >= GENERAL_REPORT_THRESHOLD
       # 5회 이상 누적 시 계정 정지 (1일)
       suspend_user(reported_user, 1.day, "일반 신고 #{count}회 누적")
       # 관리자에게 알림
       notify_admin(
-        "일반 신고 누적으로 사용자 정지", 
+        "일반 신고 누적으로 사용자 정지",
         "사용자 ID: #{reported_user.id}, 닉네임: #{reported_user.nickname}, 신고 누적: #{count}회"
       )
     end
@@ -100,7 +100,7 @@ class ReportHandlerService
       reason: reason,
       suspended_at: Time.current,
       suspended_until: Time.current + duration,
-      suspended_by: 'system'
+      suspended_by: "system"
     ) if defined?(UserSuspension)
 
     # 사용자에게 정지 알림 발송
@@ -122,8 +122,8 @@ class ReportHandlerService
     if defined?(NotificationWorker)
       NotificationWorker.perform_async(
         user.id,
-        'account_suspension',
-        '계정 정지 알림',
+        "account_suspension",
+        "계정 정지 알림",
         "귀하의 계정이 #{reason}(으)로 #{ActionController::Base.helpers.distance_of_time_in_words(duration)}간 정지되었습니다.",
         { suspension_reason: reason, suspension_duration: duration.to_i }
       )
@@ -136,8 +136,8 @@ class ReportHandlerService
     if defined?(NotificationWorker)
       NotificationWorker.perform_async(
         user.id,
-        'account_warning',
-        '계정 경고 알림',
+        "account_warning",
+        "계정 경고 알림",
         "귀하의 계정이 #{reason}(으)로 경고를 받았습니다. 추가 위반 시 계정이 정지될 수 있습니다.",
         { warning_reason: reason }
       )

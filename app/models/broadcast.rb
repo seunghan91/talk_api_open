@@ -5,7 +5,7 @@ class Broadcast < ApplicationRecord
     # 수신자 관계 추가
     has_many :broadcast_recipients, dependent: :destroy
     has_many :recipients, through: :broadcast_recipients, source: :user
-    
+
     # 대화 및 메시지 관계 추가
     has_many :conversations, dependent: :restrict_with_error
     has_many :messages, dependent: :restrict_with_error
@@ -38,12 +38,12 @@ class Broadcast < ApplicationRecord
     def active?
       !expired?
     end
-    
+
     # 오디오 URL 반환
     def audio_url
       audio.attached? ? Rails.application.routes.url_helpers.url_for(audio) : nil
     end
-    
+
     # 수신자에게 브로드캐스트 전송
     def deliver_to_recipients(recipient_ids, max_count = 5)
       # 수신자 유효성 검사 및 제한
@@ -51,12 +51,12 @@ class Broadcast < ApplicationRecord
                        .where.not(id: user_id)
                        .where(status: :active)
                        .limit(max_count)
-      
+
       return false if recipients.empty?
-      
+
       # 백그라운드 작업으로 처리
       BroadcastWorker.perform_async(id, recipients.count)
-      
+
       true
     end
 
@@ -104,15 +104,15 @@ class Broadcast < ApplicationRecord
     def set_expired_at
       self.expired_at ||= 6.days.from_now
     end
-    
+
     # 음성 파일에서 재생 시간(duration) 설정
     def set_duration_from_audio
       return unless audio.attached?
-      
+
       begin
         # 음성 파일 정보 추출
         audio_info = AudioProcessorService.get_audio_info(audio.blob.service.path_for(audio.key))
-        
+
         if audio_info && audio_info[:duration]
           # 반올림하여 정수로 저장 (초 단위)
           update_column(:duration, audio_info[:duration].round)

@@ -2,7 +2,7 @@ module Api
   module V1
     class BaseController < ApplicationController
       before_action :log_api_request
-      
+
       # 추가 예외 처리
       rescue_from StandardError do |e|
         Sentry.capture_exception(e) if defined?(Sentry)
@@ -80,24 +80,24 @@ module Api
       # 사용자 활성 상태 확인
       def ensure_user_active
         return true if current_user.nil? # authorize_request에서 이미 처리
-        
+
         unless current_user.status_active?
-          render json: { 
-            error: '현재 계정 상태로는 이 기능을 사용할 수 없습니다.', 
+          render json: {
+            error: "현재 계정 상태로는 이 기능을 사용할 수 없습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :forbidden
           return false
         end
         true
       end
-      
+
       # 요청된 리소스에 대한 사용자 권한 확인
       def authorize_resource(resource, owner_id_field = :user_id)
         return false unless current_user
-        
+
         unless resource.send(owner_id_field) == current_user.id
-          render json: { 
-            error: '이 리소스에 접근할 권한이 없습니다.', 
+          render json: {
+            error: "이 리소스에 접근할 권한이 없습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :forbidden
           return false

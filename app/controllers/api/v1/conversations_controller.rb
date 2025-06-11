@@ -7,11 +7,11 @@ module Api
       def index
         begin
           Rails.logger.info("대화 목록 조회 시작: 사용자 ID #{current_user.id}")
-          
+
           # 유저의 모든 대화 목록을 찾음 (자신이 user_a이거나 user_b인 경우)
           # 삭제되지 않은 대화만 가져오기
           @conversations = find_user_conversations
-          
+
           unless @conversations
             Rails.logger.error("대화 목록 조회 실패: 사용자 ID #{current_user.id}의 대화를 찾을 수 없음")
             return render json: { error: "대화 목록을 불러오는 데 실패했습니다." }, status: :not_found
@@ -24,19 +24,19 @@ module Api
             begin
               # 상대방 정보 조회
               other_user = find_other_user(conversation)
-              
+
               unless other_user
                 Rails.logger.error("대화 상대 조회 실패: 대화 ID #{conversation.id}의 상대방을 찾을 수 없음")
                 next nil # 상대방 정보 없으면 대화 제외
               end
-              
+
               # 마지막 메시지 조회 - 삭제되지 않은 메시지만 고려 (find_last_message 내부 로직에 따라)
               last_message = find_last_message(conversation)
-              
+
               # 마지막 메시지 포맷팅 또는 기본값 설정
               formatted_last_message = if last_message
                                      format_last_message(last_message)
-                                   else
+              else
                                      # 메시지가 없거나 모두 삭제된 경우 빈 음성 메시지로 표시 (텍스트 제거)
                                      Rails.logger.info("마지막 메시지 없음 또는 모두 삭제됨: 대화 ID #{conversation.id}")
                                      {
@@ -48,7 +48,7 @@ module Api
                                        is_read: true, # 안 읽음 카운트가 0이 되도록
                                        message_type: "voice" # 항상 음성 메시지 타입
                                      }
-                                   end
+              end
 
               # 안 읽은 메시지 수 계산
               unread_count = count_unread_messages(conversation)
@@ -70,19 +70,19 @@ module Api
               next nil # 오류 발생 시 해당 대화 제외
             end
           end.compact # nil 값 제거 (여전히 필요)
-          
+
           # 정렬: 마지막 메시지 시간 기준 내림차순
           formatted_conversations.sort_by! { |c| -c[:updated_at].to_i }
 
           Rails.logger.info("대화 목록 응답 반환: #{formatted_conversations.size}개")
 
-          render json: { 
+          render json: {
             conversations: formatted_conversations,
             request_id: request.request_id || SecureRandom.uuid
           }
         rescue => e
           Rails.logger.error("대화 목록 조회 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "대화 목록을 불러오는 데 실패했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -94,46 +94,46 @@ module Api
         begin
           conversation_id = params[:id]
           @conversation = Conversation.find_by(id: conversation_id)
-          
+
           unless @conversation
             Rails.logger.error("대화 상세 조회 실패: 대화 ID #{conversation_id}를 찾을 수 없음")
-            return render json: { 
+            return render json: {
               error: "해당 대화를 찾을 수 없습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :not_found
           end
-          
+
           # 현재 사용자가 대화의 참여자인지 확인
           unless @conversation.user_a_id == current_user.id || @conversation.user_b_id == current_user.id
             Rails.logger.warn("대화 접근 권한 없음: 사용자 ID #{current_user.id}는 대화 ID #{conversation_id}에 접근할 수 없음")
-            return render json: { 
+            return render json: {
               error: "해당 대화에 접근할 권한이 없습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :forbidden
           end
-          
+
           # 사용자가 삭제한 대화인지 확인
           unless @conversation.visible_to?(current_user.id)
             Rails.logger.warn("삭제된 대화 접근: 사용자 ID #{current_user.id}가 삭제한 대화 ID #{conversation_id}에 접근 시도")
-            return render json: { 
+            return render json: {
               error: "삭제된 대화입니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :gone
           end
-          
+
           # 상대방 정보 조회
           other_user_id = @conversation.other_user_id(current_user.id)
           other_user = User.find_by(id: other_user_id)
-          
+
           # 메시지 목록 조회 - 삭제되지 않은 메시지만
           messages = fetch_visible_messages
-          
+
           # 메시지 포맷팅
           formatted_messages = format_messages(messages)
-          
+
           # 읽지 않은 메시지 읽음 처리
           mark_messages_as_read(messages)
-          
+
           render json: {
             id: @conversation.id,
             with_user: {
@@ -147,7 +147,7 @@ module Api
           }
         rescue => e
           Rails.logger.error("대화 상세 조회 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-          render json: { 
+          render json: {
             error: "대화 정보를 불러오는 데 실패했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -168,7 +168,7 @@ module Api
           # 음성 파일 첨부 확인
           unless params[:voice_file].present?
             Rails.logger.error("음성 파일 없음: 메시지 전송 실패")
-            return render json: { 
+            return render json: {
               error: "음성 파일이 필요합니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :bad_request
@@ -185,7 +185,7 @@ module Api
             @message.voice_file.attach(params[:voice_file])
           rescue => e
             Rails.logger.error("음성 파일 첨부 오류: #{e.message}")
-            return render json: { 
+            return render json: {
               error: "음성 파일 첨부에 실패했습니다.",
               request_id: request.request_id || SecureRandom.uuid
             }, status: :unprocessable_entity
@@ -211,19 +211,19 @@ module Api
               request_id: request.request_id || SecureRandom.uuid
             }, status: :created
           else
-            render json: { 
+            render json: {
               errors: @message.errors.full_messages,
               request_id: request.request_id || SecureRandom.uuid
             }, status: :unprocessable_entity
           end
         rescue ActiveRecord::RecordNotFound
-          render json: { 
+          render json: {
             error: "대화를 찾을 수 없습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :not_found
         rescue => e
           Rails.logger.error("메시지 전송 오류: #{e.message}")
-          render json: { 
+          render json: {
             error: "메시지 전송에 실패했습니다.",
             request_id: request.request_id || SecureRandom.uuid
           }, status: :internal_server_error
@@ -288,16 +288,16 @@ module Api
           []
         end
       end
-      
+
       # 대화 상대방 찾기
       def find_other_user(conversation)
-        other_user_id = conversation.user_a_id == current_user.id ? 
-                        conversation.user_b_id : 
+        other_user_id = conversation.user_a_id == current_user.id ?
+                        conversation.user_b_id :
                         conversation.user_a_id
-                        
+
         User.find_by(id: other_user_id)
       end
-      
+
       # 마지막 메시지 찾기
       def find_last_message(conversation)
         # 현재 사용자에게 보여야 할 메시지만 가져옴
@@ -306,26 +306,26 @@ module Api
         else
           conversation.messages.where(deleted_by_b: false).order(created_at: :desc).first
         end
-        
+
         # 메시지가 없으면 nil 반환
         message
       end
-      
+
       # 읽지 않은 메시지 개수 계산
       def count_unread_messages(conversation)
         conversation.messages.where.not(sender_id: current_user.id)
                            .where(read_at: nil)
                            .count
       end
-      
+
       # 마지막 메시지 포맷팅
       def format_last_message(message)
         return nil unless message
-        
+
         if message.broadcast_id.present?
           sender = User.find_by(id: message.sender_id)
           broadcast = Broadcast.find_by(id: message.broadcast_id)
-          
+
           # 브로드캐스트 정보가 없는 경우 기본값 제공 (삭제된 경우 등)
           unless broadcast
             Rails.logger.warn("브로드캐스트 정보 없음: ID #{message.broadcast_id}")
@@ -341,8 +341,8 @@ module Api
               message_type: message.message_type || "voice"
             }
           end
-          
-          return {
+
+          {
             id: message.id,
             sender_id: message.sender_id,
             sender_nickname: sender&.nickname,
@@ -405,14 +405,14 @@ module Api
           @conversation.messages.where(deleted_by_b: false).order(created_at: :asc)
         end
       end
-      
+
       # 메시지 포맷팅
       def format_messages(messages)
         messages.map do |message|
           if message.broadcast_id.present?
             sender = User.find_by(id: message.sender_id)
             broadcast = Broadcast.find_by(id: message.broadcast_id)
-            
+
             # 브로드캐스트 정보가 없는 경우 기본값 제공
             unless broadcast
               Rails.logger.warn("브로드캐스트 정보 없음 (메시지 목록): ID #{message.broadcast_id}")
@@ -430,7 +430,7 @@ module Api
                 message_type: message.message_type || "voice"
               }
             end
-            
+
             {
               id: message.id,
               sender_id: message.sender_id,
@@ -459,15 +459,15 @@ module Api
           end
         end
       end
-      
+
       # 읽지 않은 메시지 읽음 처리
       def mark_messages_as_read(messages)
         unread_messages = messages.where.not(sender_id: current_user.id).where(read_at: nil)
-        
+
         if unread_messages.any?
           now = Time.current
           unread_messages.update_all(read_at: now)
-          
+
           # 브로드캐스트 수신자 상태 업데이트
           unread_messages.each do |message|
             if message.broadcast_id.present?

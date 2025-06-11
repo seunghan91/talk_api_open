@@ -5,4 +5,4 @@ FactoryBot.define do
     nickname { '테스트유저' }
     gender { 'unspecified' }
   end
-end 
+end

@@ -4,10 +4,10 @@ namespace :diagnostic do
     begin
       redis_url = ENV["REDIS_URL"] || "redis://localhost:6379/0"
       puts "Checking Redis connection at: #{redis_url.gsub(/:[^:]*@/, ':****@')}"
-      
+
       redis = Redis.new(url: redis_url)
       result = redis.ping
-      
+
       puts "Redis connection successful: #{result}"
     rescue => e
       puts "Redis connection failed: #{e.message}"
@@ -65,27 +65,27 @@ namespace :diagnostic do
     puts "DATABASE_URL set: #{ENV['DATABASE_URL'] ? '✅' : '❌'}"
     puts "RAILS_ENV: #{ENV['RAILS_ENV'] || 'not set'}"
     puts "RAILS_LOG_TO_STDOUT: #{ENV['RAILS_LOG_TO_STDOUT'] || 'not set'}"
-    
+
     puts "\n===== Done ====="
   end
 
   desc "Process any pending broadcasts that haven't created conversations"
   task process_pending_broadcasts: :environment do
     puts "Looking for broadcasts without conversations..."
-    
+
     # Find all broadcasts
     broadcasts = Broadcast.all
     puts "Found #{broadcasts.count} total broadcasts"
-    
+
     # Process each broadcast
     processed = 0
     broadcasts.each do |broadcast|
       # Check if this broadcast has associated conversations
       linked_conversations = Conversation.where(broadcast_id: broadcast.id)
-      
+
       if linked_conversations.empty?
         puts "Processing broadcast ID #{broadcast.id} (no linked conversations)"
-        
+
         # Create worker and process the broadcast
         worker = BroadcastWorker.new
         begin
@@ -99,7 +99,7 @@ namespace :diagnostic do
         puts "Skipping broadcast ID #{broadcast.id} (already has #{linked_conversations.count} conversations)"
       end
     end
-    
+
     puts "Completed processing #{processed} broadcasts"
   end
 end

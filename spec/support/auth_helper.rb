@@ -7,7 +7,7 @@ module AuthHelper
     }
     JWT.encode(payload, Rails.application.credentials.secret_key_base)
   end
-  
+
   # 인증 헤더 생성
   def auth_headers_for(user)
     token = generate_token_for(user)
@@ -17,4 +17,4 @@ end
 
 RSpec.configure do |config|
   config.include AuthHelper, type: :request
-end 
+end

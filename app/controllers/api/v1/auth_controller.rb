@@ -9,20 +9,20 @@ module Api
       def login
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("로그인 요청 파라미터: #{params.inspect}")
-        
+
         # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
         phone_number = params.dig(:user, :phone_number)
         password = params.dig(:user, :password)
-        
+
         # 필수 파라미터 확인
         unless phone_number.present?
-          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "전화번호를 입력해 주세요." }, status: :bad_request
         end
-        
+
         unless password.present?
-          return render json: { error: '비밀번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "비밀번호를 입력해 주세요." }, status: :bad_request
         end
-        
+
         Rails.logger.info("로그인 시도: #{phone_number}")
 
         begin
@@ -65,22 +65,22 @@ module Api
       def register
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("회원가입 요청 파라미터: #{params.inspect}")
-        
+
         # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
         phone_number = params.dig(:user, :phone_number)
-        
+
         # 필수 파라미터 확인
         unless phone_number.present?
-          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "전화번호를 입력해 주세요." }, status: :bad_request
         end
-        
+
         Rails.logger.info("회원가입 시도: #{phone_number}")
 
         begin
           # 이미 있는 전화번호인지 확인
           if User.exists?(phone_number: phone_number)
             Rails.logger.warn("회원가입 실패: #{phone_number} - 이미 등록된 전화번호")
-            return render json: { 
+            return render json: {
               error: "이미 등록된 전화번호입니다.",
               user_exists: true
             }, status: :unprocessable_entity
@@ -102,14 +102,14 @@ module Api
             # 이미 인증 레코드가 있는 경우 자동으로 인증됨으로 설정
             verification.update(verified: true)
           end
-          
+
           # 아래 인증 검증 코드는 베타 테스트 기간 동안 주석 처리됨
           # 인증 검증
           # verified = verification.verified == true
-          # 
+          #
           # unless verified
           #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증되지 않은 전화번호 (verified: #{verification.verified})")
-          #   return render json: { 
+          #   return render json: {
           #     error: "인증이 완료되지 않은 전화번호입니다. 인증 코드를 확인해주세요.",
           #     verification_required: true,
           #     verification_status: {
@@ -119,11 +119,11 @@ module Api
           #     }
           #   }, status: :unprocessable_entity
           # end
-          # 
+          #
           # # 인증 시간 확인 (추가 보안 - 인증 후 30분 이내만 회원가입 허용)
           # if verification.updated_at < 30.minutes.ago
           #   Rails.logger.warn("회원가입 실패: #{phone_number} - 인증 시간 초과 (#{verification.updated_at})")
-          #   return render json: { 
+          #   return render json: {
           #     error: "인증 시간이 초과되었습니다. 인증을 다시 진행해주세요.",
           #     verification_required: true,
           #     verification_status: {
@@ -176,13 +176,13 @@ module Api
       def request_code
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("인증코드 요청 파라미터: #{params.inspect}")
-        
+
         # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
         phone_number = params.dig(:user, :phone_number)
-        
+
         # 필수 파라미터 확인
         unless phone_number.present?
-          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "전화번호를 입력해 주세요." }, status: :bad_request
         end
 
         Rails.logger.info("인증코드 요청: #{phone_number}")
@@ -218,10 +218,10 @@ module Api
 
           # 이미 가입된 사용자인지 확인
           user_exists = User.exists?(phone_number: phone_number)
-          
+
           # 모든 환경에서 코드를 응답에 포함 (요청에 따른 임시 변경)
-          render json: { 
-            message: "인증 코드가 발송되었습니다.", 
+          render json: {
+            message: "인증 코드가 발송되었습니다.",
             code: code,
             expires_at: verification.expires_at,
             user_exists: user_exists,  # 이미 가입된 사용자인지 여부
@@ -237,18 +237,18 @@ module Api
       def verify_code
         # 로그 추가 - 전체 파라미터 상세 기록
         Rails.logger.info("인증코드 확인 파라미터: #{params.inspect}")
-        
+
         # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
         phone_number = params.dig(:user, :phone_number)
         code = params.dig(:user, :code)
-        
+
         # 필수 파라미터 확인
         unless phone_number.present?
-          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "전화번호를 입력해 주세요." }, status: :bad_request
         end
-        
+
         unless code.present?
-          return render json: { error: '인증코드를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "인증코드를 입력해 주세요." }, status: :bad_request
         end
 
         Rails.logger.info("인증코드 확인: #{phone_number}, 입력 코드: #{code}")
@@ -275,7 +275,7 @@ module Api
           # 사용자가 이미 존재하는지 확인
           existing_user = User.find_by(phone_number: phone_number)
 
-          render json: { 
+          render json: {
             message: "인증에 성공했습니다.",
             user_exists: existing_user.present?,
             can_proceed_to_register: !existing_user.present?,
@@ -301,10 +301,10 @@ module Api
       def resend_code
         # 방어적 코드 추가: params.dig를 사용하여 안전하게 접근
         phone_number = params[:phone_number]
-        
+
         # 필수 파라미터 확인
         unless phone_number.present?
-          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "전화번호를 입력해 주세요." }, status: :bad_request
         end
 
         # 로그 추가
@@ -378,10 +378,10 @@ module Api
       def check_phone
         # 방어적 코드 추가: params를 안전하게 접근
         phone_number = params[:phone_number]
-        
+
         # 필수 파라미터 확인
         unless phone_number.present?
-          return render json: { error: '전화번호를 입력해 주세요.' }, status: :bad_request
+          return render json: { error: "전화번호를 입력해 주세요." }, status: :bad_request
         end
 
         # 로그 추가
@@ -406,7 +406,7 @@ module Api
       def logout
         # 현재 사용자의 토큰을 비활성화
         current_user.update(authentication_token: nil) if current_user
-        
+
         render json: { message: "로그아웃 되었습니다." }, status: :ok
       end
 
@@ -415,52 +415,52 @@ module Api
         # 요청 파라미터 추출
         phone_number = params.dig(:user, :phone_number)
         new_password = params.dig(:user, :password)
-        
+
         # 파라미터 유효성 검사
         unless phone_number.present? && new_password.present?
           render json: { error: "전화번호와 새 비밀번호가 필요합니다." }, status: :bad_request
           return
         end
-        
+
         # 전화번호로 사용자 찾기
         user = User.find_by(phone_number: phone_number)
-        
+
         # 사용자가 존재하는지 확인
         unless user
           render json: { error: "해당 전화번호로 가입된 사용자가 없습니다." }, status: :not_found
           return
         end
-        
+
         # 인증 코드 검증 여부 확인
         verification = PhoneVerification.find_by(phone_number: phone_number, verified: true)
-        
+
         # 인증되지 않은 전화번호인 경우
         unless verification
           render json: { error: "전화번호 인증이 필요합니다." }, status: :unauthorized
           return
         end
-        
+
         # 비밀번호 유효성 검사 (최소 6자 이상)
         if new_password.length < 6
           render json: { error: "비밀번호는 최소 6자 이상이어야 합니다." }, status: :bad_request
           return
         end
-        
+
         # 비밀번호 변경 시도
         begin
           # 비밀번호 변경
           user.password = new_password
-          
+
           if user.save
             # 비밀번호 변경 성공 로그 기록
             Rails.logger.info("[INFO] 비밀번호 변경 성공: 사용자=#{user.id}, 전화번호=#{phone_number.gsub(/\d(?=\d{4})/, '*')}")
-            
+
             # 인증 코드 사용 후 삭제
             verification.destroy
-            
-            render json: { 
-              message: "비밀번호가 성공적으로 변경되었습니다.", 
-              success: true 
+
+            render json: {
+              message: "비밀번호가 성공적으로 변경되었습니다.",
+              success: true
             }, status: :ok
           else
             # 저장 실패 시 오류 메시지 반환

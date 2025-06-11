@@ -18,7 +18,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(response).to have_http_status(:ok)
       expect(user.reload.nickname).to eq('새닉네임')
     end
-    
+
     it '닉네임이 빈 문자열이면 실패' do
       post '/api/v1/users/change_nickname', params: { nickname: '' }, headers: auth_headers
       expect(response).to have_http_status(:unprocessable_entity)
@@ -35,7 +35,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(json).to have_key('phone_number')
     end
   end
-  
+
   describe 'GET /api/v1/users/notification_settings' do
     it '알림 설정 조회 성공' do
       get '/api/v1/users/notification_settings', headers: auth_headers
@@ -46,7 +46,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(json).to have_key('message_push_enabled')
     end
   end
-  
+
   describe 'POST /api/v1/users/update_profile' do
     it '프로필 업데이트 성공' do
       post '/api/v1/users/update_profile', params: { gender: 'female' }, headers: auth_headers
@@ -54,4 +54,4 @@ RSpec.describe 'Api::V1::Users', type: :request do
       expect(user.reload.gender).to eq('female')
     end
   end
-end 
+end

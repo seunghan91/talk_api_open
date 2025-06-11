@@ -64,11 +64,11 @@ class HealthCheckController < ActionController::API
     begin
       all_conversations = Conversation.all
       total_conversations = all_conversations.count
-      
+
       # Get conversations grouped by user
       user_conversations = {}
       User.all.each do |user|
-        count = Conversation.where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)", 
+        count = Conversation.where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)",
                                   user.id, false, user.id, false).count
         user_conversations[user.id] = {
           id: user.id,
@@ -79,7 +79,7 @@ class HealthCheckController < ActionController::API
 
       # Get conversations with broadcast references
       broadcast_conversations = all_conversations.where.not(broadcast_id: nil).count
-      
+
       {
         total_conversations: total_conversations,
         broadcast_linked_conversations: broadcast_conversations,

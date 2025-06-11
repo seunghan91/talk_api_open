@@ -230,4 +230,4 @@ RSpec.describe 'Conversations API', type: :request do
       end
     end
   end
-end 
+end

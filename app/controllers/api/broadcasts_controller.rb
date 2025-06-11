@@ -25,7 +25,7 @@ module Api
         # 현재 사용자가 수신한 방송 목록 조회
         received_broadcasts = Broadcast.joins(:broadcast_recipients)
                                      .where(broadcast_recipients: { recipient_id: current_user.id })
-                                     .where('broadcasts.created_at > ?', 6.days.ago) # 6일 이내 브로드캐스트만
+                                     .where("broadcasts.created_at > ?", 6.days.ago) # 6일 이내 브로드캐스트만
                                      .order(created_at: :desc)
                                      .limit(50)
 
@@ -113,12 +113,12 @@ module Api
 
         # DEBUG: 로그 추가
         Rails.logger.info("현재 사용자: ID #{current_user.id}, #{current_user.nickname}")
-        Rails.logger.info("모든 사용자: #{User.all.map{|u| "ID #{u.id}: #{u.nickname}"}.join(', ')}")
-        Rails.logger.info("현재 모든 대화: #{Conversation.all.map{|c| "ID #{c.id}: #{c.user_a_id} <-> #{c.user_b_id}"}.join(', ')}")
-        
+        Rails.logger.info("모든 사용자: #{User.all.map { |u| "ID #{u.id}: #{u.nickname}" }.join(', ')}")
+        Rails.logger.info("현재 모든 대화: #{Conversation.all.map { |c| "ID #{c.id}: #{c.user_a_id} <-> #{c.user_b_id}" }.join(', ')}")
+
         # 수신자 선택 로직 - 시스템의 모든 사용자를 선택 (무작위 선택 X)
         recipients = User.where.not(id: current_user.id)
-        Rails.logger.info("선택된 수신자: #{recipients.map{|r| "ID #{r.id}: #{r.nickname}"}.join(', ')}")
+        Rails.logger.info("선택된 수신자: #{recipients.map { |r| "ID #{r.id}: #{r.nickname}" }.join(', ')}")
 
         # 비동기 작업 실행 (Sidekiq)
         broadcast_id = nil
@@ -176,12 +176,12 @@ module Api
       begin
         broadcast = Broadcast.find(params[:id])
         recipient = broadcast.broadcast_recipients.find_by(recipient_id: current_user.id)
-        
+
         unless recipient
           return render json: { error: "이 브로드캐스트의 수신자가 아닙니다." }, status: :forbidden
         end
-        
-        if recipient.update(status: 'read')
+
+        if recipient.update(status: "read")
           render json: { message: "브로드캐스트가 읽음으로 표시되었습니다." }, status: :ok
         else
           render json: { error: "상태 업데이트에 실패했습니다." }, status: :unprocessable_entity
@@ -215,7 +215,7 @@ module Api
         # 대화 찾기 또는 생성 - 수정됨
         # 기존 find_or_create_by 대신 find_or_create_conversation 사용
         conversation = Conversation.find_or_create_conversation(
-          current_user.id, 
+          current_user.id,
           broadcast.user_id,
           broadcast
         )

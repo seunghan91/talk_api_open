@@ -11,12 +11,12 @@ namespace :audio do
 
     puts "===== 브로드캐스트 오디오 재생 시간 업데이트 ====="
     # 음성 파일이 첨부된 모든 Broadcast 처리
-    Broadcast.where(duration: [nil, 0]).find_each do |broadcast|
+    Broadcast.where(duration: [ nil, 0 ]).find_each do |broadcast|
       if broadcast.audio.attached?
         begin
           # 음성 파일 정보 추출
           audio_info = AudioProcessorService.get_audio_info(broadcast.audio.blob.service.path_for(broadcast.audio.key))
-          
+
           if audio_info && audio_info[:duration]
             # 반올림하여 정수로 저장 (초 단위)
             duration = audio_info[:duration].round
@@ -39,12 +39,12 @@ namespace :audio do
 
     puts "\n===== 메시지 오디오 재생 시간 업데이트 ====="
     # 음성 파일이 첨부된 모든 Message 처리
-    Message.where(duration: [nil, 0]).find_each do |message|
+    Message.where(duration: [ nil, 0 ]).find_each do |message|
       if message.voice_file.attached?
         begin
           # 음성 파일 정보 추출
           audio_info = AudioProcessorService.get_audio_info(message.voice_file.blob.service.path_for(message.voice_file.key))
-          
+
           if audio_info && audio_info[:duration]
             # 반올림하여 정수로 저장 (초 단위)
             duration = audio_info[:duration].round
@@ -69,4 +69,4 @@ namespace :audio do
     puts "브로드캐스트: 성공 #{broadcast_success}건, 스킵 #{broadcast_skipped}건, 오류 #{broadcast_error}건"
     puts "메시지: 성공 #{message_success}건, 스킵 #{message_skipped}건, 오류 #{message_error}건"
   end
-end 
+end

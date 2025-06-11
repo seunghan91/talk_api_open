@@ -6,60 +6,60 @@ module Api
     def index
       begin
         Rails.logger.info("대화 목록 조회 시작: 사용자 ID #{current_user.id}")
-        
+
         # 성능 모니터링 시작
         start_time = Time.now
-        
+
         # not_deleted_for 스코프 활용하여 삭제된 대화 제외
         Rails.logger.debug("대화 목록 DB에서 조회 중...")
         @conversations = Conversation
           .for_user(current_user.id)
           .not_deleted_for(current_user.id)
           .order(updated_at: :desc)
-          .includes(:user_a, :user_b, messages: [:broadcast])
-          
+          .includes(:user_a, :user_b, messages: [ :broadcast ])
+
         # 성능 모니터링 - 쿼리 완료 시간
         query_time = Time.now - start_time
         Rails.logger.debug("대화 목록 쿼리 완료: #{query_time.round(3)}초 소요")
-        
+
         # 정렬 전 대화 ID 로깅 - 디버깅용
         conversation_ids = @conversations.map(&:id)
         Rails.logger.debug("조회된 대화 ID 목록: #{conversation_ids.inspect}")
-        
+
         # nil 체크 추가
         if @conversations.nil?
           Rails.logger.error("대화 목록 조회 결과가 nil입니다.")
           @conversations = []
         end
-        
+
         @conversations = @conversations.to_a
-        
+
         # 대화 목록에 포함된 사용자 ID 로깅
         user_ids = @conversations.map do |conv|
-          [conv.user_a_id, conv.user_b_id]
+          [ conv.user_a_id, conv.user_b_id ]
         end.flatten.uniq
-        
+
         Rails.logger.debug("대화 목록에 포함된 사용자 ID: #{user_ids.inspect}")
-        
+
         Rails.logger.debug("대화 목록 DB 조회 완료: #{@conversations.count}개 대화 찾음")
-        
+
         Rails.logger.info("대화 목록 반환: #{@conversations.count}개")
-        
+
         # 대화 목록 변환
         formatted_conversations = @conversations.map do |conversation|
           begin
             # 상대방 정보 구성
             other_user = (conversation.user_a_id == current_user.id) ? conversation.user_b : conversation.user_a
-            
+
             # 메시지 정보 구성
             last_message = conversation.messages.max_by(&:created_at)
-            
+
             # 마지막 메시지가 없는 경우 처리
             unless last_message
               Rails.logger.warn("대화 ID #{conversation.id}에 메시지가 없음")
               next nil
             end
-            
+
             # 메시지 유형별 처리
             message_content = if last_message.message_type == "voice"
               "음성 메시지"
@@ -75,7 +75,7 @@ module Api
             else
               last_message.content || "메시지"
             end
-            
+
             {
               id: conversation.id,
               with_user: {
@@ -97,7 +97,7 @@ module Api
             nil
           end
         end.compact
-        
+
         render json: {
           success: true,
           conversations: formatted_conversations,
@@ -105,7 +105,7 @@ module Api
         }
       rescue => e
         Rails.logger.error("대화 목록 조회 오류: #{e.message}\n#{e.backtrace.join("\n")}")
-        render json: { 
+        render json: {
           success: false,
           error: "대화 목록을 불러오는 데 실패했습니다.",
           details: Rails.env.development? ? e.message : nil,
@@ -140,18 +140,18 @@ module Api
 
     def destroy
       conversation = Conversation.find(params[:id])
-      
+
       unless participant?(conversation)
         return render json: { error: "권한이 없습니다." }, status: :forbidden
       end
-      
+
       # 실제 삭제하지 않고 현재 사용자에게만 보이지 않도록 설정
       if conversation.user_a_id == current_user.id
         conversation.update(deleted_by_a: true)
       elsif conversation.user_b_id == current_user.id
         conversation.update(deleted_by_b: true)
       end
-      
+
       render json: { success: true, message: "대화방이 삭제되었습니다." }
     end
 

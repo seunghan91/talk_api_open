@@ -12,9 +12,9 @@ class CreateUserSuspensions < ActiveRecord::Migration[7.0]
     end
 
     # 정지 만료 시간 기반 인덱스 (배치 처리용)
-    add_index :user_suspensions, [:active, :suspended_until], name: 'index_user_suspensions_on_active_and_until'
-    
-    # 사용자 경고 카운트 필드 추가 
+    add_index :user_suspensions, [ :active, :suspended_until ], name: 'index_user_suspensions_on_active_and_until'
+
+    # 사용자 경고 카운트 필드 추가
     add_column :users, :warning_count, :integer, default: 0, comment: '사용자 경고 누적 횟수'
   end
 end

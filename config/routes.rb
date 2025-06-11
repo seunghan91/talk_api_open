@@ -29,11 +29,11 @@ Rails.application.routes.draw do
 
   # 2) API - 표준화된 v1 네임스페이스 사용
   namespace :api do
-    get 'test/index'
+    get "test/index"
     namespace :v1 do
       # 공지사항 관련 API
-      resources :announcement_categories, only: [:index, :create, :update, :destroy]
-      resources :announcements, only: [:index, :show, :create, :update, :destroy]
+      resources :announcement_categories, only: [ :index, :create, :update, :destroy ]
+      resources :announcements, only: [ :index, :show, :create, :update, :destroy ]
 
       # 인증 관련 API
       post "auth/request_code"
@@ -55,9 +55,9 @@ Rails.application.routes.draw do
       get "users/notification_settings"
       patch "users/notification_settings", to: "users#update_notification_settings"
       put "users/notification_settings", to: "users#update_notification_settings"
-      
+
       # 브로드캐스트 관련 API
-      resources :broadcasts, only: [:index, :show, :create] do
+      resources :broadcasts, only: [ :index, :show, :create ] do
         collection do
           get :received
         end
@@ -68,7 +68,7 @@ Rails.application.routes.draw do
       end
 
       # 대화 관련 API
-      resources :conversations, only: [:index, :show, :destroy] do
+      resources :conversations, only: [ :index, :show, :destroy ] do
         member do
           post :send_message
           post :favorite
@@ -78,7 +78,7 @@ Rails.application.routes.draw do
       end
 
       # 알림 관련 API
-      resources :notifications, only: [:index, :show, :update] do
+      resources :notifications, only: [ :index, :show, :update ] do
         collection do
           put :mark_all_as_read
           get :unread_count
@@ -95,7 +95,7 @@ Rails.application.routes.draw do
       end
 
       # 지갑 관련 API
-      resources :wallets, only: [:show] do
+      resources :wallets, only: [ :show ] do
         collection do
           get :my_wallet
           post :transfer
@@ -164,16 +164,16 @@ Rails.application.routes.draw do
   # 커스텀 관리자 대시보드
   namespace :admin do
     # 대시보드 기본 페이지
-    root to: 'dashboard#index'
-    
+    root to: "dashboard#index"
+
     # 신고 관리
-    get 'reports', to: 'dashboard#reports'
-    put 'reports/:id/process', to: 'dashboard#process_report', as: 'process_report'
-    put 'reports/:id/reject', to: 'dashboard#reject_report', as: 'reject_report'
-    
+    get "reports", to: "dashboard#reports"
+    put "reports/:id/process", to: "dashboard#process_report", as: "process_report"
+    put "reports/:id/reject", to: "dashboard#reject_report", as: "reject_report"
+
     # 사용자 관리
-    get 'users', to: 'dashboard#users'
-    put 'users/:id/suspend', to: 'dashboard#suspend_user', as: 'suspend_user'
-    put 'users/:id/unsuspend', to: 'dashboard#unsuspend_user', as: 'unsuspend_user'
+    get "users", to: "dashboard#users"
+    put "users/:id/suspend", to: "dashboard#suspend_user", as: "suspend_user"
+    put "users/:id/unsuspend", to: "dashboard#unsuspend_user", as: "unsuspend_user"
   end
 end

@@ -69,10 +69,10 @@ RSpec.configure do |config|
 
   # Include FactoryBot methods
   config.include FactoryBot::Syntax::Methods
-  
+
   # JWT 토큰 생성을 위한 헬퍼 메서드 추가
   config.include Warden::Test::Helpers
-  
+
   # Database cleaner 설정
   config.before(:suite) do
     DatabaseCleaner.strategy = :transaction
