@@ -9,14 +9,14 @@
       "note": "Rails 7.0.8.7 EOL warning - will update in separate task"
     },
     {
-      "fingerprint": "00d29e7e02f3930c5b0dc21aa9eec746dddb27b58167416746bdbb7977c413d2",
+      "fingerprint": "51406f1f1abd755d7985d46a0fb9f70f34d939fb2782b453f3c78c6ede36635c",
       "note": "ffmpeg command in audio_processor_service.rb:26 is built with safe array arguments, no injection risk"
     },
     {
-      "fingerprint": "51406f1f1abd755d7985d46a0fb9f70f34d939fb2782b453f3c78c6ede36635c",
+      "fingerprint": "00d29e7e02f3930c5b0dc21aa9eec746dddb27b58167416746bdbb7977c413d2",
       "note": "ffmpeg convert command in audio_processor_service.rb:85 is built with safe array arguments, no injection risk"
     }
   ],
-  "updated": "2025-06-11 12:35:00 +0900",
+  "updated": "2025-06-12 11:22:00 +0900",
   "brakeman_version": "7.0.2"
 }
