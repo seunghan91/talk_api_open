@@ -7,8 +7,8 @@ one:
   deleted_by_b: false
 
 two:
-  user_a: one
-  user_b: two
+  user_a: two
+  user_b: three
   broadcast: one
   deleted_by_a: false
   deleted_by_b: false

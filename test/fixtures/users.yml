@@ -17,3 +17,12 @@ two:
   is_verified: false
   terms_agreed: false
   blocked: false
+
+three:
+  phone_number: MyString3
+  nickname: MyString3
+  gender: MyString
+  unique_code: MyString3
+  is_verified: false
+  terms_agreed: false
+  blocked: false
