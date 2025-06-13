@@ -13,4 +13,3 @@ two:
   reason: "스팸 메시지"
   status: pending
   report_type: message
-  related_id: 1
