@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_05_20_000018) do
+ActiveRecord::Schema[7.0].define(version: 2025_06_13_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -103,6 +103,7 @@ ActiveRecord::Schema[7.0].define(version: 2025_05_20_000018) do
     t.boolean "deleted_by_a", default: false
     t.boolean "deleted_by_b", default: false
     t.index ["broadcast_id"], name: "index_conversations_on_broadcast_id"
+    t.index ["user_a_id", "user_b_id"], name: "index_conversations_on_user_a_id_and_user_b_id", unique: true
     t.index ["user_a_id"], name: "index_conversations_on_user_a_id"
     t.index ["user_b_id"], name: "index_conversations_on_user_b_id"
   end
@@ -159,6 +160,11 @@ ActiveRecord::Schema[7.0].define(version: 2025_05_20_000018) do
     t.string "reason"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "status", default: 0, null: false
+    t.integer "report_type", default: 0, null: false
+    t.integer "related_id"
+    t.index ["report_type"], name: "index_reports_on_report_type"
+    t.index ["status"], name: "index_reports_on_status"
   end
 
   create_table "transactions", force: :cascade do |t|
@@ -189,6 +195,19 @@ ActiveRecord::Schema[7.0].define(version: 2025_05_20_000018) do
     t.index ["user_id"], name: "index_user_settings_on_user_id"
   end
 
+  create_table "user_suspensions", force: :cascade do |t|
+    t.bigint "user_id", null: false, comment: "정지된 사용자 외래키"
+    t.string "reason", comment: "정지 사유"
+    t.datetime "suspended_at", comment: "정지 시작 시간"
+    t.datetime "suspended_until", comment: "정지 만료 시간"
+    t.string "suspended_by", default: "system", comment: "정지 집행자 (시스템/관리자)"
+    t.boolean "active", default: true, comment: "현재 활성 정지 여부"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "suspended_until"], name: "index_user_suspensions_on_active_and_until"
+    t.index ["user_id"], name: "index_user_suspensions_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "phone_number"
     t.string "nickname"
@@ -211,7 +230,13 @@ ActiveRecord::Schema[7.0].define(version: 2025_05_20_000018) do
     t.boolean "push_enabled", default: true
     t.boolean "broadcast_push_enabled", default: true
     t.boolean "message_push_enabled", default: true
+    t.string "age_group", comment: "사용자 연령대: 20s, 30s, 40s, 50s"
+    t.string "region", comment: "사용자 지역: 국가/시도 형식"
+    t.boolean "profile_completed", default: false
+    t.integer "warning_count", default: 0, comment: "사용자 경고 누적 횟수"
+    t.index ["gender", "age_group"], name: "index_users_on_gender_and_age"
     t.index ["phone_bidx"], name: "index_users_on_phone_bidx", unique: true
+    t.index ["region"], name: "index_users_on_region"
   end
 
   create_table "wallets", force: :cascade do |t|
@@ -243,5 +268,6 @@ ActiveRecord::Schema[7.0].define(version: 2025_05_20_000018) do
   add_foreign_key "reports", "users", column: "reporter_id"
   add_foreign_key "transactions", "wallets"
   add_foreign_key "user_settings", "users"
+  add_foreign_key "user_suspensions", "users"
   add_foreign_key "wallets", "users"
 end

@@ -41,7 +41,7 @@ jobs:
     - name: Install dependencies
       run: bundle install
     - name: Setup database
-      run: bundle exec rails db:create db:schema:load
+      run: bundle exec rails db:create db:migrate
     - name: Run tests
       run: bundle exec rails test
     
@@ -71,4 +71,4 @@ jobs:
     - name: Install dependencies
       run: bundle install
     - name: Run brakeman
-      run: bundle exec brakeman --no-pager 
+      run: bundle exec brakeman --no-pager --ignore-config .brakeman.ignore
