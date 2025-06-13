@@ -17,6 +17,6 @@
       "note": "ffmpeg convert command in audio_processor_service.rb:85 is built with safe array arguments, no injection risk"
     }
   ],
-  "updated": "2025-06-12 11:22:00 +0900",
+  "updated": "2025-06-13 17:00:00 +0900",
   "brakeman_version": "7.0.2"
 }
