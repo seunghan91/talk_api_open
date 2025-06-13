@@ -20,7 +20,7 @@ two:
 
 three:
   conversation: two
-  sender: one
+  sender: two
   broadcast: one
   message_type: broadcast
   deleted_by_a: false
