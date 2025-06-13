@@ -31,3 +31,92 @@
 
 # Ignore master key for decrypting credentials and more.
 /config/master.key
+
+# === 🔒 개인정보 및 보안 관련 파일들 ===
+
+# 환경 변수 및 설정 파일
+.env
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+*.env
+
+# 데이터베이스 설정 및 백업
+/config/database.yml
+/db/*.sqlite3
+/db/*.sqlite3-journal
+/db/*.sqlite3-*
+*.sql
+*.dump
+
+# 시크릿 및 인증 정보
+/config/secrets.yml
+/config/credentials.yml.enc
+/config/master.key
+/config/application.yml
+secrets.json
+api-keys.json
+jwt_secret.txt
+
+# 개인 메모 및 문서
+TODO.md
+NOTES.md
+PERSONAL_*.md
+DEVELOPMENT_*.md
+
+# 테스트 데이터 및 시드 파일 (민감한 정보 포함)
+/db/test_seeds.rb
+/db/development_seeds.rb
+test-data/
+sample-data/
+mock-data/
+
+# 업로드된 파일들
+/public/uploads/
+/public/system/
+/public/assets/uploads/
+
+# 로그 파일 (상세 로그에 민감한 정보 포함될 수 있음)
+/log/*.log
+/log/*
+logs/
+*.log
+
+# 캐시 및 임시 파일
+/tmp/cache/
+*.cache
+*.tmp
+
+# 백업 파일
+*.backup
+*.bak
+*.orig
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 운영체제 파일
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Ruby/Rails 특정
+/.byebug_history
+/coverage/
+.simplecov
+*.gem
+
+# 배포 관련
+/config/deploy/
+capistrano/
+deployment/
+
+# 개발자 도구
+/vendor/bundle/
+.bundle/config
