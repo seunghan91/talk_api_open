@@ -35,11 +35,11 @@ module TalkkApi
     # CORS 설정
     config.middleware.insert_before 0, Rack::Cors do
       allow do
-        origins '*'
-        resource '*',
+        origins "*"
+        resource "*",
           headers: :any,
-          methods: [:get, :post, :put, :patch, :delete, :options, :head],
-          expose: ['Authorization']
+          methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
+          expose: [ "Authorization" ]
       end
     end
 
@@ -47,17 +47,17 @@ module TalkkApi
     config.active_storage.variant_processor = :mini_magick
 
     # 타임존 설정
-    config.time_zone = 'Seoul'
+    config.time_zone = "Seoul"
     config.active_record.default_timezone = :local
 
     # 인앱 결제 설정
-    config.iap_prefix = 'com.talkapp.talkk2025'
-    
+    config.iap_prefix = "com.talkapp.talkk2025"
+
     # 애플 인앱 결제 검증 URL
-    config.apple_iap_verify_url = Rails.env.production? ? 
-      'https://buy.itunes.apple.com/verifyReceipt' : 
-      'https://sandbox.itunes.apple.com/verifyReceipt'
-    
+    config.apple_iap_verify_url = Rails.env.production? ?
+      "https://buy.itunes.apple.com/verifyReceipt" :
+      "https://sandbox.itunes.apple.com/verifyReceipt"
+
     # 구글 인앱 결제 설정 (추후 구현 시 사용)
     # config.google_play_package_name = 'com.talkapp.talkk2025'
   end

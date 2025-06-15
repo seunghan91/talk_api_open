@@ -163,11 +163,11 @@ class Message < ApplicationRecord
   def create_notification
     # 수신자에게 알림 생성
     return unless receiver.present?
-    
+
     notification = Notification.create!(
       user: receiver,
-      notification_type: 'message',
-      title: '새 메시지',
+      notification_type: "message",
+      title: "새 메시지",
       body: "#{sender.nickname}님이 메시지를 보냈습니다",
       notifiable: self,
       metadata: {
@@ -177,10 +177,10 @@ class Message < ApplicationRecord
         message_type: message_type
       }
     )
-    
+
     # 백그라운드 작업으로 푸시 알림 전송
     if receiver.push_enabled && receiver.message_push_enabled && receiver.push_token.present?
-      PushNotificationWorker.perform_async('message', id)
+      PushNotificationWorker.perform_async("message", id)
     end
   rescue => e
     Rails.logger.error "알림 생성 실패: #{e.message}"

@@ -67,4 +67,4 @@ payment_products.each do |product_data|
   end
 end
 
-puts "Created #{PaymentProduct.count} payment products" 
+puts "Created #{PaymentProduct.count} payment products"

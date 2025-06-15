@@ -1,12 +1,12 @@
 module Api
   module V1
     class PaymentProductsController < ApplicationController
-      skip_before_action :authenticate_user!, only: [:index]
-      
+      skip_before_action :authenticate_user!, only: [ :index ]
+
       # GET /api/v1/payment_products
       def index
         @products = PaymentProduct.active.ordered
-        
+
         render json: {
           success: true,
           products: @products.map do |product|
@@ -29,4 +29,4 @@ module Api
       end
     end
   end
-end 
+end

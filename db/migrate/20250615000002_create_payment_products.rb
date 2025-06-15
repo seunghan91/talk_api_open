@@ -9,12 +9,12 @@ class CreatePaymentProducts < ActiveRecord::Migration[7.0]
       t.boolean :active, default: true
       t.integer :sort_order, default: 0
       t.jsonb :metadata, default: {}
-      
+
       t.timestamps
     end
-    
+
     add_index :payment_products, :product_id, unique: true
     add_index :payment_products, :active
     add_index :payment_products, :sort_order
   end
-end 
+end

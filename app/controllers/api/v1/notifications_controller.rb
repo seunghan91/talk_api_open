@@ -18,16 +18,21 @@ module Api
           notifications = notifications.where(notification_type: params[:type])
         end
 
-        # 페이지네이션
-        notifications = notifications.page(params[:page] || 1).per(20)
+        # 페이지네이션 (임시로 limit 사용)
+        page = (params[:page] || 1).to_i
+        per_page = 20
+        offset = (page - 1) * per_page
+        
+        total_count = notifications.count
+        notifications = notifications.limit(per_page).offset(offset)
 
         render json: {
           notifications: notifications.map { |n| format_notification(n) },
           unread_count: current_user.notifications.unread.count,
           pagination: {
-            current_page: notifications.current_page,
-            total_pages: notifications.total_pages,
-            total_count: notifications.total_count
+            current_page: page,
+            total_pages: (total_count.to_f / per_page).ceil,
+            total_count: total_count
           }
         }
       end

@@ -406,7 +406,7 @@ module Api
       def logout
         # JWT 토큰 기반 인증이므로 서버에서 특별한 처리 불필요
         # 클라이언트에서 토큰을 삭제하면 됨
-        
+
         render json: { message: "로그아웃 되었습니다." }, status: :ok
       end
 

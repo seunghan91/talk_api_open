@@ -147,13 +147,13 @@ class Broadcast < ApplicationRecord
       # 팔로워나 전체 사용자에게 알림 생성
       # 현재는 테스트를 위해 모든 활성 사용자에게 알림
       recipients = User.where.not(id: user_id).where(verified: true).limit(100)
-      
+
       recipients.find_each do |recipient|
         begin
           Notification.create!(
             user: recipient,
-            notification_type: 'broadcast',
-            title: '새 방송',
+            notification_type: "broadcast",
+            title: "새 방송",
             body: "#{user.nickname}님이 새 방송을 게시했습니다: #{title}",
             notifiable: self,
             metadata: {
@@ -163,10 +163,10 @@ class Broadcast < ApplicationRecord
               broadcast_title: title
             }
           )
-          
+
           # 푸시 알림 전송
           if recipient.push_enabled && recipient.broadcast_push_enabled && recipient.push_token.present?
-            PushNotificationWorker.perform_async('new_broadcast', id)
+            PushNotificationWorker.perform_async("new_broadcast", id)
           end
         rescue => e
           Rails.logger.error "방송 알림 생성 실패 (user: #{recipient.id}): #{e.message}"
