@@ -1,6 +1,6 @@
 class Api::V1::AnnouncementsController < Api::V1::BaseController
   # 개발 환경에서는 인증 건너뜁니다 (테스트 용도)
-  before_action :authenticate_user!, unless: -> { Rails.env.development? || Rails.env.test? }
+  before_action :authorize_request, unless: -> { Rails.env.development? || Rails.env.test? }
   before_action :require_admin, except: [ :index, :show ], unless: -> { Rails.env.development? || Rails.env.test? }
   before_action :set_announcement, only: [ :show, :update, :destroy ]
 

@@ -1,7 +1,7 @@
 module Api
   module V1
     class PaymentProductsController < ApplicationController
-      skip_before_action :authenticate_user!, only: [ :index ]
+      skip_before_action :authorize_request, only: [ :index ]
 
       # GET /api/v1/payment_products
       def index

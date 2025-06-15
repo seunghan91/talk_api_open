@@ -22,7 +22,7 @@ module Api
         page = (params[:page] || 1).to_i
         per_page = 20
         offset = (page - 1) * per_page
-        
+
         total_count = notifications.count
         notifications = notifications.limit(per_page).offset(offset)
 
