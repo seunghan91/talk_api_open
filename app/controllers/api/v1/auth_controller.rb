@@ -404,9 +404,9 @@ module Api
 
       # 로그아웃 처리
       def logout
-        # 현재 사용자의 토큰을 비활성화
-        current_user.update(authentication_token: nil) if current_user
-
+        # JWT 토큰 기반 인증이므로 서버에서 특별한 처리 불필요
+        # 클라이언트에서 토큰을 삭제하면 됨
+        
         render json: { message: "로그아웃 되었습니다." }, status: :ok
       end
 

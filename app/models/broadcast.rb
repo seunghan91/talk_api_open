@@ -60,6 +60,23 @@ class Broadcast < ApplicationRecord
       true
     end
 
+    # 방송 생성 후 알림 생성
+    after_create :create_notifications_for_followers
+
+    # 활성 방송만 조회
+    scope :active, -> { where(active: true) }
+    scope :recent, -> { order(created_at: :desc) }
+
+    # 방송 비활성화
+    def deactivate!
+      update(active: false)
+    end
+
+    # 방송 활성화
+    def activate!
+      update(active: true)
+    end
+
     # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
     # rails_admin do
     #   list do
@@ -123,6 +140,37 @@ class Broadcast < ApplicationRecord
       rescue => e
         # 오류가 발생해도 브로드캐스트 저장 자체는 실패하지 않도록 로그만 남김
         Rails.logger.error("브로드캐스트 ID #{id}의 duration 설정 중 오류 발생: #{e.message}")
+      end
+    end
+
+    def create_notifications_for_followers
+      # 팔로워나 전체 사용자에게 알림 생성
+      # 현재는 테스트를 위해 모든 활성 사용자에게 알림
+      recipients = User.where.not(id: user_id).where(verified: true).limit(100)
+      
+      recipients.find_each do |recipient|
+        begin
+          Notification.create!(
+            user: recipient,
+            notification_type: 'broadcast',
+            title: '새 방송',
+            body: "#{user.nickname}님이 새 방송을 게시했습니다: #{title}",
+            notifiable: self,
+            metadata: {
+              broadcast_id: id,
+              broadcaster_id: user.id,
+              broadcaster_nickname: user.nickname,
+              broadcast_title: title
+            }
+          )
+          
+          # 푸시 알림 전송
+          if recipient.push_enabled && recipient.broadcast_push_enabled && recipient.push_token.present?
+            PushNotificationWorker.perform_async('new_broadcast', id)
+          end
+        rescue => e
+          Rails.logger.error "방송 알림 생성 실패 (user: #{recipient.id}): #{e.message}"
+        end
       end
     end
 end

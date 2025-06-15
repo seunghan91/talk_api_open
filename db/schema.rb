@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.0].define(version: 2025_06_13_000000) do
+ActiveRecord::Schema[7.1].define(version: 2025_06_15_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -142,6 +142,22 @@ ActiveRecord::Schema[7.0].define(version: 2025_06_13_000000) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "payment_products", force: :cascade do |t|
+    t.string "product_id", null: false
+    t.string "name", null: false
+    t.integer "amount", null: false
+    t.integer "bonus_amount", default: 0
+    t.integer "price", null: false
+    t.boolean "active", default: true
+    t.integer "sort_order", default: 0
+    t.jsonb "metadata", default: {}
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_payment_products_on_active"
+    t.index ["product_id"], name: "index_payment_products_on_product_id", unique: true
+    t.index ["sort_order"], name: "index_payment_products_on_sort_order"
+  end
+
   create_table "phone_verifications", force: :cascade do |t|
     t.string "phone_number"
     t.string "code"
@@ -236,6 +252,7 @@ ActiveRecord::Schema[7.0].define(version: 2025_06_13_000000) do
     t.integer "warning_count", default: 0, comment: "사용자 경고 누적 횟수"
     t.index ["gender", "age_group"], name: "index_users_on_gender_and_age"
     t.index ["phone_bidx"], name: "index_users_on_phone_bidx", unique: true
+    t.index ["push_token"], name: "index_users_on_push_token"
     t.index ["region"], name: "index_users_on_region"
   end
 

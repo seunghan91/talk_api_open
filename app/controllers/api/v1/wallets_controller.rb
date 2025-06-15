@@ -14,6 +14,11 @@ module Api
         }
       end
 
+      # 내 지갑 정보 조회 (show와 동일)
+      def my_wallet
+        show
+      end
+
       # 최근 거래 내역 조회
       def transactions
         wallet = current_user.wallet || current_user.create_wallet

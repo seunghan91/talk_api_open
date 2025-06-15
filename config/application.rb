@@ -31,5 +31,34 @@ module TalkkApi
 
     # secret_key_base 설정 (환경 변수가 없는 경우 기본값 사용)
     config.secret_key_base = ENV["SECRET_KEY_BASE"] || "a58d5f62659e89d8c2ae1949570b980619361bfc08ff9a612d1b563fd7ce51250fab4db654dfb90a4f62981e6df12b2d6a49d92d4f56b8c8bacd49f4ccc7879e"
+
+    # CORS 설정
+    config.middleware.insert_before 0, Rack::Cors do
+      allow do
+        origins '*'
+        resource '*',
+          headers: :any,
+          methods: [:get, :post, :put, :patch, :delete, :options, :head],
+          expose: ['Authorization']
+      end
+    end
+
+    # Active Storage 설정
+    config.active_storage.variant_processor = :mini_magick
+
+    # 타임존 설정
+    config.time_zone = 'Seoul'
+    config.active_record.default_timezone = :local
+
+    # 인앱 결제 설정
+    config.iap_prefix = 'com.talkapp.talkk2025'
+    
+    # 애플 인앱 결제 검증 URL
+    config.apple_iap_verify_url = Rails.env.production? ? 
+      'https://buy.itunes.apple.com/verifyReceipt' : 
+      'https://sandbox.itunes.apple.com/verifyReceipt'
+    
+    # 구글 인앱 결제 설정 (추후 구현 시 사용)
+    # config.google_play_package_name = 'com.talkapp.talkk2025'
   end
 end

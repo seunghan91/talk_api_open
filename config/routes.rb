@@ -53,6 +53,7 @@ Rails.application.routes.draw do
       patch "users/me", to: "users#update"
       put "users/me", to: "users#update"
       post "users/change_password"
+      post "users/update_profile"
       get "users/notification_settings"
       patch "users/notification_settings", to: "users#update_notification_settings"
       put "users/notification_settings", to: "users#update_notification_settings"
@@ -101,6 +102,69 @@ Rails.application.routes.draw do
           get :my_wallet
           post :transfer
         end
+      end
+      
+      # 지갑 단수형 라우트 (앱 호환성)
+      get "wallet", to: "wallets#my_wallet"
+
+      # 인증
+      post 'auth/login', to: 'auth#login'
+      post 'auth/register', to: 'auth#register'
+      post 'auth/logout', to: 'auth#logout'
+      post 'auth/refresh', to: 'auth#refresh'
+      post 'auth/verify_phone', to: 'auth#verify_phone'
+      post 'auth/send_verification', to: 'auth#send_verification'
+      
+      # 사용자
+      resources :users, only: [:show, :update] do
+        member do
+          get 'profile'
+          post 'follow'
+          delete 'unfollow'
+          get 'followers'
+          get 'following'
+        end
+      end
+      
+      # 대화
+      resources :conversations, only: [:index, :show, :create] do
+        resources :messages, only: [:index, :create]
+      end
+      
+      # 방송
+      resources :broadcasts, only: [:index, :show, :create, :update, :destroy] do
+        member do
+          post 'reply'
+        end
+      end
+      
+      # 알림
+      resources :notifications, only: [:index, :show] do
+        member do
+          patch 'read'
+        end
+        collection do
+          patch 'read_all'
+        end
+      end
+      
+      # 결제 상품
+      resources :payment_products, only: [:index]
+      
+      # 결제
+      resources :payments, only: [:create] do
+        collection do
+          post 'verify_iap' # 인앱 결제 검증
+        end
+      end
+      
+      # 검색
+      get 'search', to: 'search#index'
+      
+      # 설정
+      namespace :settings do
+        get 'app_config'
+        patch 'update_push_settings'
       end
     end
 

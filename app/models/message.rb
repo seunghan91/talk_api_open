@@ -1,7 +1,7 @@
 # app/models/message.rb
 class Message < ApplicationRecord
   belongs_to :conversation
-  belongs_to :sender, class_name: "User"
+  belongs_to :sender, class_name: "User", foreign_key: "sender_id"
   belongs_to :broadcast, optional: true
 
   # 파일 첨부 기능 활성화
@@ -11,10 +11,9 @@ class Message < ApplicationRecord
   after_save :set_duration_from_voice_file, if: -> { voice_file.attached? && saved_change_to_voice_file_attachment? }
 
   # 메시지 타입 검증 - voice, broadcast, text 허용
-  validates :message_type, inclusion: { in: [ "voice", "broadcast", "text" ] }, allow_nil: true
-
-  # 기본 메시지 타입 설정
-  before_validation :set_default_message_type
+  validates :message_type, presence: true,
+            inclusion: { in: %w[text voice broadcast_reply] }
+  validates :sender_id, presence: true
 
   # 음성 메시지일 경우 voice_file 필수 (시드 데이터 생성을 위해 일시적으로 주석 처리)
   # validates :voice_file, presence: true, if: -> { message_type == 'voice' && !broadcast_id.present? }
@@ -50,8 +49,7 @@ class Message < ApplicationRecord
 
   # 메시지 읽음 처리
   def mark_as_read!
-    return if read?
-    update(read_at: Time.current)
+    update(is_read: true, read_at: Time.current)
   end
 
   # 메시지 삭제 처리 (실제 삭제는 수행하지 않고 삭제 플래그만 설정)
@@ -100,17 +98,12 @@ class Message < ApplicationRecord
     end
   end
 
-  # 기본 메시지 타입 설정
-  def set_default_message_type
-    # message_type이 없을 때 설정
-    if message_type.nil?
-      if broadcast_id.present?
-        self.message_type = "broadcast"
-      elsif voice_file.attached?
-        self.message_type = "voice"
-      else
-        self.message_type = "text"
-      end
+  # 수신자 찾기
+  def receiver
+    if conversation.user_a_id == sender_id
+      conversation.user_b
+    else
+      conversation.user_a
     end
   end
 
@@ -125,6 +118,9 @@ class Message < ApplicationRecord
 
     # 대화 마지막 업데이트 시간 갱신
     conversation.touch
+
+    # 메시지 전송 후 알림 생성
+    create_notification
   end
 
   # 수신자 ID 찾기
@@ -162,6 +158,32 @@ class Message < ApplicationRecord
       # 오류가 발생해도 메시지 저장 자체는 실패하지 않도록 로그만 남김
       Rails.logger.error("메시지 ID #{id}의 duration 설정 중 오류 발생: #{e.message}")
     end
+  end
+
+  def create_notification
+    # 수신자에게 알림 생성
+    return unless receiver.present?
+    
+    notification = Notification.create!(
+      user: receiver,
+      notification_type: 'message',
+      title: '새 메시지',
+      body: "#{sender.nickname}님이 메시지를 보냈습니다",
+      notifiable: self,
+      metadata: {
+        sender_id: sender.id,
+        sender_nickname: sender.nickname,
+        conversation_id: conversation.id,
+        message_type: message_type
+      }
+    )
+    
+    # 백그라운드 작업으로 푸시 알림 전송
+    if receiver.push_enabled && receiver.message_push_enabled && receiver.push_token.present?
+      PushNotificationWorker.perform_async('message', id)
+    end
+  rescue => e
+    Rails.logger.error "알림 생성 실패: #{e.message}"
   end
 
   # RailsAdmin 설정 (rails_admin gem이 활성화된 경우에만 사용)
