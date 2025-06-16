@@ -21,6 +21,7 @@ jobs:
         run: |
           curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
           unzip render.zip
+          chmod +x cli_v2.1.4
           sudo mv cli_v2.1.4 /usr/local/bin/render
           render --version
 
@@ -30,6 +31,10 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           CI: true
         run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "Error: RENDER_API_KEY is not set"
+            exit 1
+          fi
           echo "Deploying API server..."
           render deploys create srv-cvbri10fnakc73dntmsg --output json --confirm --wait
           echo "API server deployment completed!"
@@ -47,6 +52,7 @@ jobs:
         run: |
           curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
           unzip render.zip
+          chmod +x cli_v2.1.4
           sudo mv cli_v2.1.4 /usr/local/bin/render
 
       # Sidekiq 워커 배포
@@ -55,6 +61,10 @@ jobs:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
           CI: true
         run: |
+          if [ -z "$RENDER_API_KEY" ]; then
+            echo "Error: RENDER_API_KEY is not set"
+            exit 1
+          fi
           echo "Deploying Sidekiq worker..."
           render deploys create srv-cvlm6cbipnbc73as48ag --output json --confirm --wait
           echo "Sidekiq worker deployment completed!"
@@ -68,6 +78,7 @@ jobs:
         run: |
           curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
           unzip render.zip
+          chmod +x cli_v2.1.4
           sudo mv cli_v2.1.4 /usr/local/bin/render
 
       # 배포 후 서비스 상태 확인
