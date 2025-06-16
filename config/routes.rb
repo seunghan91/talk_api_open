@@ -49,14 +49,14 @@ Rails.application.routes.draw do
       # 사용자 관련 API
       get "users/me"
       get "users/profile"
+      get "users/notification_settings"
+      patch "users/notification_settings", to: "users#update_notification_settings"
+      put "users/notification_settings", to: "users#update_notification_settings"
       get "users/:id", to: "users#show"
       patch "users/me", to: "users#update"
       put "users/me", to: "users#update"
       post "users/change_password"
       post "users/update_profile"
-      get "users/notification_settings"
-      patch "users/notification_settings", to: "users#update_notification_settings"
-      put "users/notification_settings", to: "users#update_notification_settings"
 
       # 브로드캐스트 관련 API
       resources :broadcasts, only: [ :index, :show, :create ] do

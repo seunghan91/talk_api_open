@@ -279,13 +279,19 @@ module Api
 
           # 성별 유효성 검사
           if profile_params[:gender].present?
-            unless [ "male", "female", "other", "unspecified" ].include?(profile_params[:gender])
+            # "unknown"을 "unspecified"로 변환
+            gender_value = profile_params[:gender] == "unknown" ? "unspecified" : profile_params[:gender]
+            
+            unless [ "male", "female", "other", "unspecified" ].include?(gender_value)
               Rails.logger.warn("프로필 업데이트 실패: 유효하지 않은 성별 값 (#{profile_params[:gender]})")
               return render json: {
                 error: "성별은 male, female, other, unspecified 중 하나여야 합니다.",
                 request_id: request.request_id || SecureRandom.uuid
               }, status: :unprocessable_entity
             end
+            
+            # 변환된 값으로 파라미터 업데이트
+            params[:gender] = gender_value
           end
 
           if current_user.update(profile_params)

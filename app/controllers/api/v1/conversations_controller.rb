@@ -58,7 +58,7 @@ module Api
                 with_user: {
                   id: other_user.id,
                   nickname: other_user.nickname,
-                  profile_image: other_user.profile_image.attached? ? url_for(other_user.profile_image) : nil
+                  profile_image: nil # 프로필 이미지 기능 미구현
                 },
                 last_message: formatted_last_message,
                 unread_count: unread_count,
@@ -139,7 +139,7 @@ module Api
             with_user: {
               id: other_user.id,
               nickname: other_user.nickname,
-              profile_image: other_user.profile_image.attached? ? url_for(other_user.profile_image) : nil
+              profile_image: nil # 프로필 이미지 기능 미구현
             },
             messages: formatted_messages,
             favorited: @conversation.favorited_by?(current_user.id),
