@@ -314,7 +314,7 @@ module Api
       # 읽지 않은 메시지 개수 계산
       def count_unread_messages(conversation)
         conversation.messages.where.not(sender_id: current_user.id)
-                           .where(read_at: nil)
+                           .where(read: false)
                            .count
       end
 
@@ -425,7 +425,7 @@ module Api
                 text: "브로드캐스트 메시지(삭제됨)",
                 has_voice: false,
                 voice_url: nil,
-                read_at: message.read_at,
+                is_read: message.read,
                 created_at: message.created_at,
                 message_type: message.message_type || "voice"
               }
@@ -440,7 +440,7 @@ module Api
               text: broadcast&.text || "브로드캐스트 메시지",
               has_voice: broadcast&.audio&.attached?,
               voice_url: broadcast&.audio&.attached? ? url_for(broadcast.audio) : nil,
-              read_at: message.read_at,
+              is_read: message.read,
               created_at: message.created_at,
               message_type: message.message_type || "voice"
             }
@@ -451,7 +451,7 @@ module Api
               text: message.text,
               has_voice: message.voice_file.attached?,
               voice_url: message.voice_file.attached? ? url_for(message.voice_file) : nil,
-              read_at: message.read_at,
+              is_read: message.read,
               created_at: message.created_at,
               is_broadcast: false,
               message_type: message.message_type || "voice"
@@ -462,11 +462,10 @@ module Api
 
       # 읽지 않은 메시지 읽음 처리
       def mark_messages_as_read(messages)
-        unread_messages = messages.where.not(sender_id: current_user.id).where(read_at: nil)
+        unread_messages = messages.where.not(sender_id: current_user.id).where(read: false)
 
         if unread_messages.any?
-          now = Time.current
-          unread_messages.update_all(read_at: now)
+          unread_messages.update_all(read: true)
 
           # 브로드캐스트 수신자 상태 업데이트
           unread_messages.each do |message|

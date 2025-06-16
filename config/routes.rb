@@ -81,8 +81,11 @@ Rails.application.routes.draw do
 
       # 알림 관련 API
       resources :notifications, only: [ :index, :show, :update ] do
+        member do
+          patch :mark_as_read
+        end
         collection do
-          put :mark_all_as_read
+          patch :mark_all_as_read
           get :unread_count
         end
       end
@@ -139,12 +142,14 @@ Rails.application.routes.draw do
       end
 
       # 알림
-      resources :notifications, only: [ :index, :show ] do
+      resources :notifications, only: [ :index, :show, :update ] do
         member do
           patch "read"
+          patch "mark_as_read"
         end
         collection do
           patch "read_all"
+          patch "mark_all_as_read"
         end
       end
 

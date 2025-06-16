@@ -42,14 +42,14 @@ class Message < ApplicationRecord
     broadcast_id.present?
   end
 
-  # 메시지가 읽혔는지 확인
+  # 메시지가 읽혔는지 확인 - read boolean 컬럼 사용
   def read?
-    read_at.present?
+    read
   end
 
-  # 메시지 읽음 처리
+  # 메시지 읽음 처리 - read boolean 컬럼 사용
   def mark_as_read!
-    update(is_read: true, read_at: Time.current)
+    update(read: true)
   end
 
   # 메시지 삭제 처리 (실제 삭제는 수행하지 않고 삭제 플래그만 설정)

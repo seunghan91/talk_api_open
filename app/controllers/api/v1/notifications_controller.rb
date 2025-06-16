@@ -2,7 +2,7 @@ module Api
   module V1
     class NotificationsController < ApplicationController
       before_action :authorize_request
-      before_action :set_notification, only: [ :show, :mark_as_read ]
+      before_action :set_notification, only: [ :show, :update, :mark_as_read ]
 
       # 알림 목록 조회
       def index
@@ -42,15 +42,34 @@ module Api
         render json: format_notification(@notification)
       end
 
-      # 알림 읽음 처리
-      def mark_as_read
-        @notification.mark_as_read!
+      # 알림 읽음 처리 (PATCH /api/v1/notifications/:id)
+      def update
+        if @notification.update(read: true)
+          render json: {
+            success: true,
+            message: "알림이 읽음 처리되었습니다.",
+            unread_count: current_user.notifications.unread.count
+          }
+        else
+          render json: {
+            error: "알림 읽음 처리에 실패했습니다."
+          }, status: :unprocessable_entity
+        end
+      end
 
-        render json: {
-          success: true,
-          message: "알림이 읽음 처리되었습니다.",
-          unread_count: current_user.notifications.unread.count
-        }
+      # 알림 읽음 처리 (PATCH /api/v1/notifications/:id/mark_as_read - 호환성)
+      def mark_as_read
+        if @notification.update(read: true)
+          render json: {
+            success: true,
+            message: "알림이 읽음 처리되었습니다.",
+            unread_count: current_user.notifications.unread.count
+          }
+        else
+          render json: {
+            error: "알림 읽음 처리에 실패했습니다."
+          }, status: :unprocessable_entity
+        end
       end
 
       # 모든 알림 읽음 처리
