@@ -19,10 +19,13 @@ jobs:
       # Render CLI 설치 (최신 버전 사용)
       - name: Install Render CLI
         run: |
+          mkdir -p /tmp/render
+          cd /tmp/render
           curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
-          unzip render.zip
+          unzip -o render.zip
           chmod +x cli_v2.1.4
           sudo mv cli_v2.1.4 /usr/local/bin/render
+          cd -
           render --version
 
       # API 서버 배포
@@ -50,10 +53,13 @@ jobs:
       # Render CLI 설치
       - name: Install Render CLI
         run: |
+          mkdir -p /tmp/render
+          cd /tmp/render
           curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
-          unzip render.zip
+          unzip -o render.zip
           chmod +x cli_v2.1.4
           sudo mv cli_v2.1.4 /usr/local/bin/render
+          cd -
 
       # Sidekiq 워커 배포
       - name: Deploy Sidekiq Worker
@@ -76,10 +82,13 @@ jobs:
     steps:
       - name: Install Render CLI
         run: |
+          mkdir -p /tmp/render
+          cd /tmp/render
           curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
-          unzip render.zip
+          unzip -o render.zip
           chmod +x cli_v2.1.4
           sudo mv cli_v2.1.4 /usr/local/bin/render
+          cd -
 
       # 배포 후 서비스 상태 확인
       - name: Check Services Status

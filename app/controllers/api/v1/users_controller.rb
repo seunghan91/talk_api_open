@@ -281,7 +281,7 @@ module Api
           if profile_params[:gender].present?
             # "unknown"을 "unspecified"로 변환
             gender_value = profile_params[:gender] == "unknown" ? "unspecified" : profile_params[:gender]
-            
+
             unless [ "male", "female", "other", "unspecified" ].include?(gender_value)
               Rails.logger.warn("프로필 업데이트 실패: 유효하지 않은 성별 값 (#{profile_params[:gender]})")
               return render json: {
@@ -289,7 +289,7 @@ module Api
                 request_id: request.request_id || SecureRandom.uuid
               }, status: :unprocessable_entity
             end
-            
+
             # 변환된 값으로 파라미터 업데이트
             params[:gender] = gender_value
           end
