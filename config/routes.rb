@@ -120,7 +120,7 @@ Rails.application.routes.draw do
       # ============================================================================
       # 아래 라우트들은 위에서 이미 정의되어 중복됨 - 2025.01.15 주석 처리
       # ============================================================================
-      
+
       # # 인증 - 중복 (위에서 이미 정의)
       # post "auth/login", to: "auth#login"
       # post "auth/register", to: "auth#register"
@@ -182,7 +182,7 @@ Rails.application.routes.draw do
         get "app_config"
         patch "update_push_settings"
       end
-      
+
       # 신고 관련 API
       resources :reports, only: [ :create ] do
         collection do
@@ -200,7 +200,7 @@ Rails.application.routes.draw do
     # 레거시 API 라우트 - 2025.01.15 주석 처리 (중복 제거)
     # 문제 발생 시 아래 주석을 해제하여 복구 가능
     # ============================================================================
-    
+
     # # 레거시 API 라우트 - 이전 버전과의 호환성을 위해 v1으로 리다이렉트
     # # 인증 관련 API
     # post "auth/request_code", to: "v1/auth#request_code"

@@ -15,10 +15,10 @@ RSpec.describe Api::V1::WalletsController, type: :controller do
 
       it 'returns wallet information with formatted currency' do
         get :show
-        
+
         expect(response).to have_http_status(:success)
         json_response = JSON.parse(response.body)
-        
+
         expect(json_response['balance']).to eq(15000)
         expect(json_response['formatted_balance']).to eq('₩15,000')
         expect(json_response['transaction_count']).to be_present
@@ -30,10 +30,10 @@ RSpec.describe Api::V1::WalletsController, type: :controller do
         expect {
           get :show
         }.to change(Wallet, :count).by(1)
-        
+
         expect(response).to have_http_status(:success)
         json_response = JSON.parse(response.body)
-        
+
         expect(json_response['balance']).to eq(5000) # default balance
         expect(json_response['formatted_balance']).to eq('₩5,000')
       end
@@ -52,7 +52,7 @@ RSpec.describe Api::V1::WalletsController, type: :controller do
       # Access private method for testing
       formatted = controller.send(:format_currency, 15000)
       expect(formatted).to eq('₩15,000')
-      
+
       formatted_large = controller.send(:format_currency, 1234567)
       expect(formatted_large).to eq('₩1,234,567')
     end

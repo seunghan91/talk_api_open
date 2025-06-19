@@ -1,10 +1,10 @@
 # 전화번호 마스킹 헬퍼 함수 (암호화된 필드 처리)
 def mask_phone_number(phone)
   return "***-****-****" if phone.nil?
-  
+
   phone_str = phone.to_s
   return "***-****-****" if phone_str.blank? || phone_str.length < 8
-  
+
   # 전화번호 마스킹 (끝 4자리만 표시)
   phone_str.gsub(/\d(?=\d{4})/, "*")
 rescue => e
@@ -30,15 +30,15 @@ Sentry.init do |config|
        hint.dig(:response, :status) == 499
       return nil # 이벤트 드롭
     end
-    
+
     # Rails의 filter_parameters를 직접 적용
     filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
-    
+
     # 이벤트 데이터를 필터링
     if event.request&.data
       event.request.data = filter.filter(event.request.data)
     end
-    
+
     # 사용자 정보 추가
     if event.request && event.user.nil?
       controller = hint[:rack_env]&.dig("action_controller.instance")
