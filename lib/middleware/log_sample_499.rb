@@ -25,7 +25,7 @@ class LogSample499
   private
 
   def should_sample_log?(env, status)
-    path = env['PATH_INFO']
+    path = env["PATH_INFO"]
 
     # 304 Not Modified - 전부 샘플링
     return true if status == 304
@@ -38,7 +38,7 @@ class LogSample499
 
   def sample_and_log(env, status)
     @mutex.synchronize do
-      key = "#{env['REMOTE_ADDR']}:#{env['PATH_INFO']}:#{status}"
+      key = "#{env["REMOTE_ADDR"]}:#{env["PATH_INFO"]}:#{status}"
       current_time = Time.now.to_i
       last_logged = @seen[key] || 0
 
@@ -46,7 +46,7 @@ class LogSample499
       return if current_time - last_logged < WINDOW
 
       # 로그 기록 및 타임스탬프 업데이트
-      Rails.logger.debug("[SAMPLED #{status}] #{env['REQUEST_METHOD']} #{env['PATH_INFO']} - #{env['REMOTE_ADDR']}")
+      Rails.logger.debug("[SAMPLED #{status}] #{env["REQUEST_METHOD"]} #{env["PATH_INFO"]} - #{env["REMOTE_ADDR"]}")
       @seen[key] = current_time
 
       # 메모리 정리 (10분마다)
