@@ -10,4 +10,3 @@ ActiveSupport::Notifications.subscribe('process_action.action_controller') do |*
     Rails.logger.warn("[499 Throttled] #{payload[:method]} #{payload[:path]} - Client disconnected")
   end
 end
-RUBY < /dev/null
