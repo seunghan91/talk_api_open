@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_06_15_000002) do
+ActiveRecord::Schema[7.1].define(version: 2025_06_17_065153) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
 
@@ -102,6 +102,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_06_15_000002) do
     t.bigint "broadcast_id"
     t.boolean "deleted_by_a", default: false
     t.boolean "deleted_by_b", default: false
+    t.boolean "favorited_by_a", default: false
+    t.boolean "favorited_by_b", default: false
     t.index ["broadcast_id"], name: "index_conversations_on_broadcast_id"
     t.index ["user_a_id", "user_b_id"], name: "index_conversations_on_user_a_id_and_user_b_id", unique: true
     t.index ["user_a_id"], name: "index_conversations_on_user_a_id"

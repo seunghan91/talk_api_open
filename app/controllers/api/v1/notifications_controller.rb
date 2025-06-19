@@ -60,11 +60,11 @@ module Api
       # 알림 읽음 처리 (PATCH /api/v1/notifications/:id/mark_as_read - 호환성)
       def mark_as_read
         if @notification.update(read: true)
-          render json: {
-            success: true,
-            message: "알림이 읽음 처리되었습니다.",
-            unread_count: current_user.notifications.unread.count
-          }
+        render json: {
+          success: true,
+          message: "알림이 읽음 처리되었습니다.",
+          unread_count: current_user.notifications.unread.count
+        }
         else
           render json: {
             error: "알림 읽음 처리에 실패했습니다."
