@@ -24,6 +24,13 @@ Sentry.init do |config|
   config.send_default_pii = true
 
   config.before_send = lambda do |event, hint|
+    # 499 에러 필터링 - Sentry에 보고하지 않음
+    if hint.dig(:rack_env, "action_dispatch.exception")&.is_a?(ActionController::ClientDisconnectedError) ||
+       event.tags&.dig(:status) == 499 ||
+       hint.dig(:response, :status) == 499
+      return nil # 이벤트 드롭
+    end
+    
     # Rails의 filter_parameters를 직접 적용
     filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
     

@@ -3,15 +3,16 @@ module Api
     class WalletsController < ApplicationController
       before_action :authorize_request
 
-      # 지갑 정보 조회
+      # 지갑 정보 조회 (Redis 캐싱 적용)
       def show
-        wallet = current_user.wallet || current_user.create_wallet
-
-        render json: {
-          balance: wallet.balance,
-          transaction_count: wallet.transaction_count,
-          formatted_balance: format_currency(wallet.balance)
-        }
+        render json: Rails.cache.fetch("wallet_#{current_user.id}", expires_in: 30.seconds) do
+          wallet = current_user.wallet&.includes(:transactions) || current_user.create_wallet
+          {
+            balance: wallet.balance,
+            transaction_count: wallet.transaction_count,
+            formatted_balance: format_currency(wallet.balance)
+          }
+        end
       end
 
       # 내 지갑 정보 조회 (show와 동일)
@@ -19,10 +20,10 @@ module Api
         show
       end
 
-      # 최근 거래 내역 조회
+      # 최근 거래 내역 조회 (N+1 방지)
       def transactions
         wallet = current_user.wallet || current_user.create_wallet
-        transactions = wallet.transactions.recent.limit(20)
+        transactions = wallet.transactions.includes(:wallet).recent.limit(20)
 
         render json: transactions.map { |tx| format_transaction(tx) }
       end
