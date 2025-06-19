@@ -10,7 +10,7 @@ module Api
         render json: {
           balance: wallet.balance,
           transaction_count: wallet.transaction_count,
-          formatted_balance: number_to_currency(wallet.balance, unit: "₩", precision: 0)
+          formatted_balance: helpers.number_to_currency(wallet.balance, unit: "₩", precision: 0)
         }
       end
 
@@ -48,7 +48,7 @@ module Api
         if tx
           render json: {
             success: true,
-            message: "#{number_to_currency(amount, unit: '₩', precision: 0)}이 충전되었습니다.",
+            message: "#{helpers.number_to_currency(amount, unit: '₩', precision: 0)}이 충전되었습니다.",
             balance: wallet.balance,
             transaction: format_transaction(tx)
           }
@@ -65,7 +65,7 @@ module Api
           type: transaction.transaction_type,
           type_korean: transaction_type_to_korean(transaction.transaction_type),
           amount: transaction.amount,
-          formatted_amount: number_to_currency(transaction.amount, unit: "₩", precision: 0),
+          formatted_amount: helpers.number_to_currency(transaction.amount, unit: "₩", precision: 0),
           description: transaction.description,
           payment_method: transaction.payment_method,
           status: transaction.status,

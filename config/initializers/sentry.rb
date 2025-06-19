@@ -12,11 +12,15 @@ Sentry.init do |config|
   config.before_send = lambda do |event, hint|
     # Rails의 filter_parameters를 직접 적용
     filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
-    filtered_event_hash = filter.filter(event.to_hash)
-    event = Sentry::Event.new(filtered_event_hash)
-
+    
+    # 이벤트 데이터를 필터링
+    if event.request&.data
+      event.request.data = filter.filter(event.request.data)
+    end
+    
+    # 사용자 정보 추가
     if event.request && event.user.nil?
-      controller = hint[:rack_env]&.controller
+      controller = hint[:rack_env]&.dig("action_controller.instance")
       if controller&.respond_to?(:current_user) && controller.current_user
         event.user = {
           id: controller.current_user.id,
