@@ -10,7 +10,7 @@ module Api
         render json: {
           balance: wallet.balance,
           transaction_count: wallet.transaction_count,
-          formatted_balance: helpers.number_to_currency(wallet.balance, unit: "₩", precision: 0)
+          formatted_balance: format_currency(wallet.balance)
         }
       end
 
@@ -59,13 +59,18 @@ module Api
 
       private
 
+      # 통화 포맷 헬퍼 메서드 (API 모드에서 helpers 사용 불가로 인한 대체)
+      def format_currency(amount)
+        "₩#{amount.to_i.to_s.reverse.gsub(/(\d{3})(?=\d)/, '\1,').reverse}"
+      end
+
       def format_transaction(transaction)
         {
           id: transaction.id,
           type: transaction.transaction_type,
           type_korean: transaction_type_to_korean(transaction.transaction_type),
           amount: transaction.amount,
-          formatted_amount: helpers.number_to_currency(transaction.amount, unit: "₩", precision: 0),
+          formatted_amount: format_currency(transaction.amount),
           description: transaction.description,
           payment_method: transaction.payment_method,
           status: transaction.status,

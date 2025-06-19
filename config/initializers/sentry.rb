@@ -1,3 +1,17 @@
+# 전화번호 마스킹 헬퍼 함수 (암호화된 필드 처리)
+def mask_phone_number(phone)
+  return "***-****-****" if phone.nil?
+  
+  phone_str = phone.to_s
+  return "***-****-****" if phone_str.blank? || phone_str.length < 8
+  
+  # 전화번호 마스킹 (끝 4자리만 표시)
+  phone_str.gsub(/\d(?=\d{4})/, "*")
+rescue => e
+  # 암호화 해독 실패 등의 경우
+  "***-****-****"
+end
+
 Sentry.init do |config|
   config.dsn = ENV["SENTRY_DSN"]
   config.breadcrumbs_logger = [ :active_support_logger, :http_logger ]
@@ -25,7 +39,7 @@ Sentry.init do |config|
         event.user = {
           id: controller.current_user.id,
           nickname: controller.current_user.nickname,
-          phone_number: controller.current_user.phone_number.to_s.gsub(/\d(?=\d{4})/, "*")
+          phone_number: mask_phone_number(controller.current_user.phone_number)
         }
       end
     end
