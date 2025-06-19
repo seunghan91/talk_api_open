@@ -119,7 +119,7 @@ Rails.application.configure do
   # ]
   # Skip DNS rebinding protection for the default health check endpoint.
   # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
-  
+
   # Lograge 설정 - 구조화된 로깅 및 노이즈 제거
   config.lograge.enabled = true
   config.lograge.custom_options = lambda do |event|
@@ -134,23 +134,23 @@ Rails.application.configure do
       db: event.payload[:db_runtime]&.round(2)
     }
   end
-  
+
   # 노이즈 로그 필터링
   config.lograge.ignore_custom = lambda do |event|
     status = event.payload[:status]
     path = event.payload[:path]
-    
+
     # 304 Not Modified 전부 무시
     return true if status == 304
-    
+
     # wallet/notifications 엔드포인트의 200, 499 98% 샘플링
     if path&.match?(%r{\A/api/v1/(wallet|notifications)})
-      return true if [200, 499].include?(status) && Random.rand < 0.98
+      return true if [ 200, 499 ].include?(status) && Random.rand < 0.98
     end
-    
+
     false
   end
-  
+
   # JSON 포맷으로 로그 출력
   config.lograge.formatter = Lograge::Formatters::Json.new
 end

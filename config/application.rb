@@ -19,9 +19,6 @@ module TalkkApi
     config.active_record.encryption.key_derivation_salt = Rails.application.credentials.dig(:active_record_encryption, :key_derivation_salt)
 
     config.autoload_paths << Rails.root.join("lib")
-    
-    # 로그 샘플링 미들웨어 추가
-    config.middleware.insert_before Rails::Rack::Logger, LogSample499
 
     # RailsAdmin을 위해 필요한 미들웨어 추가
     config.middleware.use ActionDispatch::Cookies
