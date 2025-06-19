@@ -24,11 +24,24 @@ Sentry.init do |config|
   config.send_default_pii = true
 
   config.before_send = lambda do |event, hint|
-    # 499 에러 필터링 - Sentry에 보고하지 않음
+    # 노이즈 에러 필터링 - Sentry Quota 절약
+    
+    # 499 Client Disconnected 에러 드롭
     if hint.dig(:rack_env, "action_dispatch.exception")&.is_a?(ActionController::ClientDisconnectedError) ||
        event.tags&.dig(:status) == 499 ||
        hint.dig(:response, :status) == 499
-      return nil # 이벤트 드롭
+      return nil
+    end
+    
+    # 304 Not Modified 드롭
+    if event.tags&.dig(:status) == 304 || hint.dig(:response, :status) == 304
+      return nil
+    end
+    
+    # wallet/notifications 엔드포인트의 정상 응답 (200) 90% 샘플링
+    if event.request&.url&.match?(%r{/api/v1/(wallet|notifications)}) &&
+       (event.tags&.dig(:status) == 200 || hint.dig(:response, :status) == 200)
+      return nil if Random.rand < 0.9
     end
 
     # Rails의 filter_parameters를 직접 적용

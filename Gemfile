@@ -93,3 +93,5 @@ end
 gem "kaminari"
 
 gem "redis-rails", "~> 5.0"
+
+gem "lograge", "~> 0.14.0"
