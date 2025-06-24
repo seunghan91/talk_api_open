@@ -377,11 +377,16 @@ module Api
             return render json: { error: "이 대화에 대한 권한이 없습니다." }, status: :forbidden
           end
 
-          # 사용자가 user_a인지 user_b인지에 따라 다른 필드 업데이트
-          if @conversation.user_a_id == current_user.id
-            @conversation.update(favorited_by_a: favorite)
+          # 컬럼 존재 여부 확인
+          if Conversation.column_names.include?('favorited_by_a') && Conversation.column_names.include?('favorited_by_b')
+            # 사용자가 user_a인지 user_b인지에 따라 다른 필드 업데이트
+            if @conversation.user_a_id == current_user.id
+              @conversation.update(favorited_by_a: favorite)
+            else
+              @conversation.update(favorited_by_b: favorite)
+            end
           else
-            @conversation.update(favorited_by_b: favorite)
+            Rails.logger.warn("즐겨찾기 컬럼이 아직 존재하지 않습니다. 마이그레이션 실행이 필요합니다.")
           end
 
           render json: {
