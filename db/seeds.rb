@@ -5,15 +5,21 @@ puts "==== Seeding Database ===="
 # 0. 환경 변수 확인 및 설정 (필요시)
 puts "Environment: #{Rails.env}"
 
-# 1. 기존 데이터 삭제 (CASCADE 옵션으로 관련 데이터 함께 삭제)
-puts "Truncating tables..."
-%w[users conversations messages broadcasts notifications wallets transactions].each do |table_name|
-  begin
-    ActiveRecord::Base.connection.execute("TRUNCATE TABLE #{table_name} RESTART IDENTITY CASCADE")
-    puts "Truncated #{table_name}"
-  rescue ActiveRecord::StatementInvalid => e
-    puts "Skipping truncate for #{table_name}: #{e.message}"
-  end
+# 1. 기존 데이터 삭제 - 더 안전한 방법 사용
+puts "Cleaning up existing data..."
+begin
+  # 역순으로 삭제하여 외래키 제약 피하기
+  Transaction.destroy_all if defined?(Transaction)
+  Notification.destroy_all if defined?(Notification)
+  Message.destroy_all if defined?(Message)
+  Conversation.destroy_all if defined?(Conversation)
+  Broadcast.destroy_all if defined?(Broadcast)
+  Wallet.destroy_all if defined?(Wallet)
+  User.destroy_all
+  puts "Existing data cleaned up successfully"
+rescue => e
+  puts "Error during cleanup: #{e.message}"
+  puts "Continuing with seed..."
 end
 
 # 2. 사용자 생성

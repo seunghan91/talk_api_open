@@ -146,8 +146,14 @@ module Api
             # JWT 토큰 생성
             token = AuthToken.encode(user_id: @user.id)
 
-            # 지갑 생성
-            wallet = Wallet.create!(user: @user, balance: 0)
+            # 지갑 생성 (이미 존재하면 스킵)
+            begin
+              wallet = @user.wallet || Wallet.create!(user: @user, balance: 0)
+              Rails.logger.info("지갑 상태: 사용자 ID #{@user.id}, 지갑 ID #{wallet.id}, 잔액 #{wallet.balance}")
+            rescue ActiveRecord::RecordInvalid => e
+              Rails.logger.warn("지갑 생성 실패 (이미 존재할 수 있음): #{e.message}")
+              wallet = @user.wallet
+            end
 
             # 성공 응답
             render json: {

@@ -52,7 +52,7 @@ class Wallet < ApplicationRecord
   private
 
   def set_default_values
-    self.balance ||= 5000 # 초기 잔액 5,000원
+    self.balance ||= 0 # 초기 잔액 0원 (seed에서 별도 충전)
     self.transaction_count ||= 0
   end
 end
