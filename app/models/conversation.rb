@@ -25,15 +25,16 @@ class Conversation < ApplicationRecord
       where(broadcast_id: broadcast_id)
     end
 
-    # 대화가 즐겨찾기되었는지 확인
+    # 대화가 즐겨찾기되었는지 확인 (임시 수정: 기능 미구현으로 항상 false 반환)
     def favorited_by?(user_id)
-      if user_a_id == user_id
-        favorited_by_a
-      elsif user_b_id == user_id
-        favorited_by_b
-      else
-        false
-      end
+      # if user_a_id == user_id
+      #   favorited_by_a
+      # elsif user_b_id == user_id
+      #   favorited_by_b
+      # else
+      #   false
+      # end
+      false
     end
 
     # 특정 사용자에게 대화가 보이는지 확인
