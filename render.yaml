@@ -5,7 +5,7 @@ services:
     env: ruby
     region: singapore
     plan: starter
-    buildCommand: bundle install && bundle exec rake db:migrate
+    buildCommand: bundle install && bundle exec rake db:migrate && bundle exec rake db:seed || true
     startCommand: bundle exec puma -C config/puma.rb
     healthCheckPath: /health
     numInstances: 1
