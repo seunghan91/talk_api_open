@@ -28,7 +28,7 @@ class Conversation < ApplicationRecord
     # 대화가 즐겨찾기되었는지 확인
     def favorited_by?(user_id)
       # 컬럼이 존재하는지 확인 (마이그레이션 전후 호환성)
-      if self.class.column_names.include?('favorited_by_a') && self.class.column_names.include?('favorited_by_b')
+      if self.class.column_names.include?("favorited_by_a") && self.class.column_names.include?("favorited_by_b")
         if user_a_id == user_id
           favorited_by_a
         elsif user_b_id == user_id

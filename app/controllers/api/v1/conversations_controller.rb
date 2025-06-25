@@ -378,7 +378,7 @@ module Api
           end
 
           # 컬럼 존재 여부 확인
-          if Conversation.column_names.include?('favorited_by_a') && Conversation.column_names.include?('favorited_by_b')
+          if Conversation.column_names.include?("favorited_by_a") && Conversation.column_names.include?("favorited_by_b")
             # 사용자가 user_a인지 user_b인지에 따라 다른 필드 업데이트
             if @conversation.user_a_id == current_user.id
               @conversation.update(favorited_by_a: favorite)
