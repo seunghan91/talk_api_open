@@ -46,24 +46,25 @@ Rails.application.routes.draw do
       post "auth/reset_password"
       post "auth/check_phone"
 
-      # 사용자 관련 API
+      # 사용자 관련 API (특정 경로가 먼저 와야 함)
       get "users/me"
       get "users/profile"
       get "users/notification_settings"
+      get "users/random_nickname", to: "users#generate_random_nickname"
+      get "users/blocks", to: "users#blocks"
       patch "users/notification_settings", to: "users#update_notification_settings"
       put "users/notification_settings", to: "users#update_notification_settings"
-      get "users/:id", to: "users#show"
+      post "users/notification_settings", to: "users#update_notification_settings"
+      post "users/update_push_token", to: "users#update_push_token"
+      post "users/disable_push", to: "users#disable_push"
       patch "users/me", to: "users#update"
       put "users/me", to: "users#update"
       post "users/change_password"
       post "users/update_profile"
-
-      # 추가된 사용자 관련 API
-      get "users/random_nickname", to: "users#generate_random_nickname"
       post "users/change_nickname", to: "users#change_nickname"
       post "users/:id/block", to: "users#block"
       post "users/:id/unblock", to: "users#unblock"
-      get "users/blocks", to: "users#blocks"
+      get "users/:id", to: "users#show"
 
       # 브로드캐스트 관련 API
       resources :broadcasts, only: [ :index, :show, :create ] do
