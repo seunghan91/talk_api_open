@@ -1,7 +1,9 @@
 require 'swagger_helper'
 
 RSpec.describe 'Broadcasts API', type: :request do
-  path '/api/broadcasts' do
+  let(:user) { create(:user) }
+  let(:valid_token) { generate_token_for(user) }
+  path '/api/v1/broadcasts' do
     get 'List broadcasts' do
       tags 'Broadcasts'
       security [ bearer_auth: [] ]
@@ -42,7 +44,7 @@ RSpec.describe 'Broadcasts API', type: :request do
             }
           }
 
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
@@ -72,15 +74,15 @@ RSpec.describe 'Broadcasts API', type: :request do
             created_at: { type: :string, format: 'date-time' }
           }
 
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         let(:text) { '안녕하세요!' }
-        let(:audio) { fixture_file_upload('spec/fixtures/sample.mp3', 'audio/mpeg') }
+        let(:audio) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
         run_test!
       end
 
       response '422', 'Invalid parameters' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         let(:text) { '안녕하세요!' }
         let(:audio) { nil }
         run_test!
@@ -88,7 +90,7 @@ RSpec.describe 'Broadcasts API', type: :request do
     end
   end
 
-  path '/api/broadcasts/{id}' do
+  path '/api/v1/broadcasts/{id}' do
     parameter name: :id, in: :path, type: :integer, description: 'Broadcast ID'
 
     get 'Get a broadcast' do
@@ -121,20 +123,20 @@ RSpec.describe 'Broadcasts API', type: :request do
           }
 
         let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '404', 'Broadcast not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
     end
   end
 
-  path '/api/broadcasts/{id}/reply' do
+  path '/api/v1/broadcasts/{id}/reply' do
     parameter name: :id, in: :path, type: :integer, description: 'Broadcast ID'
 
     post 'Reply to a broadcast' do
@@ -158,7 +160,7 @@ RSpec.describe 'Broadcasts API', type: :request do
           }
 
         let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         let(:params) { { message: '반갑습니다!' } }
         run_test!
       end
@@ -166,7 +168,7 @@ RSpec.describe 'Broadcasts API', type: :request do
       response '404', 'Broadcast not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         let(:params) { { message: '반갑습니다!' } }
         run_test!
       end
