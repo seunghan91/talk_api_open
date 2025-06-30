@@ -123,19 +123,25 @@ class BroadcastWorker
         end
       end
 
-      # 푸시 알림 전송
-      recipients.each do |recipient|
-        next unless recipient.broadcast_push_enabled && recipient.push_token.present?
-
-        begin
-          PushNotificationService.new.send_broadcast_notification(
-            recipient,
-            broadcast
-          )
-          Rails.logger.info("푸시 알림 전송 성공: 수신자 ID #{recipient.id}")
-        rescue => e
-          Rails.logger.error("푸시 알림 전송 실패 (수신자: #{recipient.id}): #{e.message}")
-        end
+      # SOLID 원칙에 따라 NotificationService 사용
+      notification_service = NotificationService.new
+      
+      # 일괄 알림 전송 (성능 개선)
+      result = notification_service.send_bulk_notifications(
+        users: recipients,
+        type: :broadcast,
+        title: "#{broadcast.user.nickname}님의 새로운 브로드캐스트",
+        body: broadcast.text.presence || "새로운 음성 메시지가 도착했습니다",
+        data: {
+          broadcast_id: broadcast.id,
+          sender_id: broadcast.user_id
+        }
+      )
+      
+      if result.success?
+        Rails.logger.info("푸시 알림 전송 성공: #{result.sent_count}명에게 전송")
+      else
+        Rails.logger.error("푸시 알림 전송 실패: #{result.errors.join(', ')}")
       end
 
       Rails.logger.info("브로드캐스트 처리 완료: ID #{broadcast_id}")
