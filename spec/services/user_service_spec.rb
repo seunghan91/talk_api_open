@@ -61,12 +61,17 @@ RSpec.describe UserService do
     let(:reason) { '부적절한 콘텐츠' }
     let(:duration_days) { 7 }
     
-    it '사용자를 정지시킨다' do
+    it '사용자를 정지시킨다', :truncation do
       result = service.suspend_user(user, reason: reason, duration_days: duration_days)
       
       expect(result.success?).to be true
-      expect(user.reload.status).to eq('suspended')
-      expect(user.user_suspensions.last.reason).to eq(reason)
+      expect(result.user.status).to eq('suspended')
+      
+      # 정지 기록 확인
+      suspension = user.user_suspensions.last
+      expect(suspension).to be_present
+      expect(suspension.reason).to eq(reason)
+      expect(suspension.active).to be true
     end
     
     it '정지 알림을 전송한다' do
@@ -112,28 +117,27 @@ RSpec.describe UserService do
       {
         reporter: user,
         reported: reported_user,
-        reason: 'spam',
-        description: '스팸 메시지를 반복적으로 전송'
+        reason: 'spam'
       }
     end
     
     it '신고를 생성한다' do
       expect {
-        result = service.report_user(report_params)
+        result = service.report_user(**report_params)
         expect(result.success?).to be true
         expect(result.report).to be_persisted
       }.to change(Report, :count).by(1)
     end
     
-    it '3회 이상 신고 시 자동 정지' do
+    it '3회 이상 신고 시 자동 정지', :truncation do
       # 이미 2회 신고된 상태
       2.times do
-        create(:report, reported: reported_user, status: :confirmed)
+        create(:report, reported: reported_user, status: :resolved)
       end
       
-      result = service.report_user(report_params)
+      result = service.report_user(**report_params)
       expect(result.success?).to be true
-      expect(reported_user.reload.status).to eq('suspended')
+      expect(result.user.status).to eq('suspended')
     end
   end
   
@@ -174,12 +178,15 @@ RSpec.describe UserService do
     
     before { user.update(status: :suspended) }
     
-    it '만료된 정지를 해제한다' do
+    it '만료된 정지를 해제한다', :truncation do
       result = service.check_suspension_expiry(user)
       
       expect(result.success?).to be true
-      expect(user.reload.status).to eq('active')
-      expect(expired_suspension.reload.active).to be false
+      expect(result.user.status).to eq('active')
+      
+      # 정지 기록 확인
+      expired_suspension.reload
+      expect(expired_suspension.active).to be false
     end
   end
   

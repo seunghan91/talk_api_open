@@ -24,6 +24,7 @@ class User < ApplicationRecord
   has_many :notifications, dependent: :destroy
   has_many :phone_verifications, dependent: :destroy
   has_one :latest_verification, -> { order(created_at: :desc) }, class_name: "PhoneVerification"
+  has_many :user_suspensions, dependent: :destroy
 
   # 사용자 생성 후 지갑 자동 생성
   after_create :create_wallet_for_user

@@ -6,8 +6,7 @@ class WalletService
     
     Wallet.create!(
       user: user,
-      balance: 0,
-      status: :active
+      balance: 0
     )
   end
   
@@ -17,10 +16,10 @@ class WalletService
     ActiveRecord::Base.transaction do
       wallet.increment!(:balance, amount)
       
-      wallet.point_transactions.create!(
+      wallet.transactions.create!(
         amount: amount,
-        transaction_type: :credit,
-        reason: reason
+        transaction_type: 'deposit',
+        description: reason
       )
     end
   end
@@ -33,10 +32,10 @@ class WalletService
     ActiveRecord::Base.transaction do
       wallet.decrement!(:balance, amount)
       
-      wallet.point_transactions.create!(
+      wallet.transactions.create!(
         amount: amount,
-        transaction_type: :debit,
-        reason: reason
+        transaction_type: 'withdrawal',
+        description: reason
       )
     end
   end

@@ -45,7 +45,8 @@ class UserService
     end
   rescue => e
     Rails.logger.error "UserService#create_user failed: #{e.message}"
-    Result.new(success: false, error: '사용자 생성 중 오류가 발생했습니다')
+    Rails.logger.error e.backtrace.join("\n")
+    Result.new(success: false, error: "사용자 생성 중 오류가 발생했습니다")
   end
   
   def suspend_user(user, reason:, duration_days: DEFAULT_SUSPENSION_DAYS, admin: nil)
@@ -53,18 +54,21 @@ class UserService
       # 정지 기록 생성
       suspension = user.user_suspensions.create!(
         reason: reason,
+        suspended_at: Time.current,
         suspended_until: duration_days.days.from_now,
-        admin: admin,
         active: true
       )
       
       # 사용자 상태 업데이트
-      user.update!(status: :suspended)
+      user.status = :suspended
+      user.save!
       
       # 정지 알림 발송
       @notification_service.send_notification(
-        user,
+        user: user,
         type: :suspension_notice,
+        title: '계정 정지 안내',
+        body: "귀하의 계정이 #{duration_days}일 동안 정지되었습니다. 사유: #{reason}",
         data: {
           reason: reason,
           until: suspension.suspended_until,
@@ -79,7 +83,8 @@ class UserService
     end
   rescue => e
     Rails.logger.error "UserService#suspend_user failed: #{e.message}"
-    Result.new(success: false, error: '사용자 정지 처리 중 오류가 발생했습니다')
+    Rails.logger.error e.backtrace.join("\n")
+    Result.new(success: false, error: "사용자 정지 처리 중 오류가 발생했습니다: #{e.message}")
   end
   
   def block_user(blocker:, blocked:)
@@ -100,33 +105,33 @@ class UserService
     Result.new(success: false, error: '차단 처리 중 오류가 발생했습니다')
   end
   
-  def report_user(reporter:, reported:, reason:, description: nil, evidence: nil)
+  def report_user(reporter:, reported:, reason:)
     ActiveRecord::Base.transaction do
       # 신고 생성
       report = Report.create!(
         reporter: reporter,
         reported: reported,
         reason: reason,
-        description: description,
-        evidence: evidence,
-        status: :pending
+        status: :pending,
+        report_type: :user
       )
       
       # 신고 횟수 확인 및 자동 정지 처리
       confirmed_reports_count = Report.where(
         reported: reported,
-        status: :confirmed
+        status: :resolved
       ).count
       
       if confirmed_reports_count >= AUTO_SUSPEND_REPORT_COUNT - 1
-        suspend_user(
+        suspend_result = suspend_user(
           reported,
           reason: "반복된 신고로 인한 자동 정지 (#{reason})",
           duration_days: DEFAULT_SUSPENSION_DAYS
         )
+        Result.new(success: true, report: report, user: suspend_result.user)
+      else
+        Result.new(success: true, report: report, user: reported)
       end
-      
-      Result.new(success: true, report: report)
     end
   rescue => e
     Rails.logger.error "UserService#report_user failed: #{e.message}"
@@ -154,7 +159,7 @@ class UserService
   end
   
   def check_suspension_expiry(user)
-    return Result.new(success: true) unless user.suspended?
+    return Result.new(success: true) unless user.status_suspended?
     
     active_suspension = user.user_suspensions.active.first
     return Result.new(success: true) unless active_suspension
@@ -163,12 +168,15 @@ class UserService
       ActiveRecord::Base.transaction do
         # 정지 해제
         active_suspension.update!(active: false)
-        user.update!(status: :active)
+        user.status = :active
+        user.save!
         
         # 정지 해제 알림
         @notification_service.send_notification(
-          user,
+          user: user,
           type: :suspension_lifted,
+          title: '계정 정지 해제',
+          body: '귀하의 계정 정지가 해제되었습니다. 다시 서비스를 이용하실 수 있습니다.',
           data: { lifted_at: Time.current }
         )
       end
@@ -179,7 +187,8 @@ class UserService
     end
   rescue => e
     Rails.logger.error "UserService#check_suspension_expiry failed: #{e.message}"
-    Result.new(success: false, error: '정지 만료 확인 중 오류가 발생했습니다')
+    Rails.logger.error e.backtrace.join("\n")
+    Result.new(success: false, error: "정지 만료 확인 중 오류가 발생했습니다: #{e.message}")
   end
   
   private
@@ -209,12 +218,10 @@ class UserService
   
   def send_welcome_notification(user)
     @notification_service.send_notification(
-      user,
+      user: user,
       type: :welcome,
-      data: {
-        title: 'Talkk에 오신 것을 환영합니다!',
-        message: '프로필을 완성하고 100포인트를 받으세요!'
-      }
+      title: 'Talkk에 오신 것을 환영합니다!',
+      body: '프로필을 완성하고 100포인트를 받으세요!'
     )
   end
 end 

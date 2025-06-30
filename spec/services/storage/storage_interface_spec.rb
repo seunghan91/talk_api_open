@@ -1,4 +1,7 @@
 require 'rails_helper'
+require_relative '../../../app/services/storage/local_storage_service'
+require_relative '../../../app/services/storage/s3_storage_service'
+require_relative '../../../app/services/storage/memory_storage_service'
 
 RSpec.shared_examples 'storage_service' do
   let(:test_file) do
