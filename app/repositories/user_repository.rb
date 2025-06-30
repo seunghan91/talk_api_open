@@ -1,19 +1,14 @@
 # frozen_string_literal: true
 
+require_relative 'concerns/readable_user_repository'
+require_relative 'concerns/writable_user_repository'
+
 class UserRepository
+  include ReadableUserRepository
+  include WritableUserRepository
+  
+  # Repository 특화 메서드들 (ReadableUserRepository에 없는 것들만)
   class << self
-    def find_by_phone_number(phone_number)
-      User.find_by(phone_number: phone_number)
-    end
-    
-    def active_users
-      User.where(status: :active)
-    end
-    
-    def find_with_profile(id)
-      User.includes(:wallet, :user_suspensions).find(id)
-    end
-    
     def search(conditions = {})
       query = User.all
       
@@ -128,21 +123,18 @@ class UserRepository
     end
   end
   
-  # 인스턴스 메서드 버전 (필요한 경우)
+  # 인스턴스 메서드들
   def initialize
     # 필요한 경우 의존성 주입을 위한 초기화
   end
   
-  def find_by_phone_number(phone_number)
-    self.class.find_by_phone_number(phone_number)
-  end
-  
+  # Repository 특화 메서드들
   def active_users
-    self.class.active_users
+    where(status: :active)
   end
   
   def find_with_profile(id)
-    self.class.find_with_profile(id)
+    includes(:wallet, :user_suspensions).find(id)
   end
   
   def search(conditions = {})

@@ -41,34 +41,15 @@ class AudioUploadService
   
   def default_storage_service
     if Rails.env.production?
-      S3StorageService.new
+      Storage::S3StorageService.new
+    elsif Rails.env.test?
+      Storage::MemoryStorageService.new
     else
-      LocalStorageService.new
+      Storage::LocalStorageService.new
     end
   end
   
   class AudioUploadError < StandardError; end
 end
 
-# 로컬 스토리지 서비스 (개발 환경용)
-class LocalStorageService
-  def upload(file:, key:, content_type:)
-    path = Rails.root.join('public', 'uploads', key)
-    FileUtils.mkdir_p(File.dirname(path))
-    
-    File.open(path, 'wb') do |f|
-      f.write(file.read)
-    end
-    
-    "/uploads/#{key}"
-  end
-end
-
-# S3 스토리지 서비스 (프로덕션용 - 실제 구현 필요)
-class S3StorageService
-  def upload(file:, key:, content_type:)
-    # AWS S3 업로드 로직
-    # 실제 구현에서는 aws-sdk-s3 gem 사용
-    "https://s3.amazonaws.com/talkk-audio/#{key}"
-  end
-end 
+ 
