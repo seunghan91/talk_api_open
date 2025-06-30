@@ -125,7 +125,7 @@ class BroadcastWorker
 
       # SOLID 원칙에 따라 NotificationService 사용
       notification_service = NotificationService.new
-      
+
       # 일괄 알림 전송 (성능 개선)
       result = notification_service.send_bulk_notifications(
         users: recipients,
@@ -137,7 +137,7 @@ class BroadcastWorker
           sender_id: broadcast.user_id
         }
       )
-      
+
       if result.success?
         Rails.logger.info("푸시 알림 전송 성공: #{result.sent_count}명에게 전송")
       else

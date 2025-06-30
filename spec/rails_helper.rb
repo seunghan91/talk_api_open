@@ -83,11 +83,11 @@ RSpec.configure do |config|
     if example.metadata[:truncation]
       DatabaseCleaner.strategy = :truncation
     end
-    
+
     DatabaseCleaner.cleaning do
       example.run
     end
-    
+
     if example.metadata[:truncation]
       DatabaseCleaner.strategy = :transaction
     end

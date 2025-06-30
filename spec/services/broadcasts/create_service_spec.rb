@@ -5,7 +5,7 @@ RSpec.describe Broadcasts::CreateService do
   let(:audio_file) { fixture_file_upload('spec/fixtures/sample_audio.wav', 'audio/wav') }
   let(:text) { "테스트 브로드캐스트 메시지" }
   let(:recipient_count) { 5 }
-  
+
   subject(:service) do
     described_class.new(
       user: user,
@@ -115,11 +115,11 @@ RSpec.describe Broadcasts::CreateService do
         recipient_count: recipient_count,
         worker: mock_worker
       )
-      
+
       expect(mock_worker).to receive(:perform_async)
       allow_any_instance_of(Broadcast).to receive(:save!).and_return(true)
-      
+
       service_with_injection.call
     end
   end
-end 
+end

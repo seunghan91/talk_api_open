@@ -52,7 +52,7 @@ module Api
         text: broadcast_params[:text],
         recipient_count: broadcast_params[:recipient_count]
       ).call
-      
+
       if result.success?
         render json: {
           message: "방송이 성공적으로 전송되었습니다.",
