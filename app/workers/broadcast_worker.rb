@@ -52,8 +52,12 @@ class BroadcastWorker
       sender = broadcast.user
       Rails.logger.info("브로드캐스트 송신자: ID #{sender.id}, 닉네임 #{sender.nickname}")
 
-      # 개선된 수신자 선택 알고리즘 적용
-      recipients = select_optimal_recipients(sender, recipient_count)
+      # SOLID 원칙에 따라 서비스 객체 사용
+      recipient_selection_service = Broadcasts::RecipientSelectionService.new(
+        sender,
+        strategy: determine_selection_strategy(sender)
+      )
+      recipients = recipient_selection_service.select_recipients(count: recipient_count)
 
       # 수신자 로깅
       recipient_ids = recipients.pluck(:id).join(", ")
@@ -146,7 +150,19 @@ class BroadcastWorker
 
   private
 
-  # 최적의 수신자를 선택하는 개선된 알고리즘
+  def determine_selection_strategy(sender)
+    # 사용자 특성에 따라 선택 전략 결정
+    case
+    when sender.broadcasts.count < 5
+      :random # 신규 사용자는 랜덤 선택
+    when sender.last_login_at > 1.week.ago
+      :activity_based # 활발한 사용자는 활동 기반 선택
+    else
+      :relationship_based # 기존 사용자는 관계 기반 선택
+    end
+  end
+
+  # [삭제 예정] 기존 복잡한 로직은 RecipientSelectionService로 이동
   def select_optimal_recipients(sender, recipient_count)
     Rails.logger.info("피드백 기반 수신자 선택 알고리즘 실행 - 송신자: #{sender.id}, 요청 수신자 수: #{recipient_count}")
 
