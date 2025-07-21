@@ -471,3 +471,13 @@ jsonCopy{
 jsonCopy{
   "error": "Server error"
 }
+
+읽지 않은 메시지 수 조회
+URL: /api/conversations/{id}/unread_count
+Method: GET
+Header: Authorization: Bearer {token}
+응답 예시:
+jsonCopy{
+  "conversation_id": 1,
+  "unread_count": 3
+}

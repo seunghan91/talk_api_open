@@ -84,6 +84,7 @@ Rails.application.routes.draw do
           post :favorite
           post :unfavorite
           post :close
+          get :unread_count
         end
       end
 

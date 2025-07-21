@@ -132,6 +132,17 @@ module Api
         conversation.messages.order(created_at: :asc).includes(:sender).to_a
       end
 
+      # 상대방이 보낸 메시지를 읽음 처리
+      unread_messages = messages.select { |m| m.sender_id != current_user.id && !m.read? }
+      if unread_messages.any?
+        Message.where(id: unread_messages.map(&:id)).update_all(read: true)
+        # 캐시 무효화
+        Rails.cache.delete("conversation-messages-#{conversation.id}")
+        
+        # 메시지를 다시 로드하여 최신 상태 반영
+        messages = conversation.messages.order(created_at: :asc).includes(:sender).to_a
+      end
+
       render json: {
         conversation: conversation,
         messages: messages.as_json(include: { sender: { only: [ :id, :nickname ] } })
@@ -272,6 +283,33 @@ module Api
       else
         # 메시지 저장 실패
         render json: { error: message.errors.full_messages.join(", ") }, status: :unprocessable_entity
+      end
+    end
+
+    # 읽지 않은 메시지 수 확인
+    def unread_count
+      begin
+        conversation = Conversation.find(params[:id])
+        
+        unless participant?(conversation)
+          return render json: { error: "권한이 없습니다." }, status: :forbidden
+        end
+
+        # 상대방이 보낸 읽지 않은 메시지 수
+        unread_count = conversation.messages
+                                  .where(sender_id: conversation.other_user_id(current_user.id))
+                                  .where(read: false)
+                                  .count
+
+        render json: {
+          conversation_id: conversation.id,
+          unread_count: unread_count
+        }
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: "대화방을 찾을 수 없습니다." }, status: :not_found
+      rescue => e
+        Rails.logger.error("읽지 않은 메시지 수 조회 중 오류: #{e.message}")
+        render json: { error: "조회 중 오류가 발생했습니다." }, status: :internal_server_error
       end
     end
 

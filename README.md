@@ -2,6 +2,24 @@
 
 음성 기반 소셜 미디어 플랫폼 Talkk의 백엔드 API
 
+## 📚 Project Documentation
+
+### Core Documents
+- [🎯 Voice Broadcasting App Flow](./VOICE_BROADCASTING_APP_FLOW.md) - Complete app workflow
+- [📡 API Documentation](./API_DOCUMENTATION.md) - Detailed API endpoints
+
+### Deployment & Configuration
+- [🚀 Render Deployment Guide](./RENDER_DEPLOYMENT_GUIDE.md) - How to deploy on Render
+- [🔧 Redis Migration Guide](./REDIS_MIGRATION_GUIDE.md) - Redis setup and migration
+- [🌏 Singapore Server Setup](./SINGAPORE_SERVER_SETUP.md) - Singapore region configuration
+
+### Technical Documentation (docs/)
+- [🔌 API Integration Guide](./docs/API_INTEGRATION_GUIDE.md) - Client integration methods
+- [🏗️ API Server Architecture](./docs/API_SERVER_ARCHITECTURE.md) - Server structure
+- [🧪 Broadcast API Testing Guide](./docs/BROADCAST_API_TESTING_GUIDE.md) - API testing methods
+- [📐 Broadcast System Architecture](./docs/BROADCAST_SYSTEM_ARCHITECTURE.md) - Broadcast internals
+- [🎲 Recipient Selection Algorithm](./docs/RECIPIENT_SELECTION_ALGORITHM.md) - Recipient selection logic
+
 ## 최근 업데이트 (2025-04-19)
 
 ### 1. 사용자 프로필 개선 및 관리 시스템 보강
