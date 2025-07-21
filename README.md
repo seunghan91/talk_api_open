@@ -2,23 +2,23 @@
 
 음성 기반 소셜 미디어 플랫폼 Talkk의 백엔드 API
 
-## 📚 프로젝트 문서
+## 📚 Project Documentation
 
-### 핵심 문서
-- [🎯 음성 브로드캐스팅 앱 전체 흐름](./음성_브로드캐스팅_앱_전체_흐름.md) - 앱의 전체 동작 과정
-- [📡 API 엔드포인트 명세서](./API_엔드포인트_명세서.md) - 모든 API 상세 정보
+### Core Documents
+- [🎯 Voice Broadcasting App Flow](./VOICE_BROADCASTING_APP_FLOW.md) - Complete app workflow
+- [📡 API Documentation](./API_DOCUMENTATION.md) - Detailed API endpoints
 
-### 배포 및 설정
-- [🚀 Render 배포 가이드](./Render_배포_가이드.md) - Render 플랫폼 배포 방법
-- [🔧 Redis 마이그레이션 가이드](./Redis_마이그레이션_가이드.md) - Redis 설정 및 마이그레이션
-- [🌏 싱가포르 서버 설정 가이드](./싱가포르_서버_설정_가이드.md) - 싱가포르 리전 설정
+### Deployment & Configuration
+- [🚀 Render Deployment Guide](./RENDER_DEPLOYMENT_GUIDE.md) - How to deploy on Render
+- [🔧 Redis Migration Guide](./REDIS_MIGRATION_GUIDE.md) - Redis setup and migration
+- [🌏 Singapore Server Setup](./SINGAPORE_SERVER_SETUP.md) - Singapore region configuration
 
-### 상세 기술 문서 (docs/)
-- [🔌 API 통합 가이드](./docs/API_통합_가이드.md) - 클라이언트 통합 방법
-- [🏗️ API 서버 아키텍처](./docs/API_서버_아키텍처.md) - 서버 구조 설명
-- [🧪 브로드캐스트 API 테스트 가이드](./docs/브로드캐스트_API_테스트_가이드.md) - API 테스트 방법
-- [📐 브로드캐스트 시스템 구조](./docs/브로드캐스트_시스템_구조.md) - 브로드캐스트 내부 구조
-- [🎲 수신자 선택 알고리즘](./docs/수신자_선택_알고리즘.md) - 수신자 선택 로직
+### Technical Documentation (docs/)
+- [🔌 API Integration Guide](./docs/API_INTEGRATION_GUIDE.md) - Client integration methods
+- [🏗️ API Server Architecture](./docs/API_SERVER_ARCHITECTURE.md) - Server structure
+- [🧪 Broadcast API Testing Guide](./docs/BROADCAST_API_TESTING_GUIDE.md) - API testing methods
+- [📐 Broadcast System Architecture](./docs/BROADCAST_SYSTEM_ARCHITECTURE.md) - Broadcast internals
+- [🎲 Recipient Selection Algorithm](./docs/RECIPIENT_SELECTION_ALGORITHM.md) - Recipient selection logic
 
 ## 최근 업데이트 (2025-04-19)
 

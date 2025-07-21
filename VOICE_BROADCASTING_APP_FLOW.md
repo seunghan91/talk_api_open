@@ -1,4 +1,4 @@
-# 음성 브로드캐스팅 앱 전체 흐름 가이드
+# Voice Broadcasting App Flow Guide
 
 ## 📱 앱 개요
 Talk 앱은 랜덤한 사용자들에게 음성 메시지를 브로드캐스팅하고, 응답을 받아 대화를 나눌 수 있는 음성 기반 소셜 앱입니다.
@@ -140,4 +140,4 @@ bundle exec rails runner scripts/test_broadcast_flow.rb
 - 인덱스 최적화
 
 ## 📱 클라이언트 구현 가이드
-[API_엔드포인트_명세서.md](API_엔드포인트_명세서.md) 참조
+See [API_DOCUMENTATION.md](API_DOCUMENTATION.md) for details
