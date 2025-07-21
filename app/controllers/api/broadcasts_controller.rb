@@ -111,6 +111,13 @@ module Api
       begin
         broadcast = Broadcast.find(params[:id])
 
+        # 브로드캐스트 수신자 확인 및 상태 업데이트
+        broadcast_recipient = broadcast.broadcast_recipients.find_by(recipient_id: current_user.id)
+        if broadcast_recipient
+          broadcast_recipient.update(status: 'replied')
+          Rails.logger.info("브로드캐스트 수신자 상태 업데이트: replied")
+        end
+
         # 음성 파일 첨부 확인
         unless params[:voice_file].present?
           Rails.logger.warn("음성 파일 없음: 답장 실패")
@@ -130,7 +137,10 @@ module Api
           broadcast
         )
 
-        # 대화방 가시성 보장을 위한 로그 추가
+        # 대화방 가시성 보장 - 응답하는 사용자에게도 대화방이 보이도록 설정
+        conversation.show_to!(current_user.id)
+        conversation.show_to!(broadcast.user_id)
+        
         Rails.logger.info("대화방 설정: ID #{conversation.id}, user_a_id: #{conversation.user_a_id}, user_b_id: #{conversation.user_b_id}")
         Rails.logger.info("삭제 상태: deleted_by_a: #{conversation.deleted_by_a}, deleted_by_b: #{conversation.deleted_by_b}")
 

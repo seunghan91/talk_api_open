@@ -132,6 +132,17 @@ module Api
         conversation.messages.order(created_at: :asc).includes(:sender).to_a
       end
 
+      # 상대방이 보낸 메시지를 읽음 처리
+      unread_messages = messages.select { |m| m.sender_id != current_user.id && !m.read? }
+      if unread_messages.any?
+        Message.where(id: unread_messages.map(&:id)).update_all(read: true)
+        # 캐시 무효화
+        Rails.cache.delete("conversation-messages-#{conversation.id}")
+        
+        # 메시지를 다시 로드하여 최신 상태 반영
+        messages = conversation.messages.order(created_at: :asc).includes(:sender).to_a
+      end
+
       render json: {
         conversation: conversation,
         messages: messages.as_json(include: { sender: { only: [ :id, :nickname ] } })

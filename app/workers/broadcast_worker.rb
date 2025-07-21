@@ -100,10 +100,10 @@ class BroadcastWorker
 
           Rails.logger.info("대화 처리 완료: ID #{conversation.id}")
 
-          # 브로드캐스트 발신자와 수신자 모두에게 대화방이 보이도록 설정
-          # 수신자가 브로드캐스트 메시지를 볼 수 있어야 함
-          conversation.show_to!(br.user_id)  # 수신자에게도 보임
-          conversation.show_to!(broadcast.user_id)  # 발신자에게도 보임
+          # 브로드캐스트 발신자에게만 대화방이 보이도록 설정
+          # 수신자는 응답하기 전까지 대화방이 보이지 않음
+          conversation.show_to!(broadcast.user_id)  # 발신자에게만 보임
+          conversation.hide_from!(br.user_id)  # 수신자에게는 숨김 (응답 시 보임)
 
           # 대화에 브로드캐스트 메시지 추가
           message = Message.create!(
