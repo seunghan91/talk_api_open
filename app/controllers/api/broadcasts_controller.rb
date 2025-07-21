@@ -76,9 +76,59 @@ module Api
       params.require(:broadcast).permit(:audio, :text, :recipient_count)
     end
 
+    def broadcast_response(broadcast)
+      {
+        id: broadcast.id,
+        content: broadcast.content,
+        text: broadcast.text,
+        created_at: broadcast.created_at,
+        user: {
+          id: broadcast.user.id,
+          nickname: broadcast.user.nickname
+        }
+      }
+    end
+
+    # 브로드캐스트 상세 정보 (응답 상태 포함)
     def show
-      @broadcast = Broadcast.find(params[:id])
-      render json: @broadcast
+      begin
+        @broadcast = Broadcast.find(params[:id])
+        
+        # 브로드캐스트 소유자만 상세 정보 조회 가능
+        unless @broadcast.user_id == current_user.id
+          return render json: { error: "권한이 없습니다." }, status: :forbidden
+        end
+
+        # 수신자 정보와 응답 상태
+        recipients_info = @broadcast.broadcast_recipients.includes(:user).map do |recipient|
+          {
+            user_id: recipient.user_id,
+            nickname: recipient.user.nickname,
+            status: recipient.status,
+            received_at: recipient.created_at,
+            has_conversation: recipient.conversation_exists?
+          }
+        end
+
+        # 응답 통계
+        stats = {
+          total_recipients: recipients_info.count,
+          delivered: recipients_info.count { |r| r[:status] == "delivered" },
+          read: recipients_info.count { |r| r[:status] == "read" },
+          replied: recipients_info.count { |r| r[:status] == "replied" }
+        }
+
+        render json: {
+          broadcast: broadcast_response(@broadcast),
+          recipients: recipients_info,
+          stats: stats
+        }
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: "브로드캐스트를 찾을 수 없습니다." }, status: :not_found
+      rescue => e
+        Rails.logger.error("브로드캐스트 상세 조회 중 오류: #{e.message}")
+        render json: { error: "조회 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
     end
 
     # 브로드캐스트를 읽음으로 표시
