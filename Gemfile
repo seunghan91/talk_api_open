@@ -14,7 +14,7 @@ gem "puma", "~> 6.0"
 gem "nokogiri", "~> 1.16.0"
 
 # FFI 버전 제한 (호환성 문제 해결)
-gem "ffi", "~> 1.15.5"
+gem "ffi", "~> 1.17.2"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"
