@@ -11,7 +11,7 @@ RSpec.describe NotificationService do
 
         result = service.send_notification(
           user: user,
-          type: :new_message,
+          type: :message,
           title: '새 메시지',
           body: '안녕하세요!'
         )
@@ -23,7 +23,7 @@ RSpec.describe NotificationService do
         expect {
           service.send_notification(
             user: user,
-            type: :new_message,
+            type: :message,
             title: '새 메시지',
             body: '안녕하세요!'
           )
@@ -39,7 +39,7 @@ RSpec.describe NotificationService do
 
         result = service.send_notification(
           user: user,
-          type: :new_message,
+          type: :message,
           title: '새 메시지',
           body: '안녕하세요!'
         )
@@ -51,7 +51,7 @@ RSpec.describe NotificationService do
         expect {
           service.send_notification(
             user: user,
-            type: :new_message,
+            type: :message,
             title: '새 메시지',
             body: '안녕하세요!'
           )
@@ -67,7 +67,7 @@ RSpec.describe NotificationService do
 
         result = service.send_notification(
           user: user,
-          type: :new_message,
+          type: :message,
           title: '새 메시지',
           body: '안녕하세요!'
         )
@@ -95,7 +95,8 @@ RSpec.describe NotificationService do
           message = messages.first
           expect(message[:to]).to eq(user.push_token)
           expect(message[:title]).to include(broadcast.user.nickname)
-          expect(message[:body]).to include('새로운 브로드캐스트')
+          # broadcast.content가 있으면 그 내용을, 없으면 기본 메시지를 사용
+          expect(message[:body]).to eq(broadcast.content.presence || "새로운 음성 메시지가 도착했습니다")
         end
 
         service.send_broadcast_notification(user, broadcast)
@@ -148,7 +149,7 @@ RSpec.describe NotificationService do
 
       result = service.send_bulk_notifications(
         users: users,
-        type: :announcement,
+        type: :system,
         title: '공지사항',
         body: '중요한 공지사항입니다.'
       )
@@ -161,7 +162,7 @@ RSpec.describe NotificationService do
       expect {
         service.send_bulk_notifications(
           users: users,
-          type: :announcement,
+          type: :system,
           title: '공지사항',
           body: '중요한 공지사항입니다.'
         )
@@ -178,7 +179,7 @@ RSpec.describe NotificationService do
 
       service_with_injection.send_notification(
         user: user,
-        type: :test,
+        type: :system,
         title: 'Test',
         body: 'Test message'
       )

@@ -3,48 +3,53 @@ module Api
     before_action :authorize_request
 
     def create
-      # 로그 추가
       Rails.logger.info("메시지 전송 요청 - params: #{params.inspect}")
 
       # 파라미터 검사
-      unless message_params[:receiver_id].present? && message_params[:content].present?
-        return render json: { error: "수신자 ID와 메시지 내용은 필수입니다." }, status: :bad_request
+      unless message_params[:receiver_id].present?
+        return render json: { error: "수신자 ID는 필수입니다." }, status: :bad_request
       end
 
       # 대화를 찾거나 새로 생성
-      begin
-        # 새로운 헬퍼 메서드 사용
-        conversation = Conversation.find_or_create_conversation(current_user.id, message_params[:receiver_id])
+      conversation_result = conversation_service.find_or_create_conversation(message_params[:receiver_id])
+      
+      unless conversation_result.success?
+        return render json: { error: conversation_result.error }, status: :unprocessable_entity
+      end
 
-        # 메시지 생성
-        message = conversation.messages.create!(
-          sender_id: current_user.id,
-          content: message_params[:content],
-          message_type: message_params[:message_type] || "text"
-        )
+      # 메시지 전송
+      send_params = {
+        content: message_params[:content],
+        message_type: message_params[:message_type] || "text",
+        voice_file: params[:voice_file],
+        image_file: params[:image_file]
+      }
 
-        # 캐시 무효화
-        Rails.cache.delete("conversation-messages-#{conversation.id}")
-        Rails.cache.delete("conversations-user-#{current_user.id}")
-        Rails.cache.delete("conversations-user-#{message_params[:receiver_id]}")
+      result = message_service.send_message(conversation_result.conversation.id, send_params)
 
-        # 응답
+      if result.success?
         render json: {
           success: true,
           message: "메시지가 전송되었습니다.",
           data: {
-            conversation_id: conversation.id,
-            message: message.as_json(include: { sender: { only: [ :id, :nickname ] } })
+            conversation_id: conversation_result.conversation.id,
+            message: result.message
           }
         }, status: :created
-      rescue => e
-        Rails.logger.error("메시지 전송 실패: #{e.message}")
-        Rails.logger.error(e.backtrace.join("\n"))
-        render json: { error: "메시지 전송 중 오류가 발생했습니다: #{e.message}" }, status: :internal_server_error
+      else
+        render json: { error: result.error }, status: :unprocessable_entity
       end
     end
 
     private
+
+    def conversation_service
+      @conversation_service ||= ConversationService.new(current_user)
+    end
+
+    def message_service
+      @message_service ||= MessageService.new(current_user)
+    end
 
     def message_params
       params.require(:message).permit(:receiver_id, :content, :message_type)

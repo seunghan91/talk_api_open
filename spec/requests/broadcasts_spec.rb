@@ -2,7 +2,19 @@ require 'swagger_helper'
 
 RSpec.describe 'Broadcasts API', type: :request do
   let(:user) { create(:user) }
+  let(:other_user) { create(:user) }
   let(:valid_token) { generate_token_for(user) }
+
+  # Create a broadcast from another user for testing show/reply endpoints
+  let!(:broadcast) do
+    create(:broadcast, user: other_user)
+  end
+
+  # Make current user a recipient of the broadcast
+  let!(:broadcast_recipient) do
+    create(:broadcast_recipient, broadcast: broadcast, user: user)
+  end
+
   path '/api/v1/broadcasts' do
     get 'List broadcasts' do
       tags 'Broadcasts'
@@ -18,30 +30,21 @@ RSpec.describe 'Broadcasts API', type: :request do
                 type: :object,
                 properties: {
                   id: { type: :integer },
-                  user_id: { type: :integer },
-                  text: { type: :string },
-                  audio_url: { type: :string },
-                  expired_at: { type: :string, format: 'date-time' },
-                  created_at: { type: :string, format: 'date-time' },
-                  user: {
+                  content: { type: :string, nullable: true },
+                  audio_url: { type: :string, nullable: true },
+                  sender: {
                     type: :object,
                     properties: {
                       id: { type: :integer },
-                      nickname: { type: :string },
-                      profile_image: { type: :string, nullable: true }
+                      nickname: { type: :string }
                     }
-                  }
+                  },
+                  created_at: { type: :string, format: 'date-time' }
                 }
               }
             },
-            pagination: {
-              type: :object,
-              properties: {
-                current_page: { type: :integer },
-                total_pages: { type: :integer },
-                total_count: { type: :integer }
-              }
-            }
+            filter: { type: :string },
+            request_id: { type: :string }
           }
 
         let(:Authorization) { "Bearer #{valid_token}" }
@@ -60,31 +63,17 @@ RSpec.describe 'Broadcasts API', type: :request do
       security [ bearer_auth: [] ]
       consumes 'multipart/form-data'
       produces 'application/json'
-      parameter name: :text, in: :formData, type: :string, description: 'Broadcast text'
-      parameter name: :audio, in: :formData, type: :file, description: 'Audio file'
+      parameter name: 'broadcast[content]', in: :formData, type: :string, description: 'Broadcast content'
+      parameter name: 'broadcast[voice_file]', in: :formData, type: :file, description: 'Voice file'
+      parameter name: 'broadcast[recipient_count]', in: :formData, type: :integer, description: 'Recipient count'
 
-      response '201', 'Broadcast created successfully' do
-        schema type: :object,
-          properties: {
-            id: { type: :integer },
-            user_id: { type: :integer },
-            text: { type: :string },
-            audio_url: { type: :string },
-            expired_at: { type: :string, format: 'date-time' },
-            created_at: { type: :string, format: 'date-time' }
-          }
-
-        let(:Authorization) { "Bearer #{valid_token}" }
-        let(:text) { '안녕하세요!' }
-        let(:audio) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
-        run_test!
-      end
-
-      response '422', 'Invalid parameters' do
+      response '400', 'Invalid parameters - missing voice file' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:Authorization) { "Bearer #{valid_token}" }
-        let(:text) { '안녕하세요!' }
-        let(:audio) { nil }
+        let(:'broadcast[content]') { 'Test broadcast' }
+        let(:'broadcast[voice_file]') { nil }
+        let(:'broadcast[recipient_count]') { 5 }
+
         run_test!
       end
     end
@@ -105,71 +94,31 @@ RSpec.describe 'Broadcasts API', type: :request do
               type: :object,
               properties: {
                 id: { type: :integer },
-                user_id: { type: :integer },
-                text: { type: :string },
-                audio_url: { type: :string },
-                expired_at: { type: :string, format: 'date-time' },
-                created_at: { type: :string, format: 'date-time' },
-                user: {
+                content: { type: :string, nullable: true },
+                audio_url: { type: :string, nullable: true },
+                sender: {
                   type: :object,
                   properties: {
                     id: { type: :integer },
-                    nickname: { type: :string },
-                    profile_image: { type: :string, nullable: true }
+                    nickname: { type: :string }
                   }
-                }
+                },
+                created_at: { type: :string, format: 'date-time' },
+                status: { type: :string, nullable: true }
               }
-            }
+            },
+            request_id: { type: :string }
           }
 
-        let(:id) { '1' }
+        let(:id) { broadcast.id }
         let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '404', 'Broadcast not found' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
+        let(:id) { 999999 }
         let(:Authorization) { "Bearer #{valid_token}" }
-        run_test!
-      end
-    end
-  end
-
-  path '/api/v1/broadcasts/{id}/reply' do
-    parameter name: :id, in: :path, type: :integer, description: 'Broadcast ID'
-
-    post 'Reply to a broadcast' do
-      tags 'Broadcasts'
-      security [ bearer_auth: [] ]
-      consumes 'application/json'
-      produces 'application/json'
-      parameter name: :params, in: :body, schema: {
-        type: :object,
-        properties: {
-          message: { type: :string, example: '반갑습니다!' }
-        },
-        required: [ 'message' ]
-      }
-
-      response '201', 'Reply sent successfully' do
-        schema type: :object,
-          properties: {
-            message: { type: :string },
-            conversation_id: { type: :integer }
-          }
-
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer #{valid_token}" }
-        let(:params) { { message: '반갑습니다!' } }
-        run_test!
-      end
-
-      response '404', 'Broadcast not found' do
-        schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer #{valid_token}" }
-        let(:params) { { message: '반갑습니다!' } }
         run_test!
       end
     end

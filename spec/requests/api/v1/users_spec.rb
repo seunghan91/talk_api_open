@@ -6,7 +6,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
 
   describe 'GET /api/v1/users/random_nickname' do
     it '랜덤 닉네임을 정상적으로 반환' do
-      get '/api/v1/users/generate_random_nickname', headers: auth_headers
+      get '/api/v1/users/random_nickname', headers: auth_headers
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)).to have_key('nickname')
     end

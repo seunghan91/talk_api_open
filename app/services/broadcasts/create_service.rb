@@ -15,10 +15,10 @@ module Broadcasts
       end
     end
 
-    def initialize(user:, audio:, text:, recipient_count:, worker: BroadcastWorker)
+    def initialize(user:, audio:, content:, recipient_count:, worker: BroadcastWorker)
       @user = user
       @audio = audio
-      @text = text
+      @content = content
       @recipient_count = normalize_recipient_count(recipient_count)
       @worker = worker # 의존성 주입
     end
@@ -46,16 +46,15 @@ module Broadcasts
 
     def validate_inputs
       return Result.new(success: false, error: "음성 파일이 필요합니다.") unless @audio.present?
-      return Result.new(success: false, error: "텍스트가 너무 깁니다. (최대 200자)") if @text && @text.length > 200
+      return Result.new(success: false, error: "텍스트가 너무 깁니다. (최대 200자)") if @content && @content.length > 200
 
       Result.new(success: true)
     end
 
     def create_broadcast
       @user.broadcasts.create!(
-        text: @text,
-        audio: @audio,
-        content: @text # 기존 모델과의 호환성
+        content: @content,
+        audio: @audio
       )
     end
 

@@ -8,11 +8,11 @@ class Message < ApplicationRecord
   has_one_attached :voice_file
 
   # 음성 파일 변경 시 duration 설정 콜백 추가
-  after_save :set_duration_from_voice_file, if: -> { voice_file.attached? && saved_change_to_voice_file_attachment? }
+  after_commit :set_duration_from_voice_file, if: -> { voice_file.attached? && attachment_changes["voice_file"].present? }, on: [:create, :update]
 
-  # 메시지 타입 검증 - voice, broadcast, text 허용
+  # 메시지 타입 검증 - voice, broadcast, text, broadcast_reply 허용
   validates :message_type, presence: true,
-            inclusion: { in: %w[text voice broadcast_reply] }
+            inclusion: { in: %w[text voice broadcast broadcast_reply] }
   validates :sender_id, presence: true
 
   # 음성 메시지일 경우 voice_file 필수 (시드 데이터 생성을 위해 일시적으로 주석 처리)
@@ -84,7 +84,7 @@ class Message < ApplicationRecord
   # 브로드캐스트 메시지인 경우 음성 파일 URL 반환
   def broadcast_voice_url
     return nil unless broadcast
-    broadcast.voice_file.attached? ? broadcast.voice_file.url : nil
+    broadcast.audio.attached? ? broadcast.audio.url : nil
   end
 
   # 사용자가 메시지를 볼 수 있는지 확인
@@ -134,7 +134,7 @@ class Message < ApplicationRecord
 
   # 첨부파일 타입 검증
   def validate_voice_file_type
-    unless voice_file.content_type.in?(%w[audio/m4a audio/mp4 audio/mpeg audio/aac audio/wav audio/webm audio/x-m4a])
+    unless voice_file.content_type.in?(%w[audio/m4a audio/mp4 audio/mpeg audio/aac audio/wav audio/webm audio/x-m4a audio/x-wav])
       errors.add(:voice_file, "유효한 오디오 파일이 아닙니다.")
     end
   end

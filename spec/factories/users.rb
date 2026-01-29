@@ -4,5 +4,7 @@ FactoryBot.define do
     password { 'test1234' }
     nickname { '테스트유저' }
     gender { 'male' }
+    verified { true }
+    blocked { false }
   end
 end

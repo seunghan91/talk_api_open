@@ -105,24 +105,55 @@ def create_voice_message(conversation, sender, receiver_user, audio_path, broadc
   puts "  - Creating voice message with audio: #{File.basename(audio_path)}"
 
   begin
-    # 빈 메시지 생성 (음성 파일 첨부 없이)
+    # 오디오 파일 크기 및 duration 계산
+    file_size = File.size(audio_path)
+    # WAV 파일의 간단한 duration 계산 (44.1kHz, 16bit, mono 가정)
+    estimated_duration = [file_size / (44100 * 2), 5].max.to_i.clamp(5, 120)
+    
+    # 메시지 생성 (음성 파일 첨부 포함)
     message = conversation.messages.new(
       sender_id: sender.id,
       message_type: broadcast ? "broadcast_response" : "voice",
       read: false, # 읽지 않음 상태로 초기화
-      duration: rand(5..60), # 임의의 오디오 길이 (초)
+      duration: estimated_duration,
       broadcast_id: broadcast&.id
     )
 
     # 저장 먼저 하기
     if message.save
-      puts "  - Created empty message (ID: #{message.id}) in Conv ##{conversation.id}"
+      puts "  - Created message (ID: #{message.id}) in Conv ##{conversation.id}"
 
-      # 메시지 생성 시 conversation의 updated_at 자동 갱신 확인 필요
-      conversation.touch if conversation.respond_to?(:touch) # 수동 갱신
+      # Active Storage를 사용하여 음성 파일 첨부
+      begin
+        if message.respond_to?(:voice_file) && message.voice_file.respond_to?(:attach)
+          message.voice_file.attach(
+            io: File.open(audio_path),
+            filename: File.basename(audio_path),
+            content_type: 'audio/wav'
+          )
+          puts "  - Successfully attached audio file: #{File.basename(audio_path)}"
+        elsif message.respond_to?(:audio) && message.audio.respond_to?(:attach)
+          message.audio.attach(
+            io: File.open(audio_path),
+            filename: File.basename(audio_path),
+            content_type: 'audio/wav'
+          )
+          puts "  - Successfully attached audio file to 'audio' field: #{File.basename(audio_path)}"
+        else
+          puts "  - NOTE: No Active Storage attachment method found (voice_file or audio)"
+          # 파일 경로만 저장하는 경우
+          if message.respond_to?(:audio_url=)
+            message.update(audio_url: "/audio_samples/#{File.basename(audio_path)}")
+            puts "  - Stored audio URL: /audio_samples/#{File.basename(audio_path)}"
+          end
+        end
+      rescue => attachment_error
+        puts "  - WARNING: Audio attachment failed: #{attachment_error.message}"
+        puts "  - Message created without audio attachment"
+      end
 
-      # 음성 파일 없이 메시지만 생성해도 충분함
-      puts "  - NOTE: Skipping voice file attachment due to validation issues"
+      # 메시지 생성 시 conversation의 updated_at 자동 갱신
+      conversation.touch if conversation.respond_to?(:touch)
 
       message
     else

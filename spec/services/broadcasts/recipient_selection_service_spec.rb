@@ -1,18 +1,19 @@
 require 'rails_helper'
 
 RSpec.describe Broadcasts::RecipientSelectionService do
-  let(:sender) { create(:user) }
+  let(:sender) { create(:user, blocked: false, verified: true) }
   let(:service) { described_class.new(sender) }
 
   # 테스트용 사용자 생성
-  let!(:active_users) { create_list(:user, 10, status: :active, verified: true) }
-  let!(:suspended_user) { create(:user, status: :suspended) }
-  let!(:unverified_user) { create(:user, verified: false) }
-  let!(:blocked_user) { create(:user, status: :active) }
+  # DB 컬럼: blocked (boolean), verified (boolean)
+  let!(:active_users) { create_list(:user, 10, blocked: false, verified: true) }
+  let!(:blocked_user_in_system) { create(:user, blocked: true, verified: true) }
+  let!(:unverified_user) { create(:user, blocked: false, verified: false) }
+  let!(:blocked_by_sender) { create(:user, blocked: false, verified: true) }
 
   before do
-    # 차단 관계 설정
-    create(:block, blocker: sender, blocked: blocked_user)
+    # 차단 관계 설정 (sender가 blocked_by_sender를 차단)
+    create(:block, blocker: sender, blocked: blocked_by_sender)
   end
 
   describe '#select_recipients' do
@@ -22,29 +23,29 @@ RSpec.describe Broadcasts::RecipientSelectionService do
         expect(recipients.count).to eq(5)
       end
 
-      it '활성 상태의 사용자만 선택한다' do
-        recipients = service.select_recipients(count: 5)
-        expect(recipients).to all(have_attributes(status: 'active'))
+      it '차단되지 않은 사용자만 선택한다' do
+        recipients = service.select_recipients(count: 15)
+        expect(recipients).to all(have_attributes(blocked: false))
       end
 
       it '인증된 사용자만 선택한다' do
-        recipients = service.select_recipients(count: 5)
+        recipients = service.select_recipients(count: 15)
         expect(recipients).to all(have_attributes(verified: true))
       end
 
       it '발신자를 제외한다' do
-        recipients = service.select_recipients(count: 5)
+        recipients = service.select_recipients(count: 15)
         expect(recipients).not_to include(sender)
       end
 
       it '차단한 사용자를 제외한다' do
-        recipients = service.select_recipients(count: 10)
-        expect(recipients).not_to include(blocked_user)
+        recipients = service.select_recipients(count: 15)
+        expect(recipients).not_to include(blocked_by_sender)
       end
 
       it '차단당한 사용자를 제외한다' do
         create(:block, blocker: active_users.first, blocked: sender)
-        recipients = service.select_recipients(count: 10)
+        recipients = service.select_recipients(count: 15)
         expect(recipients).not_to include(active_users.first)
       end
     end
@@ -52,8 +53,9 @@ RSpec.describe Broadcasts::RecipientSelectionService do
     context '사용 가능한 사용자가 부족할 때' do
       it '가능한 모든 사용자를 반환한다' do
         recipients = service.select_recipients(count: 20)
-        # active_users(10) - blocked_user(1) = 9명
-        expect(recipients.count).to eq(9)
+        # active_users(10명)이 모두 eligible
+        # blocked_by_sender는 별도 생성되어 차단됨 (eligible에서 제외)
+        expect(recipients.count).to eq(10)
       end
     end
 
@@ -124,12 +126,12 @@ RSpec.describe Broadcasts::RecipientSelectionService do
       male_users = active_users[0..4]
       female_users = active_users[5..9]
 
-      male_users.each { |u| u.update(gender: :male) }
-      female_users.each { |u| u.update(gender: :female) }
+      male_users.each { |u| u.update(gender: 'male') }
+      female_users.each { |u| u.update(gender: 'female') }
 
       service_with_filter = described_class.new(sender)
       recipients = service_with_filter
-        .with_filters(gender: :female)
+        .with_filters(gender: 'female')
         .select_recipients(count: 3)
 
       expect(recipients).to all(have_attributes(gender: 'female'))

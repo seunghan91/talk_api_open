@@ -83,6 +83,13 @@ module Api
         }
       end
 
+      # 읽지 않은 알림 수 조회
+      def unread_count
+        render json: {
+          unread_count: current_user.notifications.unread.count
+        }
+      end
+
       # 푸시 토큰 업데이트
       def update_push_token
         token = params[:push_token]

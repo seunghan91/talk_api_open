@@ -7,6 +7,24 @@ class UserRepository
   include ReadableUserRepository
   include WritableUserRepository
 
+  # 인스턴스 메서드들 (Command 패턴에서 사용)
+  def find_by_phone(phone_number)
+    User.find_by(phone_number: phone_number)
+  end
+
+  def exists_by_phone?(phone_number)
+    User.exists?(phone_number: phone_number)
+  end
+
+  def create_with_wallet(attributes)
+    ActiveRecord::Base.transaction do
+      user = User.create!(attributes)
+      # User 모델의 after_create callback이 wallet을 생성하지 않은 경우에만 생성
+      Wallet.create!(user: user, balance: 0) unless user.wallet.present?
+      user.reload
+    end
+  end
+
   # Repository 특화 메서드들 (ReadableUserRepository에 없는 것들만)
   class << self
     def search(conditions = {})
@@ -53,7 +71,7 @@ class UserRepository
     end
 
     def blocked_by(blocker)
-      User.joins(:received_blocks)
+      User.joins(:blocks_as_blocked)
           .where(blocks: { blocker_id: blocker.id })
     end
 
@@ -82,7 +100,7 @@ class UserRepository
     end
 
     def suspended_users
-      User.where(status: :suspended)
+      User.where(blocked: true)
     end
 
     def with_completed_profiles
@@ -121,43 +139,5 @@ class UserRepository
           .where("broadcasts.created_at > ?", since)
           .distinct
     end
-  end
-
-  # 인스턴스 메서드들
-  def initialize
-    # 필요한 경우 의존성 주입을 위한 초기화
-  end
-
-  # Repository 특화 메서드들
-  def active_users
-    where(status: :active)
-  end
-
-  def find_with_profile(id)
-    includes(:wallet, :user_suspensions).find(id)
-  end
-
-  def search(conditions = {})
-    self.class.search(conditions)
-  end
-
-  def recently_active(limit: 10, since: nil)
-    self.class.recently_active(limit: limit, since: since)
-  end
-
-  def with_broadcasts_count
-    self.class.with_broadcasts_count
-  end
-
-  def blocked_by(blocker)
-    self.class.blocked_by(blocker)
-  end
-
-  def create_with_profile(params)
-    self.class.create_with_profile(params)
-  end
-
-  def with_associations(*associations)
-    self.class.with_associations(*associations)
   end
 end

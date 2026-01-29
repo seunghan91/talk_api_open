@@ -64,11 +64,34 @@ Rails.application.configure do
   # want to log everything, set the level to "debug".
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info")
 
-  # Use a different cache store in production.
-  config.cache_store = :redis_cache_store, {
-    url: ENV.fetch("REDIS_URL", "redis://localhost:6379/0"),
-    expires_in: 12.hours
+  # Use a different cache store in staging.
+  # Using Rails built-in :redis_cache_store (not redis-rails gem)
+  # This provides better integration with Rails and proper connection pooling
+  redis_url = ENV.fetch("REDIS_URL", "redis://localhost:6379/0")
+
+  # Detect if SSL is required (external Render Redis or rediss:// protocol)
+  is_external_redis = redis_url.start_with?("rediss://") ||
+                      (redis_url.include?(".render.com") && !redis_url.include?("localhost"))
+
+  cache_redis_options = {
+    url: redis_url,
+    expires_in: 12.hours,
+    namespace: "talkk_cache_staging",
+    connect_timeout: 5,
+    read_timeout: 1,
+    write_timeout: 1,
+    reconnect_attempts: 3,
+    error_handler: -> (method:, returning:, exception:) {
+      Rails.logger.error("Redis Cache Error: #{method} failed with #{exception.class}: #{exception.message}")
+      # Report to Sentry if available
+      Sentry.capture_exception(exception, extra: { method: method, returning: returning }) if defined?(Sentry)
+    }
   }
+
+  # Add SSL configuration for external Redis connections
+  cache_redis_options[:ssl] = true if is_external_redis
+
+  config.cache_store = :redis_cache_store, cache_redis_options
 
   # Use a real queuing backend for Active Job (and separate queues per environment).
   config.active_job.queue_adapter = :sidekiq

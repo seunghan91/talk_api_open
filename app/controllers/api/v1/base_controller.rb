@@ -55,9 +55,26 @@ module Api
           if header.present?
             token = header.split(" ").last
             decoded = AuthToken.decode(token)
+
+            # AuthToken.decode returns nil for invalid/expired tokens
+            if decoded.nil?
+              Rails.logger.warn("JWT 디코드 실패: 유효하지 않은 토큰")
+              render json: { error: "유효하지 않은 토큰입니다." }, status: :unauthorized
+              return
+            end
+
             @current_user_id = decoded[:user_id]
+
+            # Verify user exists
+            unless @current_user_id && User.exists?(id: @current_user_id)
+              Rails.logger.warn("사용자를 찾을 수 없음: #{@current_user_id}")
+              render json: { error: "존재하지 않는 사용자입니다." }, status: :unauthorized
+              return
+            end
           else
-            raise JWT::DecodeError.new("토큰이 제공되지 않았습니다")
+            Rails.logger.warn("토큰이 제공되지 않았습니다")
+            render json: { error: "유효하지 않은 토큰입니다." }, status: :unauthorized
+            return
           end
         rescue JWT::DecodeError => e
           Rails.logger.error("JWT 디코드 오류: #{e.message}")
@@ -72,7 +89,7 @@ module Api
           Rails.logger.warn("사용자를 찾을 수 없음: #{@current_user_id}")
           render json: { error: "존재하지 않는 사용자입니다." }, status: :unauthorized
         rescue => e
-          Rails.logger.error("인증 중 예상치 못한 오류: #{e.message}")
+          Rails.logger.error("인증 중 예상치 못한 오류: #{e.class.name} - #{e.message}")
           render json: { error: "인증 처리 중 오류가 발생했습니다." }, status: :internal_server_error
         end
       end

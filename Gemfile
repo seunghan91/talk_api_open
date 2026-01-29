@@ -1,20 +1,21 @@
 source "https://rubygems.org"
 git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
-ruby "3.3.0"
+ruby "3.4.1"
 
 # Bundle edge Rails instead: gem "rails", github: "rails/rails", branch: "main"
-gem "rails", "~> 7.1.0"
+gem "rails", "~> 8.1.0"
 # Use postgresql as the database for Active Record
-gem "pg", "~> 1.1"
+gem "pg", "~> 1.6"
+
+# Security fixes
+gem "nokogiri", ">= 1.18.9"
+gem "thor", ">= 1.4.0"
+
+# Ruby 3.5 compatibility
+gem "ostruct"
 # Use the Puma web server [https://github.com/puma/puma]
-gem "puma", "~> 6.0"
-
-# Nokogiri 버전 제한 (호환성 문제 해결)
-gem "nokogiri", "~> 1.16.0"
-
-# FFI 버전 제한 (호환성 문제 해결)
-gem "ffi", "~> 1.15.5"
+gem "puma", "~> 7.0"
 
 # Use Active Model has_secure_password [https://guides.rubyonrails.org/active_model_basics.html#securepassword]
 gem "bcrypt", "~> 3.1.7"
@@ -26,14 +27,14 @@ gem "tzinfo-data", platforms: %i[ mingw mswin x64_mingw jruby ]
 gem "bootsnap", require: false
 
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
-gem "rack-cors"
+gem "rack-cors", "~> 3.0"
 
 # JWT for authentication
-gem "jwt"
+gem "jwt", "~> 3.0"
 
 # Background jobs
-gem "sidekiq", "~> 7.1"
-gem "redis", "~> 4.0"
+gem "sidekiq", "~> 8.0"
+gem "redis", "~> 5.0"
 
 # 필요한 기본 gem만 유지하고 나머지는 배포 성공 후 추가
 # gem 'sidekiq-cron'
@@ -44,7 +45,7 @@ gem "redis", "~> 4.0"
 # gem "turbo-rails"     # Hotwire 기능 (RailsAdmin UI에 도움될 수 있음)
 
 # 명시적으로 logger gem 추가
-gem "logger", "~> 1.6"
+gem "logger"
 
 # 알림을 위한 Expo push notification
 gem "exponent-server-sdk"
@@ -58,8 +59,8 @@ gem "rswag-ui"
 gem "rswag-specs"
 
 # 에러 모니터링 도구
-gem "sentry-rails"
-gem "sentry-ruby"
+gem "sentry-rails", "~> 6.0"
+gem "sentry-ruby", "~> 6.0"
 
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
@@ -72,7 +73,7 @@ group :development, :test do
   gem "rubocop-rails-omakase", require: false
 
   # Testing
-  gem "rspec-rails"
+  gem "rspec-rails", "~> 8.0"
   gem "rspec-expectations"
   gem "rspec-mocks"
   gem "rspec-support"
@@ -91,7 +92,5 @@ group :test do
   gem "database_cleaner"
 end
 gem "kaminari"
-
-gem "redis-rails", "~> 5.0"
 
 gem "lograge", "~> 0.14.0"

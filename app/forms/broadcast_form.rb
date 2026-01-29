@@ -36,7 +36,7 @@ class BroadcastForm
     super(attributes)
     @recipient_filters ||= { gender: "all", age_group: "all", region: "all" }
     @audio_upload_service ||= AudioUploadService.new
-    @recipient_selection_service ||= Broadcasts::RecipientSelectionService.new
+    # recipient_selection_service는 user가 필요하므로 지연 초기화
     @broadcast_repository ||= BroadcastRepository.new
   end
 
@@ -70,14 +70,9 @@ class BroadcastForm
   def to_broadcast_params
     {
       user_id: user_id,
-      audio_url: @audio_url,
       duration: duration,
-      status: :active,
-      expires_at: 24.hours.from_now,
-      metadata: {
-        recipient_count: recipient_count,
-        filters: recipient_filters
-      }
+      active: true,
+      expired_at: 6.days.from_now
     }
   end
 
@@ -130,18 +125,27 @@ class BroadcastForm
   end
 
   def select_recipients
-    options = {
-      count: recipient_count,
-      filters: recipient_filters,
-      exclude_user_id: user_id
-    }
+    service = recipient_selection_service || build_recipient_selection_service
+    service.select_recipients(count: recipient_count)
+  end
 
-    recipient_selection_service.select_recipients(options)
+  def build_recipient_selection_service
+    Broadcasts::RecipientSelectionService.new(user).with_filters(normalize_filters)
+  end
+
+  def normalize_filters
+    return {} unless recipient_filters.present?
+
+    recipient_filters.reject { |_, v| v == "all" }
   end
 
   def create_broadcast(audio_url)
-    broadcast_params = to_broadcast_params.merge(audio_url: audio_url)
-    Broadcast.create!(broadcast_params)
+    broadcast = Broadcast.new(to_broadcast_params)
+    # audio_url은 Active Storage를 통해 attach하거나 URL로 저장
+    # 현재는 URL만 저장하는 방식이 아니므로 audio_url 인스턴스 변수로 보관
+    @audio_url = audio_url
+    broadcast.save!
+    broadcast
   end
 
   def create_recipient_records

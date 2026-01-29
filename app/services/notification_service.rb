@@ -34,6 +34,20 @@ class NotificationService
     Result.new(success: false, errors: [ e.message ])
   end
 
+  def send_welcome_notification(user)
+    send_notification(
+      user: user,
+      type: :system,
+      title: "환영합니다!",
+      body: "#{user.nickname}님, Talkk에 오신 것을 환영합니다!",
+      data: { type: "welcome" }
+    )
+  rescue => e
+    # 환영 알림 실패는 회원가입을 막지 않음
+    Rails.logger.warn("환영 알림 전송 실패: #{e.message}")
+    Result.new(success: false, errors: [e.message])
+  end
+
   def send_broadcast_notification(user, broadcast)
     return Result.new(success: true) unless user.broadcast_push_enabled
 
@@ -178,7 +192,7 @@ class NotificationService
     end
 
     def format_body(broadcast)
-      broadcast.text.presence || "새로운 음성 메시지가 도착했습니다"
+      broadcast.content.presence || "새로운 음성 메시지가 도착했습니다"
     end
 
     def format_data(broadcast)

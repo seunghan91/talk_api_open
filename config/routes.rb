@@ -36,15 +36,45 @@ Rails.application.routes.draw do
       resources :announcement_categories, only: [ :index, :create, :update, :destroy ]
       resources :announcements, only: [ :index, :show, :create, :update, :destroy ]
 
-      # 인증 관련 API
-      post "auth/request_code"
-      post "auth/verify_code"
-      post "auth/resend_code"
-      post "auth/register"
-      post "auth/login"
-      post "auth/logout"
-      post "auth/reset_password"
-      post "auth/check_phone"
+      # 인증 관련 API - SOLID 원칙에 따라 분리
+      namespace :auth do
+        # 전화번호 인증
+        resources :phone_verifications, only: [] do
+          collection do
+            post :create, action: :create        # POST /api/v1/auth/phone-verifications
+            post :verify                         # POST /api/v1/auth/phone-verifications/verify
+            post :resend                         # POST /api/v1/auth/phone-verifications/resend
+          end
+        end
+        
+        # 회원가입
+        resources :registrations, only: [:create] do
+          collection do
+            patch :profile, action: :update_profile  # PATCH /api/v1/auth/registrations/profile
+          end
+        end
+        
+        # 로그인/로그아웃
+        resources :sessions, only: [:create] do
+          collection do
+            delete :destroy                      # DELETE /api/v1/auth/sessions
+            get :current                         # GET /api/v1/auth/sessions/current
+          end
+        end
+        
+        # 비밀번호 재설정
+        resources :password_resets, only: [:create, :update]
+        
+        # 레거시 라우트 유지 (하위 호환성)
+        post "request_code", to: "phone_verifications#create"
+        post "verify_code", to: "phone_verifications#verify"
+        post "resend_code", to: "phone_verifications#resend"
+        post "register", to: "registrations#create"
+        post "login", to: "sessions#create"
+        post "logout", to: "sessions#destroy"
+        post "reset_password", to: "password_resets#create"
+        post "check_phone", to: "phone_verifications#check"
+      end
 
       # 사용자 관련 API (특정 경로가 먼저 와야 함)
       get "users/me"

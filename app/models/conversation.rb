@@ -83,6 +83,36 @@ class Conversation < ApplicationRecord
       end
     end
 
+    # 상대방 사용자 객체 반환 (User 객체를 인자로 받음)
+    def other_user(user)
+      user_id = user.is_a?(User) ? user.id : user
+      if user_a_id == user_id
+        user_b
+      elsif user_b_id == user_id
+        user_a
+      else
+        nil
+      end
+    end
+
+    # 사용자가 대화의 참여자인지 확인
+    def participant?(user)
+      user_id = user.is_a?(User) ? user.id : user
+      user_a_id == user_id || user_b_id == user_id
+    end
+
+    # 사용자가 대화를 삭제했는지 확인
+    def deleted_by?(user)
+      user_id = user.is_a?(User) ? user.id : user
+      if user_a_id == user_id
+        deleted_by_a
+      elsif user_b_id == user_id
+        deleted_by_b
+      else
+        false
+      end
+    end
+
     # 사용자 정보를 올바르게 매핑하기 위한 메서드 추가
     def self.find_or_create_conversation(user1_id, user2_id, broadcast = nil)
       # 유효성 검사

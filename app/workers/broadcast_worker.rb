@@ -131,7 +131,7 @@ class BroadcastWorker
         users: recipients,
         type: :broadcast,
         title: "#{broadcast.user.nickname}님의 새로운 브로드캐스트",
-        body: broadcast.text.presence || "새로운 음성 메시지가 도착했습니다",
+        body: broadcast.content.presence || "새로운 음성 메시지가 도착했습니다",
         data: {
           broadcast_id: broadcast.id,
           sender_id: broadcast.user_id
@@ -177,7 +177,7 @@ class BroadcastWorker
 
     # 기본 필터: 활성 상태, 전화번호 있는 사용자, 차단되지 않은 사용자
     base_query = User.where.not(id: [ sender.id ] + blocked_user_ids)
-                     .where(status: :active)
+                     .where(blocked: false)
                      .where.not(phone_number: nil)
 
     # 테스트 계정 처리 개선
@@ -195,13 +195,13 @@ class BroadcastWorker
     end
 
     # 최근 활동 사용자 필터링 (30일 이내 활동)
-    recent_active_users = base_query.where("last_sign_in_at > ?", 30.days.ago)
+    recent_active_users = base_query.where("last_login_at > ?", 30.days.ago)
 
     # 최근 브로드캐스트 수신자 제외 (24시간 이내)
     recent_broadcast_recipients = BroadcastRecipient.joins(:broadcast)
-                                                   .where(recipient_id: recent_active_users.pluck(:id))
+                                                   .where(user_id: recent_active_users.pluck(:id))
                                                    .where("broadcast_recipients.created_at > ?", 24.hours.ago)
-                                                   .pluck(:recipient_id).uniq
+                                                   .pluck(:user_id).uniq
 
     # 최근 수신자를 일부 제외 (완전 제외가 아닌 가중치 감소)
     recent_active_users = recent_active_users.where.not(id: recent_broadcast_recipients.sample(recent_broadcast_recipients.size / 2))
@@ -436,8 +436,8 @@ class BroadcastWorker
 
     User.where(id: user_ids).find_each do |user|
       # 마지막 로그인 시간 기반 점수
-      if user.last_sign_in_at
-        days_since_login = (Time.current - user.last_sign_in_at) / 1.day
+      if user.last_login_at
+        days_since_login = (Time.current - user.last_login_at) / 1.day
 
         # 로그인 시간에 따른 점수 (최근일수록 높은 점수)
         scores[user.id] = case days_since_login

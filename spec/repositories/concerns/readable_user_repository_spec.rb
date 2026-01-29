@@ -39,11 +39,12 @@ RSpec.describe ReadableUserRepository do
       expect(repository.count).to be >= 1
     end
 
-    # 쓰기 메서드는 제공하지 않아야 함
-    it '쓰기 메서드는 제공하지 않는다' do
-      expect(repository).not_to respond_to(:create)
-      expect(repository).not_to respond_to(:update)
-      expect(repository).not_to respond_to(:destroy)
+    # 참고: UserRepository는 ReadableUserRepository와 WritableUserRepository를 모두 포함하므로
+    # 쓰기 메서드도 제공함. 읽기 전용 인터페이스 테스트는 ReadOnlyUserRepository에서 수행.
+    it 'UserRepository는 읽기와 쓰기 메서드를 모두 제공한다' do
+      expect(repository).to respond_to(:create)
+      expect(repository).to respond_to(:update)
+      expect(repository).to respond_to(:destroy)
     end
   end
 
@@ -62,7 +63,7 @@ RSpec.describe ReadableUserRepository do
     it '쓰기 작업을 시도하면 에러를 발생시킨다' do
       expect {
         read_only_repo.create(phone_number: '01099999999')
-      }.to raise_error(NoMethodError)
+      }.to raise_error(NotImplementedError)
     end
   end
 end

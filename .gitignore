@@ -112,6 +112,9 @@ Thumbs.db
 .simplecov
 *.gem
 
+# RSpec 상태 파일
+/spec/examples.txt
+
 # 배포 관련
 /config/deploy/
 capistrano/
@@ -120,3 +123,5 @@ deployment/
 # 개발자 도구
 /vendor/bundle/
 .bundle/config
+
+/config/credentials/test.key

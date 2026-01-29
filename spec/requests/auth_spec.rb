@@ -1,7 +1,13 @@
 require 'swagger_helper'
 
 RSpec.describe 'Auth API', type: :request do
-  path '/api/auth/request_code' do
+  # Shared test data
+  let(:test_phone_number) { '01012345678' }
+  let(:test_password) { 'password123' }
+  let(:test_nickname) { '홍길동' }
+  let(:test_code) { '123456' }
+
+  path '/api/v1/auth/request_code' do
     post 'Requests authentication code' do
       tags 'Authentication'
       consumes 'application/json'
@@ -9,9 +15,14 @@ RSpec.describe 'Auth API', type: :request do
       parameter name: :params, in: :body, schema: {
         type: :object,
         properties: {
-          phone_number: { type: :string, example: '01012345678' }
+          user: {
+            type: :object,
+            properties: {
+              phone_number: { type: :string, example: '01012345678' }
+            }
+          }
         },
-        required: [ 'phone_number' ]
+        required: [ 'user' ]
       }
 
       response '200', 'Authentication code sent' do
@@ -23,20 +34,20 @@ RSpec.describe 'Auth API', type: :request do
             note: { type: :string }
           }
 
-        let(:params) { { phone_number: '01012345678' } }
+        let(:params) { { user: { phone_number: test_phone_number } } }
         run_test!
       end
 
       response '400', 'Bad request' do
         schema '$ref' => '#/components/schemas/error_response'
 
-        let(:params) { { phone_number: '' } }
+        let(:params) { { user: { phone_number: '' } } }
         run_test!
       end
     end
   end
 
-  path '/api/auth/verify_code' do
+  path '/api/v1/auth/verify_code' do
     post 'Verifies authentication code' do
       tags 'Authentication'
       consumes 'application/json'
@@ -44,10 +55,15 @@ RSpec.describe 'Auth API', type: :request do
       parameter name: :params, in: :body, schema: {
         type: :object,
         properties: {
-          phone_number: { type: :string, example: '01012345678' },
-          code: { type: :string, example: '123456' }
+          user: {
+            type: :object,
+            properties: {
+              phone_number: { type: :string, example: '01012345678' },
+              code: { type: :string, example: '123456' }
+            }
+          }
         },
-        required: [ 'phone_number', 'code' ]
+        required: [ 'user' ]
       }
 
       response '200', 'Authentication code verified successfully' do
@@ -74,20 +90,25 @@ RSpec.describe 'Auth API', type: :request do
             }
           }
 
-        let(:params) { { phone_number: '01012345678', code: '123456' } }
+        # Create phone verification with correct code (test env generates "123456")
+        before do
+          create(:phone_verification, phone_number: test_phone_number, code: test_code)
+        end
+
+        let(:params) { { user: { phone_number: test_phone_number, code: test_code } } }
         run_test!
       end
 
-      response '400', 'Invalid authentication code' do
+      response '400', 'Missing code parameter' do
         schema '$ref' => '#/components/schemas/error_response'
 
-        let(:params) { { phone_number: '01012345678', code: 'wrong' } }
+        let(:params) { { user: { phone_number: test_phone_number, code: '' } } }
         run_test!
       end
     end
   end
 
-  path '/api/auth/register' do
+  path '/api/v1/auth/register' do
     post 'Register a new user' do
       tags 'Authentication'
       consumes 'application/json'
@@ -95,12 +116,17 @@ RSpec.describe 'Auth API', type: :request do
       parameter name: :params, in: :body, schema: {
         type: :object,
         properties: {
-          phone_number: { type: :string, example: '01012345678' },
-          password: { type: :string, example: 'password123' },
-          nickname: { type: :string, example: '홍길동' },
-          gender: { type: :integer, example: 1, description: '0: unknown, 1: male, 2: female' }
+          user: {
+            type: :object,
+            properties: {
+              phone_number: { type: :string, example: '01012345678' },
+              password: { type: :string, example: 'password123' },
+              nickname: { type: :string, example: '홍길동' },
+              gender: { type: :integer, example: 1, description: '0: unknown, 1: male, 2: female' }
+            }
+          }
         },
-        required: [ 'phone_number', 'password', 'nickname' ]
+        required: [ 'user' ]
       }
 
       response '201', 'User registered successfully' do
@@ -111,20 +137,46 @@ RSpec.describe 'Auth API', type: :request do
             message: { type: :string }
           }
 
-        let(:params) { { phone_number: '01012345678', password: 'password123', nickname: '홍길동', gender: 1 } }
+        # Use a unique phone number for registration with password_confirmation
+        let(:unique_phone) { "010#{rand(1000..9999)}#{rand(1000..9999)}" }
+        let(:params) do
+          {
+            user: {
+              phone_number: unique_phone,
+              password: test_password,
+              password_confirmation: test_password,
+              nickname: test_nickname,
+              gender: 1
+            }
+          }
+        end
         run_test!
       end
 
       response '422', 'Invalid parameters or phone number is not verified' do
         schema '$ref' => '#/components/schemas/error_response'
 
-        let(:params) { { phone_number: '01012345678', password: 'pwd', nickname: '' } }
+        # Create existing user to trigger "already registered" error
+        before do
+          create(:user, phone_number: test_phone_number)
+        end
+
+        let(:params) do
+          {
+            user: {
+              phone_number: test_phone_number,
+              password: test_password,
+              password_confirmation: test_password,
+              nickname: test_nickname
+            }
+          }
+        end
         run_test!
       end
     end
   end
 
-  path '/api/auth/login' do
+  path '/api/v1/auth/login' do
     post 'Login a user' do
       tags 'Authentication'
       consumes 'application/json'
@@ -132,10 +184,15 @@ RSpec.describe 'Auth API', type: :request do
       parameter name: :params, in: :body, schema: {
         type: :object,
         properties: {
-          phone_number: { type: :string, example: '01012345678' },
-          password: { type: :string, example: 'password123' }
+          user: {
+            type: :object,
+            properties: {
+              phone_number: { type: :string, example: '01012345678' },
+              password: { type: :string, example: 'password123' }
+            }
+          }
         },
-        required: [ 'phone_number', 'password' ]
+        required: [ 'user' ]
       }
 
       response '200', 'Login successful' do
@@ -146,20 +203,25 @@ RSpec.describe 'Auth API', type: :request do
             message: { type: :string }
           }
 
-        let(:params) { { phone_number: '01012345678', password: 'password123' } }
+        # Create a user before testing login
+        before do
+          create(:user, phone_number: test_phone_number, password: test_password)
+        end
+
+        let(:params) { { user: { phone_number: test_phone_number, password: test_password } } }
         run_test!
       end
 
       response '401', 'Login failed' do
         schema '$ref' => '#/components/schemas/error_response'
 
-        let(:params) { { phone_number: '01012345678', password: 'wrong' } }
+        let(:params) { { user: { phone_number: test_phone_number, password: 'wrong' } } }
         run_test!
       end
     end
   end
 
-  path '/api/auth/check_phone' do
+  path '/api/v1/auth/check_phone' do
     post 'Check if phone number exists' do
       tags 'Authentication'
       consumes 'application/json'
@@ -179,13 +241,13 @@ RSpec.describe 'Auth API', type: :request do
             message: { type: :string }
           }
 
-        let(:params) { { phone_number: '01012345678' } }
+        let(:params) { { phone_number: test_phone_number } }
         run_test!
       end
     end
   end
 
-  path '/api/auth/resend_code' do
+  path '/api/v1/auth/resend_code' do
     post 'Resend authentication code' do
       tags 'Authentication'
       consumes 'application/json'
@@ -207,7 +269,14 @@ RSpec.describe 'Auth API', type: :request do
             note: { type: :string }
           }
 
-        let(:params) { { phone_number: '01012345678' } }
+        # Create an old phone verification to allow resend (beyond rate limit window)
+        before do
+          verification = create(:phone_verification, phone_number: test_phone_number)
+          # Force update timestamps to be 2 minutes ago to bypass rate limiting
+          verification.update_columns(created_at: 2.minutes.ago, updated_at: 2.minutes.ago)
+        end
+
+        let(:params) { { phone_number: test_phone_number } }
         run_test!
       end
 
@@ -220,7 +289,7 @@ RSpec.describe 'Auth API', type: :request do
     end
   end
 
-  path '/api/auth/logout' do
+  path '/api/v1/auth/logout' do
     post 'Logout a user' do
       tags 'Authentication'
       security [ bearer_auth: [] ]
@@ -232,7 +301,8 @@ RSpec.describe 'Auth API', type: :request do
             message: { type: :string }
           }
 
-        let(:Authorization) { "Bearer token" }
+        let(:user) { create(:user) }
+        let(:Authorization) { "Bearer #{generate_token_for(user)}" }
         run_test!
       end
     end

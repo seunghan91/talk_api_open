@@ -10,8 +10,11 @@ class User < ApplicationRecord
   attribute :gender, :integer, default: 1
   attribute :is_admin, :boolean, default: false  # 관리자 여부
 
-  enum :gender, { unknown: 0, male: 1, female: 2 }, prefix: true
-  enum :status, { active: 0, suspended: 1, banned: 2 }, prefix: true
+  enum :gender, { unknown: 0, male: 1, female: 2 }, prefix: true, validate: true
+  enum :status, { active: 0, suspended: 1, banned: 2 }, prefix: true, validate: true
+
+  # Scope for active users (not blocked and verified)
+  scope :active, -> { where(blocked: false, verified: true) }
 
   has_many :broadcasts, dependent: :destroy
   has_many :reports_as_reporter, class_name: "Report", foreign_key: :reporter_id
@@ -68,6 +71,12 @@ class User < ApplicationRecord
     is_admin || id == 1  # ID가 1인 사용자는 기본 관리자
   end
 
+  # 프리미엄 회원 여부 확인 (향후 구독 시스템 연동 예정)
+  def premium?
+    # TODO: 구독 시스템 연동 시 실제 구독 상태 확인 로직으로 변경
+    false
+  end
+
   # 지갑 잔액 조회
   def wallet_balance
     wallet&.balance || 0
@@ -119,7 +128,7 @@ class User < ApplicationRecord
       user_id: id,
       exp: 24.hours.from_now.to_i
     }
-    JWT.encode(payload, Rails.application.credentials.secret_key_base)
+    JWT.encode(payload, Rails.application.credentials.secret_key_base, 'HS256')
   end
 
   private

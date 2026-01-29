@@ -1,11 +1,8 @@
 module AuthHelper
   # JWT 토큰 생성 헬퍼 메서드
+  # AuthToken 클래스를 직접 사용하여 일관성 유지
   def generate_token_for(user)
-    payload = {
-      user_id: user.id,
-      exp: 24.hours.from_now.to_i
-    }
-    JWT.encode(payload, Rails.application.credentials.secret_key_base)
+    AuthToken.encode({ user_id: user.id })
   end
 
   # 인증 헤더 생성

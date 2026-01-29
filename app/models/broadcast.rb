@@ -14,7 +14,7 @@ class Broadcast < ApplicationRecord
     has_one_attached :audio
 
     # 음성 파일 변경 시 duration 설정하는 콜백 추가
-    after_save :set_duration_from_audio, if: -> { audio.attached? && saved_change_to_audio_attachment? }
+    after_commit :set_duration_from_audio, if: -> { audio.attached? && attachment_changes["audio"].present? }, on: [:create, :update]
 
     # 유효성 검증 추가
     validates :user_id, presence: true
@@ -49,7 +49,7 @@ class Broadcast < ApplicationRecord
       # 수신자 유효성 검사 및 제한
       recipients = User.where(id: recipient_ids)
                        .where.not(id: user_id)
-                       .where(status: :active)
+                       .active
                        .limit(max_count)
 
       return false if recipients.empty?

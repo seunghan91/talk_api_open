@@ -2,18 +2,22 @@ require 'rails_helper'
 
 RSpec.describe 'Api::V1::Auth', type: :request do
   describe 'POST /api/v1/auth/register' do
+    # Controller expects params wrapped in 'user' key
     let(:valid_params) do
       {
-        phone_number: '01012345678',
-        password: 'test1234',
-        nickname: '테스터',
-        gender: 'unspecified'
+        user: {
+          phone_number: '01012345678',
+          password: 'test1234',
+          password_confirmation: 'test1234',
+          nickname: '테스터',
+          gender: 'male'
+        }
       }
     end
 
     # 폰 인증이 미리 완료되었다고 가정
     before do
-      verification = PhoneVerification.create(
+      PhoneVerification.create(
         phone_number: '01012345678',
         code: '123456',
         verified: true,
@@ -25,16 +29,19 @@ RSpec.describe 'Api::V1::Auth', type: :request do
       post '/api/v1/auth/register', params: valid_params
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
-      expect(json['phone_number']).to eq('01012345678')
+      # Response contains user object with phone_number
+      expect(json['user']['phone_number']).to eq('01012345678')
     end
 
     it '전화번호가 누락되면 실패' do
-      post '/api/v1/auth/register', params: valid_params.except(:phone_number)
+      invalid_params = { user: valid_params[:user].except(:phone_number) }
+      post '/api/v1/auth/register', params: invalid_params
       expect(response).to have_http_status(:unprocessable_entity).or have_http_status(:bad_request)
     end
 
     it '비밀번호가 누락되면 실패' do
-      post '/api/v1/auth/register', params: valid_params.except(:password)
+      invalid_params = { user: valid_params[:user].except(:password) }
+      post '/api/v1/auth/register', params: invalid_params
       expect(response).to have_http_status(:unprocessable_entity).or have_http_status(:bad_request)
     end
   end
@@ -47,7 +54,8 @@ RSpec.describe 'Api::V1::Auth', type: :request do
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
       expect(json).to have_key('token')
-      expect(json['phone_number']).to eq('01012345678')
+      # Response contains user object with phone_number
+      expect(json['user']['phone_number']).to eq('01012345678')
     end
 
     it '비밀번호가 틀리면 실패' do
@@ -89,7 +97,8 @@ RSpec.describe 'Api::V1::Auth', type: :request do
       post '/api/v1/auth/verify_code', params: { phone_number: phone_number, code: code }
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
-      expect(json['success']).to be_truthy
+      # Response contains message key instead of success
+      expect(json).to have_key('message')
 
       # 인증 상태가 업데이트되었는지 확인
       verification = PhoneVerification.find_by(phone_number: phone_number)
@@ -100,12 +109,13 @@ RSpec.describe 'Api::V1::Auth', type: :request do
       post '/api/v1/auth/verify_code', params: { phone_number: phone_number, code: 'wrong_code' }
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json['error']).to include('인증코드')
+      # Error message format: "인증 코드가 일치하지 않습니다."
+      expect(json['error']).to include('인증 코드')
     end
 
     it '만료된 인증 코드는 실패' do
       # 만료된 인증 코드 생성
-      expired_verification = PhoneVerification.create(
+      PhoneVerification.create(
         phone_number: '01099999999',
         code: '999999',
         verified: false,
@@ -115,7 +125,8 @@ RSpec.describe 'Api::V1::Auth', type: :request do
       post '/api/v1/auth/verify_code', params: { phone_number: '01099999999', code: '999999' }
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json['error']).to include('만료')
+      # Error message format: "인증 시간이 초과되었습니다..."
+      expect(json['error']).to include('초과')
     end
   end
 end

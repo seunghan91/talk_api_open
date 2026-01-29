@@ -37,11 +37,13 @@ RSpec.describe 'SOLID 원칙 적용 검증' do
       custom_strategy = CustomNotificationStrategy.new
       service = NotificationService.new
 
-      # 런타임에 전략 변경 가능
+      # 런타임에 전략 변경 가능 (키워드 인자 사용)
       expect {
         service.send_notification(
-          create(:user),
+          user: create(:user),
           type: :custom,
+          title: "Custom Title",
+          body: "Custom Body",
           data: { message: "Test" }
         )
       }.not_to raise_error

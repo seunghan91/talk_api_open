@@ -4,7 +4,7 @@ class BroadcastRecipient < ApplicationRecord
   belongs_to :user
 
   # 상태 enum (delivered: 전달됨, read: 읽음, replied: 답장됨)
-  enum status: { delivered: 0, read: 1, replied: 2 }
+  enum :status, { delivered: 0, read: 1, replied: 2 }
 
   # after_create 콜백 제거 - BroadcastWorker에서 처리하도록 변경
   # (중복 대화/메시지 생성 방지)

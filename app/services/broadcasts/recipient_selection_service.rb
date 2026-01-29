@@ -50,17 +50,21 @@ module Broadcasts
         .order("COUNT(conversations.id) DESC")
         .limit(count)
 
+      # 결과를 배열로 변환하여 개수 확인 (grouped relation의 .count는 Hash를 반환함)
+      users_with_history_array = users_with_history.to_a
+      history_count = users_with_history_array.size
+
       # 부족한 경우 랜덤으로 추가
-      if users_with_history.count < count
-        remaining_count = count - users_with_history.count
+      if history_count < count
+        remaining_count = count - history_count
         additional_users = users
-          .where.not(id: users_with_history.pluck(:id))
+          .where.not(id: users_with_history_array.map(&:id))
           .order("RANDOM()")
           .limit(remaining_count)
 
-        users_with_history + additional_users
+        users_with_history_array + additional_users.to_a
       else
-        users_with_history
+        users_with_history_array
       end
     end
 
@@ -72,7 +76,7 @@ module Broadcasts
 
       def eligible_recipients(filters = {})
         scope = User
-          .where(status: :active)
+          .where(blocked: false)
           .where(verified: true)
           .where.not(id: @sender.id)
 

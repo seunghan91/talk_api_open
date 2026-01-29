@@ -1,7 +1,21 @@
 require 'swagger_helper'
 
 RSpec.describe 'Conversations API', type: :request do
-  path '/api/conversations' do
+  let(:user) { create(:user) }
+  let(:other_user) { create(:user) }
+  let(:valid_token) { generate_token_for(user) }
+
+  # Create a conversation between user and other_user
+  let!(:conversation) do
+    create(:conversation, user_a: user, user_b: other_user)
+  end
+
+  # Create a message in the conversation
+  let!(:message) do
+    create(:message, conversation: conversation, sender: other_user)
+  end
+
+  path '/api/v1/conversations' do
     get 'List conversations' do
       tags 'Conversations'
       security [ bearer_auth: [] ]
@@ -28,7 +42,7 @@ RSpec.describe 'Conversations API', type: :request do
                     type: :object,
                     properties: {
                       id: { type: :integer },
-                      text: { type: :string },
+                      text: { type: :string, nullable: true },
                       sender_id: { type: :integer },
                       voice_url: { type: :string, nullable: true },
                       created_at: { type: :string, format: 'date-time' }
@@ -43,7 +57,7 @@ RSpec.describe 'Conversations API', type: :request do
             request_id: { type: :string }
           }
 
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
@@ -55,7 +69,7 @@ RSpec.describe 'Conversations API', type: :request do
     end
   end
 
-  path '/api/conversations/{id}' do
+  path '/api/v1/conversations/{id}' do
     parameter name: :id, in: :path, type: :integer, description: 'Conversation ID'
 
     get 'Get a conversation with messages' do
@@ -81,7 +95,7 @@ RSpec.describe 'Conversations API', type: :request do
                 type: :object,
                 properties: {
                   id: { type: :integer },
-                  text: { type: :string },
+                  text: { type: :string, nullable: true },
                   sender_id: { type: :integer },
                   voice_url: { type: :string, nullable: true },
                   created_at: { type: :string, format: 'date-time' },
@@ -93,15 +107,15 @@ RSpec.describe 'Conversations API', type: :request do
             request_id: { type: :string }
           }
 
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { conversation.id }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { 999999 }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
     end
@@ -117,21 +131,21 @@ RSpec.describe 'Conversations API', type: :request do
             message: { type: :string }
           }
 
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { conversation.id }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { 999999 }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
     end
   end
 
-  path '/api/conversations/{id}/favorite' do
+  path '/api/v1/conversations/{id}/favorite' do
     parameter name: :id, in: :path, type: :integer, description: 'Conversation ID'
 
     post 'Mark conversation as favorite' do
@@ -146,21 +160,21 @@ RSpec.describe 'Conversations API', type: :request do
             favorited: { type: :boolean }
           }
 
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { conversation.id }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { 999999 }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
     end
   end
 
-  path '/api/conversations/{id}/unfavorite' do
+  path '/api/v1/conversations/{id}/unfavorite' do
     parameter name: :id, in: :path, type: :integer, description: 'Conversation ID'
 
     post 'Remove conversation from favorites' do
@@ -175,21 +189,21 @@ RSpec.describe 'Conversations API', type: :request do
             favorited: { type: :boolean }
           }
 
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { conversation.id }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
+        let(:id) { 999999 }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
     end
   end
 
-  path '/api/conversations/{id}/send_message' do
+  path '/api/v1/conversations/{id}/send_message' do
     parameter name: :id, in: :path, type: :integer, description: 'Conversation ID'
 
     post 'Send a message in the conversation' do
@@ -208,24 +222,26 @@ RSpec.describe 'Conversations API', type: :request do
               properties: {
                 id: { type: :integer },
                 sender_id: { type: :integer },
-                text: { type: :string },
+                text: { type: :string, nullable: true },
                 voice_url: { type: :string, nullable: true },
                 created_at: { type: :string, format: 'date-time' }
               }
             }
           }
 
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
-        let(:text) { '안녕하세요!' }
+        let(:id) { conversation.id }
+        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:text) { nil }
+        let(:voice_file) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
-        let(:text) { '안녕하세요!' }
+        let(:id) { 999999 }
+        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:text) { nil }
+        let(:voice_file) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
         run_test!
       end
     end

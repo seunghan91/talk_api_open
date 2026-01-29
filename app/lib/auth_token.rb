@@ -1,27 +1,45 @@
+# app/lib/auth_token.rb
 class AuthToken
-  SECRET_KEY = Rails.application.secrets.secret_key_base.to_s
-  DEFAULT_EXPIRY = 7.days.to_i
-
-  def self.encode(payload, exp = DEFAULT_EXPIRY)
-    payload = {
-      data: payload,
-      exp: Time.now.to_i + exp
-    }
-    JWT.encode(payload, SECRET_KEY)
-  end
-
-  def self.decode(token)
-    begin
-      decoded = JWT.decode(token, SECRET_KEY)[0]
-      HashWithIndifferentAccess.new(decoded)["data"]
-    rescue JWT::ExpiredSignature
-      # 토큰 만료 시
-      Rails.logger.warn("만료된 JWT 토큰: #{token[0..15]}...")
-      raise JWT::ExpiredSignature
+  SECRET_KEY = Rails.application.credentials.secret_key_base || ENV['SECRET_KEY_BASE'] || Rails.application.secret_key_base
+  ALGORITHM = 'HS256'
+  DEFAULT_EXPIRY = 24.hours
+  
+  class << self
+    def encode(payload, expiry = DEFAULT_EXPIRY)
+      payload = payload.dup
+      payload[:exp] = (Time.current + expiry).to_i
+      payload[:iat] = Time.current.to_i
+      
+      JWT.encode(payload, SECRET_KEY, ALGORITHM)
+    end
+    
+    def decode(token)
+      decoded = JWT.decode(token, SECRET_KEY, true, algorithm: ALGORITHM).first
+      HashWithIndifferentAccess.new(decoded)
     rescue JWT::DecodeError => e
-      # 토큰 디코딩 오류 시
-      Rails.logger.error("JWT 디코딩 오류: #{e.message}, 토큰: #{token[0..15]}...")
-      raise JWT::DecodeError.new("유효하지 않은 토큰입니다: #{e.message}")
+      Rails.logger.warn("JWT decode error: #{e.message}")
+      nil
+    rescue JWT::ExpiredSignature
+      Rails.logger.warn("JWT token expired")
+      nil
+    rescue JWT::InvalidIatError
+      Rails.logger.warn("JWT invalid iat")
+      nil
+    end
+    
+    def valid?(token)
+      decode(token).present?
+    end
+    
+    def refresh(token)
+      payload = decode(token)
+      return nil unless payload
+      
+      # 기존 payload에서 exp와 iat 제거
+      new_payload = payload.except(:exp, :iat)
+      
+      # 새로운 토큰 생성
+      encode(new_payload)
     end
   end
 end

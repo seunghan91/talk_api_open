@@ -2,48 +2,68 @@ require 'rails_helper'
 
 RSpec.describe Api::V1::WalletsController, type: :controller do
   let(:user) { create(:user) }
-  let(:wallet) { create(:wallet, user: user, balance: 15000) }
 
   before do
     allow(controller).to receive(:current_user).and_return(user)
     allow(controller).to receive(:authorize_request).and_return(true)
+    # Clear Rails cache to avoid stale data between tests
+    Rails.cache.clear
   end
 
-  describe 'GET #show' do
-    context 'when user has a wallet' do
-      before { wallet }
+  describe 'GET #my_wallet' do
+    context 'when user has a wallet (auto-created)' do
+      before do
+        # User model auto-creates wallet with balance 0
+        # Update balance to test specific value
+        user.wallet.update!(balance: 15000)
+      end
 
       it 'returns wallet information with formatted currency' do
-        get :show
+        get :my_wallet
 
         expect(response).to have_http_status(:success)
         json_response = JSON.parse(response.body)
 
-        expect(json_response['balance']).to eq(15000)
+        # Balance is decimal type, may be returned as string or number depending on caching
+        expect(json_response['balance'].to_i).to eq(15000)
         expect(json_response['formatted_balance']).to eq('₩15,000')
         expect(json_response['transaction_count']).to be_present
       end
     end
 
-    context 'when user does not have a wallet' do
-      it 'creates a new wallet and returns information' do
-        expect {
-          get :show
-        }.to change(Wallet, :count).by(1)
+    context 'when user wallet has default balance' do
+      it 'returns wallet with default balance (0)' do
+        get :my_wallet
 
         expect(response).to have_http_status(:success)
         json_response = JSON.parse(response.body)
 
-        expect(json_response['balance']).to eq(5000) # default balance
-        expect(json_response['formatted_balance']).to eq('₩5,000')
+        # Default balance is 0 (set in Wallet model)
+        # Balance is decimal type, may be returned as string or number depending on caching
+        expect(json_response['balance'].to_i).to eq(0)
+        expect(json_response['formatted_balance']).to eq('₩0')
+        expect(json_response['transaction_count'].to_i).to eq(0)
       end
+    end
+
+    it 'delegates to show method' do
+      expect(controller).to receive(:show).and_call_original
+      get :my_wallet
     end
   end
 
-  describe 'GET #my_wallet' do
-    it 'calls show method' do
-      expect(controller).to receive(:show)
-      get :my_wallet
+  describe 'GET #show (via ID route)' do
+    it 'returns wallet information when accessed with wallet ID' do
+      user.wallet.update!(balance: 5000)
+
+      get :show, params: { id: user.wallet.id }
+
+      expect(response).to have_http_status(:success)
+      json_response = JSON.parse(response.body)
+
+      # Balance is decimal type, may be returned as string or number depending on caching
+      expect(json_response['balance'].to_i).to eq(5000)
+      expect(json_response['formatted_balance']).to eq('₩5,000')
     end
   end
 
@@ -55,6 +75,11 @@ RSpec.describe Api::V1::WalletsController, type: :controller do
 
       formatted_large = controller.send(:format_currency, 1234567)
       expect(formatted_large).to eq('₩1,234,567')
+    end
+
+    it 'formats zero correctly' do
+      formatted = controller.send(:format_currency, 0)
+      expect(formatted).to eq('₩0')
     end
   end
 end

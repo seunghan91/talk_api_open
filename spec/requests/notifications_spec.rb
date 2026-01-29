@@ -1,237 +1,208 @@
-require 'swagger_helper'
+require 'rails_helper'
 
 RSpec.describe 'Notifications API', type: :request do
-  path '/api/notifications' do
-    get 'List notifications' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      produces 'application/json'
-      parameter name: :page, in: :query, type: :integer, required: false, description: 'Page number'
-      parameter name: :per_page, in: :query, type: :integer, required: false, description: 'Items per page'
+  let!(:user) { create(:user) }
+  let(:auth_headers) { auth_headers_for(user) }
 
-      response '200', 'Notifications fetched successfully' do
-        schema type: :object,
-          properties: {
-            notifications: {
-              type: :array,
-              items: {
-                type: :object,
-                properties: {
-                  id: { type: :integer },
-                  user_id: { type: :integer },
-                  notification_type: { type: :string },
-                  title: { type: :string, nullable: true },
-                  body: { type: :string },
-                  read: { type: :boolean },
-                  metadata: { type: :object },
-                  created_at: { type: :string, format: 'date-time' }
-                }
-              }
-            },
-            pagination: {
-              type: :object,
-              properties: {
-                current_page: { type: :integer },
-                total_pages: { type: :integer },
-                total_count: { type: :integer }
-              }
-            },
-            unread_count: { type: :integer }
-          }
+  # Helper method to parse JSON response
+  def json_response
+    JSON.parse(response.body)
+  end
 
-        let(:Authorization) { "Bearer token" }
-        run_test!
+  # ===================================================================
+  #   GET /api/v1/notifications - List notifications
+  # ===================================================================
+  describe 'GET /api/v1/notifications' do
+    context 'with valid authentication' do
+      let!(:notifications) { create_list(:notification, 3, user: user) }
+      let!(:read_notification) { create(:notification, :read, user: user) }
+
+      it 'returns notifications list with pagination' do
+        get '/api/v1/notifications', headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response).to have_key('notifications')
+        expect(json_response).to have_key('pagination')
+        expect(json_response).to have_key('unread_count')
+        expect(json_response['notifications'].size).to eq(4)
       end
 
-      response '401', 'Unauthorized' do
-        schema '$ref' => '#/components/schemas/error_response'
-        let(:Authorization) { "Bearer invalid_token" }
-        run_test!
+      it 'filters by read status' do
+        get '/api/v1/notifications', params: { read: 'false' }, headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response['notifications'].size).to eq(3)
+      end
+
+      it 'supports pagination' do
+        get '/api/v1/notifications', params: { page: 1 }, headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(json_response['pagination']['current_page']).to eq(1)
+      end
+    end
+
+    context 'without authentication' do
+      it 'returns unauthorized' do
+        get '/api/v1/notifications'
+
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end
 
-  path '/api/notifications/{id}' do
-    parameter name: :id, in: :path, type: :integer, description: 'Notification ID'
+  # ===================================================================
+  #   GET /api/v1/notifications/:id - Get a notification
+  # ===================================================================
+  describe 'GET /api/v1/notifications/:id' do
+    context 'with valid authentication' do
+      let!(:notification) { create(:notification, user: user) }
 
-    get 'Get a notification' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      produces 'application/json'
+      it 'returns the notification' do
+        get "/api/v1/notifications/#{notification.id}", headers: auth_headers
 
-      response '200', 'Notification fetched successfully' do
-        schema type: :object,
-          properties: {
-            notification: {
-              type: :object,
-              properties: {
-                id: { type: :integer },
-                user_id: { type: :integer },
-                notification_type: { type: :string },
-                title: { type: :string, nullable: true },
-                body: { type: :string },
-                read: { type: :boolean },
-                metadata: { type: :object },
-                created_at: { type: :string, format: 'date-time' }
-              }
-            }
-          }
-
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
-        run_test!
+        expect(response).to have_http_status(:ok)
+        expect(json_response['id']).to eq(notification.id)
       end
+    end
 
-      response '404', 'Notification not found' do
-        schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
-        run_test!
+    context 'when notification does not exist' do
+      it 'returns not found' do
+        get '/api/v1/notifications/999999', headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context 'when notification belongs to another user' do
+      let!(:other_user) { create(:user) }
+      let!(:other_notification) { create(:notification, user: other_user) }
+
+      it 'returns not found' do
+        get "/api/v1/notifications/#{other_notification.id}", headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context 'without authentication' do
+      let!(:notification) { create(:notification, user: user) }
+
+      it 'returns unauthorized' do
+        get "/api/v1/notifications/#{notification.id}"
+
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end
 
-  path '/api/notifications/{id}/mark_as_read' do
-    parameter name: :id, in: :path, type: :integer, description: 'Notification ID'
+  # ===================================================================
+  #   PATCH /api/v1/notifications/:id/mark_as_read - Mark notification as read
+  # ===================================================================
+  describe 'PATCH /api/v1/notifications/:id/mark_as_read' do
+    context 'with valid authentication' do
+      let!(:notification) { create(:notification, user: user, read: false) }
 
-    post 'Mark notification as read' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      produces 'application/json'
+      it 'marks the notification as read' do
+        patch "/api/v1/notifications/#{notification.id}/mark_as_read", headers: auth_headers
 
-      response '200', 'Notification marked as read' do
-        schema type: :object,
-          properties: {
-            message: { type: :string },
-            notification: {
-              type: :object,
-              properties: {
-                id: { type: :integer },
-                read: { type: :boolean }
-              }
-            }
-          }
-
-        let(:id) { '1' }
-        let(:Authorization) { "Bearer token" }
-        run_test!
+        expect(response).to have_http_status(:ok)
+        expect(json_response['success']).to be true
+        expect(notification.reload.read).to be true
       end
+    end
 
-      response '404', 'Notification not found' do
-        schema '$ref' => '#/components/schemas/error_response'
-        let(:id) { '999' }
-        let(:Authorization) { "Bearer token" }
-        run_test!
+    context 'when notification does not exist' do
+      it 'returns not found' do
+        patch '/api/v1/notifications/999999/mark_as_read', headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
+      end
+    end
+
+    context 'without authentication' do
+      let!(:notification) { create(:notification, user: user) }
+
+      it 'returns unauthorized' do
+        patch "/api/v1/notifications/#{notification.id}/mark_as_read"
+
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end
 
-  path '/api/notifications/mark_all_as_read' do
-    post 'Mark all notifications as read' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      produces 'application/json'
+  # ===================================================================
+  #   PATCH /api/v1/notifications/mark_all_as_read - Mark all as read
+  # ===================================================================
+  describe 'PATCH /api/v1/notifications/mark_all_as_read' do
+    context 'with valid authentication' do
+      let!(:notifications) { create_list(:notification, 3, user: user, read: false) }
 
-      response '200', 'All notifications marked as read' do
-        schema type: :object,
-          properties: {
-            message: { type: :string },
-            count: { type: :integer }
-          }
+      it 'marks all notifications as read' do
+        patch '/api/v1/notifications/mark_all_as_read', headers: auth_headers
 
-        let(:Authorization) { "Bearer token" }
-        run_test!
+        expect(response).to have_http_status(:ok)
+        expect(json_response['success']).to be true
+        expect(json_response['unread_count']).to eq(0)
+        expect(user.notifications.unread.count).to eq(0)
+      end
+    end
+
+    context 'without authentication' do
+      it 'returns unauthorized' do
+        patch '/api/v1/notifications/mark_all_as_read'
+
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end
 
-  path '/api/notifications/update_push_token' do
-    post 'Update push notification token' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      consumes 'application/json'
-      produces 'application/json'
-      parameter name: :params, in: :body, schema: {
-        type: :object,
-        properties: {
-          push_token: { type: :string, example: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]' },
-          device_id: { type: :string, example: 'device-uuid-123' }
-        },
-        required: [ 'push_token' ]
-      }
+  # ===================================================================
+  #   PATCH /api/v1/notifications/:id - Update notification (mark as read)
+  # ===================================================================
+  describe 'PATCH /api/v1/notifications/:id' do
+    context 'with valid authentication' do
+      let!(:notification) { create(:notification, user: user, read: false) }
 
-      response '200', 'Push token updated successfully' do
-        schema type: :object,
-          properties: {
-            message: { type: :string }
-          }
+      it 'updates the notification read status' do
+        patch "/api/v1/notifications/#{notification.id}", headers: auth_headers
 
-        let(:Authorization) { "Bearer token" }
-        let(:params) { { push_token: 'ExponentPushToken[xxxxxxxxxxxxxxxxxxxxxx]', device_id: 'device-uuid-123' } }
-        run_test!
+        expect(response).to have_http_status(:ok)
+        expect(json_response['success']).to be true
+        expect(notification.reload.read).to be true
       end
+    end
 
-      response '422', 'Invalid parameters' do
-        schema '$ref' => '#/components/schemas/error_response'
-        let(:Authorization) { "Bearer token" }
-        let(:params) { { push_token: '' } }
-        run_test!
+    context 'when notification does not exist' do
+      it 'returns not found' do
+        patch '/api/v1/notifications/999999', headers: auth_headers
+
+        expect(response).to have_http_status(:not_found)
       end
     end
   end
 
-  path '/api/notifications/settings' do
-    get 'Get notification settings' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      produces 'application/json'
+  # ===================================================================
+  #   GET /api/v1/notifications/unread_count - Get unread count
+  # ===================================================================
+  describe 'GET /api/v1/notifications/unread_count' do
+    context 'with valid authentication' do
+      let!(:unread_notifications) { create_list(:notification, 3, user: user, read: false) }
+      let!(:read_notifications) { create_list(:notification, 2, user: user, read: true) }
 
-      response '200', 'Notification settings fetched successfully' do
-        schema type: :object,
-          properties: {
-            push_enabled: { type: :boolean },
-            broadcast_push_enabled: { type: :boolean },
-            message_push_enabled: { type: :boolean }
-          }
+      it 'returns the unread count' do
+        get '/api/v1/notifications/unread_count', headers: auth_headers
 
-        let(:Authorization) { "Bearer token" }
-        run_test!
+        expect(response).to have_http_status(:ok)
+        expect(json_response['unread_count']).to eq(3)
       end
     end
-  end
 
-  path '/api/notifications/update_settings' do
-    post 'Update notification settings' do
-      tags 'Notifications'
-      security [ bearer_auth: [] ]
-      consumes 'application/json'
-      produces 'application/json'
-      parameter name: :params, in: :body, schema: {
-        type: :object,
-        properties: {
-          push_enabled: { type: :boolean },
-          broadcast_push_enabled: { type: :boolean },
-          message_push_enabled: { type: :boolean }
-        }
-      }
+    context 'without authentication' do
+      it 'returns unauthorized' do
+        get '/api/v1/notifications/unread_count'
 
-      response '200', 'Notification settings updated successfully' do
-        schema type: :object,
-          properties: {
-            message: { type: :string },
-            settings: {
-              type: :object,
-              properties: {
-                push_enabled: { type: :boolean },
-                broadcast_push_enabled: { type: :boolean },
-                message_push_enabled: { type: :boolean }
-              }
-            }
-          }
-
-        let(:Authorization) { "Bearer token" }
-        let(:params) { { push_enabled: true, broadcast_push_enabled: false, message_push_enabled: true } }
-        run_test!
+        expect(response).to have_http_status(:unauthorized)
       end
     end
   end

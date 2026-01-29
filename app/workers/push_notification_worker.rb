@@ -52,7 +52,7 @@ class PushNotificationWorker
     return unless broadcast
 
     # 알림을 받을 사용자 목록 (예: 모든 활성 사용자)
-    recipients = User.where(status: :active)
+    recipients = User.active
 
     PushNotificationService.new.send_new_broadcast_notification(broadcast, recipients)
   end

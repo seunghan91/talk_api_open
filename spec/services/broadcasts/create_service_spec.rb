@@ -2,15 +2,15 @@ require 'rails_helper'
 
 RSpec.describe Broadcasts::CreateService do
   let(:user) { create(:user) }
-  let(:audio_file) { fixture_file_upload('spec/fixtures/sample_audio.wav', 'audio/wav') }
-  let(:text) { "테스트 브로드캐스트 메시지" }
+  let(:audio_file) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
+  let(:content) { "테스트 브로드캐스트 메시지" }
   let(:recipient_count) { 5 }
 
   subject(:service) do
     described_class.new(
       user: user,
       audio: audio_file,
-      text: text,
+      content: content,
       recipient_count: recipient_count
     )
   end
@@ -23,7 +23,7 @@ RSpec.describe Broadcasts::CreateService do
           expect(result.success?).to be true
           expect(result.broadcast).to be_persisted
           expect(result.broadcast.user).to eq(user)
-          expect(result.broadcast.text).to eq(text)
+          expect(result.broadcast.content).to eq(content)
         }.to change(Broadcast, :count).by(1)
       end
 
@@ -57,7 +57,7 @@ RSpec.describe Broadcasts::CreateService do
     end
 
     context '텍스트가 너무 길 때' do
-      let(:text) { "a" * 201 } # 200자 제한 초과
+      let(:content) { "a" * 201 } # 200자 제한 초과
 
       it '실패 Result 객체를 반환한다' do
         result = service.call
@@ -111,7 +111,7 @@ RSpec.describe Broadcasts::CreateService do
       service_with_injection = described_class.new(
         user: user,
         audio: audio_file,
-        text: text,
+        content: content,
         recipient_count: recipient_count,
         worker: mock_worker
       )

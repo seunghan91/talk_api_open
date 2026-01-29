@@ -1,18 +1,13 @@
 FactoryBot.define do
   factory :broadcast do
-    audio_url { "https://example.com/audio/sample_#{rand(1..3)}.wav" }
-    duration { rand(5..60) }
-    private { false }
-
     association :user
-
-    trait :private_broadcast do
-      private { true }
-    end
+    content { "This is a sample broadcast content." }
+    duration { rand(5..60) }
 
     trait :with_replies do
       after(:create) do |broadcast|
-        create_list(:message, 2, broadcast: broadcast, sender: create(:user), receiver: broadcast.user)
+        conversation = create(:conversation, user_a: broadcast.user, user_b: create(:user))
+        create_list(:message, 2, broadcast: broadcast, sender: conversation.user_b, conversation: conversation)
       end
     end
   end

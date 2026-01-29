@@ -14,33 +14,46 @@ end
 
 Sentry.init do |config|
   config.dsn = ENV["SENTRY_DSN"]
-  config.breadcrumbs_logger = [ :active_support_logger, :http_logger ]
-  config.environment = Rails.env
 
+  # Sentry SDK v6: :http_logger is deprecated, use :net_http instead
+  config.breadcrumbs_logger = [ :active_support_logger, :net_http ]
+
+  config.environment = Rails.env
   config.enabled_environments = %w[production staging]
 
-  config.traces_sample_rate = 0.5
+  # Performance monitoring
+  config.traces_sample_rate = 0.1
 
+  # Sentry SDK v6: Profiling support (optional, set to 0 to disable)
+  config.profiles_sample_rate = 0.1
+
+  # Include PII data (masked where appropriate)
   config.send_default_pii = true
 
+  # Sentry SDK v6: Release tracking
+  config.release = ENV.fetch("SENTRY_RELEASE", "talk-api@#{ENV.fetch('RENDER_GIT_COMMIT', 'unknown')[0..7]}")
+
+  # Sentry SDK v6: before_send callback
   config.before_send = lambda do |event, hint|
     # 노이즈 에러 필터링 - Sentry Quota 절약
 
+    # Sentry SDK v6: Access exception from hint using :exception key
+    exception = hint[:exception]
+
     # 499 Client Disconnected 에러 드롭
-    if hint.dig(:rack_env, "action_dispatch.exception")&.is_a?(ActionController::ClientDisconnectedError) ||
-       event.tags&.dig(:status) == 499 ||
-       hint.dig(:response, :status) == 499
+    if exception.is_a?(ActionController::ClientDisconnectedError) ||
+       event.tags&.dig(:status) == 499
       return nil
     end
 
     # 304 Not Modified 드롭
-    if event.tags&.dig(:status) == 304 || hint.dig(:response, :status) == 304
+    if event.tags&.dig(:status) == 304
       return nil
     end
 
     # wallet/notifications 엔드포인트의 정상 응답 (200) 90% 샘플링
     if event.request&.url&.match?(%r{/api/v1/(wallet|notifications)}) &&
-       (event.tags&.dig(:status) == 200 || hint.dig(:response, :status) == 200)
+       event.tags&.dig(:status) == 200
       return nil if Random.rand < 0.9
     end
 
@@ -52,15 +65,24 @@ Sentry.init do |config|
       event.request.data = filter.filter(event.request.data)
     end
 
-    # 사용자 정보 추가
+    # Sentry SDK v6: Access rack_env from Sentry's scope if available
+    # User information is now better handled via Sentry.set_user in controllers
     if event.request && event.user.nil?
-      controller = hint[:rack_env]&.dig("action_controller.instance")
-      if controller&.respond_to?(:current_user) && controller.current_user
-        event.user = {
-          id: controller.current_user.id,
-          nickname: controller.current_user.nickname,
-          phone_number: mask_phone_number(controller.current_user.phone_number)
-        }
+      # Try to get user from Sentry's current scope
+      scope = Sentry.get_current_scope
+      if scope&.user.nil?
+        # Fallback: try to get from rack_env if available
+        rack_env = hint[:rack_env]
+        if rack_env
+          controller = rack_env["action_controller.instance"]
+          if controller&.respond_to?(:current_user) && controller.current_user
+            event.user = {
+              id: controller.current_user.id,
+              nickname: controller.current_user.nickname,
+              phone_number: mask_phone_number(controller.current_user.phone_number)
+            }
+          end
+        end
       end
     end
 

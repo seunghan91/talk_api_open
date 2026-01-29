@@ -100,9 +100,9 @@ Sidekiq.configure_server do |config|
     end
   end
 
-  # 오류 처리 확장 - error_handlers는 Sidekiq 7.3.9에서 제거됨
-  # 대신 exception_handlers 사용하지만 하위 호환성 유지
-  config.error_handlers << proc do |ex, ctx_hash|
+  # 오류 처리 확장 - Sidekiq 8.0+에서 error_handlers가 exception_handlers로 변경됨
+  # 새로운 시그니처: proc { |ex, ctx_hash, config| ... }
+  config.exception_handlers << proc do |ex, ctx_hash, _config|
     job_info = ctx_hash[:job] || {}
     Rails.logger.error(
       "Sidekiq error: #{ex.class} - #{ex.message}\n" +

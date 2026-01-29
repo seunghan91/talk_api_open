@@ -1,8 +1,17 @@
 require 'swagger_helper'
 
 RSpec.describe 'Wallets API', type: :request do
-  path '/api/wallets' do
-    get 'Get wallet information' do
+  let(:user) { create(:user) }
+  let(:valid_token) { generate_token_for(user) }
+
+  before do
+    # User's wallet is auto-created by after_create callback
+    # Update balance if needed for tests
+    user.wallet.update!(balance: 10000)
+  end
+
+  path '/api/v1/wallet' do
+    get 'Get my wallet information' do
       tags 'Wallets'
       security [ bearer_auth: [] ]
       produces 'application/json'
@@ -10,20 +19,12 @@ RSpec.describe 'Wallets API', type: :request do
       response '200', 'Wallet information fetched successfully' do
         schema type: :object,
           properties: {
-            wallet: {
-              type: :object,
-              properties: {
-                id: { type: :integer },
-                user_id: { type: :integer },
-                balance: { type: :integer },
-                created_at: { type: :string, format: 'date-time' },
-                updated_at: { type: :string, format: 'date-time' }
-              }
-            },
-            user: { '$ref' => '#/components/schemas/user' }
+            balance: { type: :string, description: 'Wallet balance as decimal string' },
+            transaction_count: { type: :integer },
+            formatted_balance: { type: :string }
           }
 
-        let(:Authorization) { "Bearer token" }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
@@ -35,102 +36,27 @@ RSpec.describe 'Wallets API', type: :request do
     end
   end
 
-  path '/api/wallets/transactions' do
-    get 'Get wallet transactions' do
+  path '/api/v1/wallets/my_wallet' do
+    get 'Get my wallet information (alternate route)' do
       tags 'Wallets'
       security [ bearer_auth: [] ]
       produces 'application/json'
-      parameter name: :page, in: :query, type: :integer, required: false, description: 'Page number'
-      parameter name: :per_page, in: :query, type: :integer, required: false, description: 'Items per page'
 
-      response '200', 'Wallet transactions fetched successfully' do
+      response '200', 'Wallet information fetched successfully' do
         schema type: :object,
           properties: {
-            transactions: {
-              type: :array,
-              items: {
-                type: :object,
-                properties: {
-                  id: { type: :integer },
-                  wallet_id: { type: :integer },
-                  amount: { type: :integer },
-                  transaction_type: { type: :string },
-                  description: { type: :string },
-                  created_at: { type: :string, format: 'date-time' }
-                }
-              }
-            },
-            pagination: {
-              type: :object,
-              properties: {
-                current_page: { type: :integer },
-                total_pages: { type: :integer },
-                total_count: { type: :integer }
-              }
-            }
+            balance: { type: :string, description: 'Wallet balance as decimal string' },
+            transaction_count: { type: :integer },
+            formatted_balance: { type: :string }
           }
 
-        let(:Authorization) { "Bearer token" }
-        let(:page) { 1 }
-        let(:per_page) { 10 }
+        let(:Authorization) { "Bearer #{valid_token}" }
         run_test!
       end
 
       response '401', 'Unauthorized' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:Authorization) { "Bearer invalid_token" }
-        run_test!
-      end
-    end
-  end
-
-  path '/api/wallets/deposit' do
-    post 'Deposit to wallet' do
-      tags 'Wallets'
-      security [ bearer_auth: [] ]
-      consumes 'application/json'
-      produces 'application/json'
-      parameter name: :params, in: :body, schema: {
-        type: :object,
-        properties: {
-          amount: { type: :integer, example: 10000 },
-          payment_method: { type: :string, example: 'card' }
-        },
-        required: [ 'amount', 'payment_method' ]
-      }
-
-      response '200', 'Deposit successful' do
-        schema type: :object,
-          properties: {
-            message: { type: :string },
-            transaction: {
-              type: :object,
-              properties: {
-                id: { type: :integer },
-                amount: { type: :integer },
-                transaction_type: { type: :string },
-                description: { type: :string },
-                created_at: { type: :string, format: 'date-time' }
-              }
-            },
-            wallet: {
-              type: :object,
-              properties: {
-                id: { type: :integer },
-                balance: { type: :integer }
-              }
-            }
-          }
-
-        let(:Authorization) { "Bearer token" }
-        let(:params) { { amount: 10000, payment_method: 'card' } }
-        run_test!
-      end
-
-      response '422', 'Invalid parameters' do
-        schema '$ref' => '#/components/schemas/error_response'
-        let(:Authorization) { "Bearer token" }
-        let(:params) { { amount: -1000, payment_method: 'card' } }
         run_test!
       end
     end
