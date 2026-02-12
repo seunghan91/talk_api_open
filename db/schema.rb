@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_01_29_040550) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -85,10 +85,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_040550) do
     t.boolean "active", default: true
     t.text "content"
     t.datetime "created_at", null: false
+    t.datetime "discarded_at"
     t.integer "duration", default: 0, null: false
     t.datetime "expired_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["discarded_at"], name: "index_broadcasts_on_discarded_at"
     t.index ["user_id"], name: "index_broadcasts_on_user_id"
   end
 
@@ -98,6 +100,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_040550) do
     t.datetime "created_at", null: false
     t.boolean "deleted_by_a", default: false
     t.boolean "deleted_by_b", default: false
+    t.datetime "discarded_at"
     t.boolean "favorite", default: false
     t.boolean "favorited_by_a", default: false
     t.boolean "favorited_by_b", default: false
@@ -107,6 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_040550) do
     t.bigint "user_a_id", null: false
     t.bigint "user_b_id", null: false
     t.index ["broadcast_id"], name: "index_conversations_on_broadcast_id"
+    t.index ["discarded_at"], name: "index_conversations_on_discarded_at"
     t.index ["user_a_id", "user_b_id"], name: "index_conversations_on_user_a_id_and_user_b_id", unique: true
     t.index ["user_a_id"], name: "index_conversations_on_user_a_id"
     t.index ["user_b_id"], name: "index_conversations_on_user_b_id"
@@ -118,6 +122,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_040550) do
     t.datetime "created_at", null: false
     t.boolean "deleted_by_a", default: false, null: false
     t.boolean "deleted_by_b", default: false, null: false
+    t.datetime "discarded_at"
     t.integer "duration", default: 0, null: false
     t.string "message_type", default: "voice"
     t.boolean "read", default: false
@@ -125,6 +130,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_01_29_040550) do
     t.datetime "updated_at", null: false
     t.index ["broadcast_id"], name: "index_messages_on_broadcast_id"
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
+    t.index ["discarded_at"], name: "index_messages_on_discarded_at"
     t.index ["sender_id"], name: "index_messages_on_sender_id"
   end
 

@@ -10,13 +10,12 @@ class HealthCheckController < ActionController::API
       rails_version: Rails.version,
       database_connected: database_connected?,
       redis_connected: redis_connected?,
-      sidekiq_status: sidekiq_status
+      solid_queue_status: solid_queue_status
     }
   end
 
   def worker_status
-    result = BroadcastWorker.verify_worker_setup
-    render json: result
+    render json: solid_queue_status
   end
 
   def conversations_check
@@ -46,9 +45,7 @@ class HealthCheckController < ActionController::API
     begin
       redis_url = ENV["REDIS_URL"] || "redis://localhost:6379/0"
 
-      # Render Redis URL 형식 수정 적용
       if redis_url.match?(/redis[s]?:\/\/[^:@]+:[^@]+@/)
-        # redis://username:password@host:port -> redis://:password@host:port
         redis_url = redis_url.gsub(/redis(s)?:\/\/[^:@]+:/, 'redis\1://:')
       end
 
@@ -59,37 +56,33 @@ class HealthCheckController < ActionController::API
       redis.ping == "PONG"
     rescue => e
       Rails.logger.error("Redis connection check failed: #{e.message}")
-      Rails.logger.error("Redis URL format: #{redis_url&.gsub(/:[^:]*@/, ":****@")}")
       false
     end
   end
 
-  def sidekiq_status
+  def solid_queue_status
     begin
-      stats = Sidekiq::Stats.new
       {
-        processed: stats.processed,
-        failed: stats.failed,
-        enqueued: stats.enqueued,
-        scheduled: stats.scheduled_size,
-        processes: Sidekiq::ProcessSet.new.size,
-        queues: Sidekiq::Queue.all.map { |q| { name: q.name, size: q.size } }
+        ready: SolidQueue::ReadyExecution.count,
+        scheduled: SolidQueue::ScheduledExecution.count,
+        claimed: SolidQueue::ClaimedExecution.count,
+        failed: SolidQueue::FailedExecution.count,
+        recurring: SolidQueue::RecurringTask.count
       }
     rescue => e
-      Rails.logger.error("Sidekiq status check failed: #{e.message}")
+      Rails.logger.error("Solid Queue status check failed: #{e.message}")
       { error: e.message }
     end
   end
 
   def conversation_stats
     begin
-      all_conversations = Conversation.all
+      all_conversations = Conversation.unscoped.all
       total_conversations = all_conversations.count
 
-      # Get conversations grouped by user
       user_conversations = {}
       User.all.each do |user|
-        count = Conversation.where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)",
+        count = Conversation.unscoped.where("(user_a_id = ? AND deleted_by_a = ?) OR (user_b_id = ? AND deleted_by_b = ?)",
                                   user.id, false, user.id, false).count
         user_conversations[user.id] = {
           id: user.id,
@@ -98,7 +91,6 @@ class HealthCheckController < ActionController::API
         }
       end
 
-      # Get conversations with broadcast references
       broadcast_conversations = all_conversations.where.not(broadcast_id: nil).count
 
       {
@@ -106,7 +98,7 @@ class HealthCheckController < ActionController::API
         broadcast_linked_conversations: broadcast_conversations,
         user_conversations: user_conversations,
         users: User.count,
-        broadcasts: Broadcast.count,
+        broadcasts: Broadcast.unscoped.count,
         broadcast_recipients: BroadcastRecipient.count
       }
     rescue => e

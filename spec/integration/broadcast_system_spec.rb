@@ -1,14 +1,9 @@
 # spec/integration/broadcast_system_spec.rb
 require 'rails_helper'
-require 'sidekiq/testing'
 
 RSpec.describe 'Broadcast System Integration', type: :request do
-  # Sidekiq 테스트 모드 설정
-  around do |example|
-    Sidekiq::Testing.fake! do
-      example.run
-    end
-  end
+  # ActiveJob 테스트 모드 (Solid Queue)
+  include ActiveJob::TestHelper
 
   let(:user) { create(:user, gender: 'male') }
   let(:female_user1) { create(:user, gender: 'female') }
@@ -45,8 +40,8 @@ RSpec.describe 'Broadcast System Integration', type: :request do
 
         broadcast_id = json_response['broadcast']['id']
 
-        # 2. 수신자 확인 - BroadcastWorker가 수신자를 추가하므로 직접 추가
-        # (테스트에서 Sidekiq은 fake 모드이므로 수동으로 처리)
+        # 2. 수신자 확인 - BroadcastDeliveryJob이 수신자를 추가하므로 직접 추가
+        # (테스트에서 ActiveJob은 test 모드이므로 수동으로 처리)
         broadcast = Broadcast.find(broadcast_id)
         BroadcastRecipient.create!(broadcast: broadcast, user: female_user1, status: :delivered)
         BroadcastRecipient.create!(broadcast: broadcast, user: female_user2, status: :delivered)

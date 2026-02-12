@@ -93,9 +93,9 @@ Rails.application.configure do
 
   config.cache_store = :redis_cache_store, cache_redis_options
 
-  # Use a real queuing backend for Active Job (and separate queues per environment).
-  config.active_job.queue_adapter = :sidekiq
-  config.active_job.queue_name_prefix = "talkk_api_staging"
+  # Use Solid Queue for background jobs (same as production)
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
 
   # Disable caching for Action Mailer templates even if Action Controller
   # caching is enabled.

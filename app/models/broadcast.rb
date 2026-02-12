@@ -1,5 +1,7 @@
 # app/models/broadcast.rb
 class Broadcast < ApplicationRecord
+    include Discard::Model
+
     belongs_to :user
 
     # 수신자 관계 추가
@@ -55,7 +57,7 @@ class Broadcast < ApplicationRecord
       return false if recipients.empty?
 
       # 백그라운드 작업으로 처리
-      BroadcastWorker.perform_async(id, recipients.count)
+      BroadcastDeliveryJob.perform_later(id, recipients.count)
 
       true
     end
@@ -166,7 +168,7 @@ class Broadcast < ApplicationRecord
 
           # 푸시 알림 전송
           if recipient.push_enabled && recipient.broadcast_push_enabled && recipient.push_token.present?
-            PushNotificationWorker.perform_async("new_broadcast", id)
+            PushNotificationJob.perform_later("new_broadcast", id)
           end
         rescue => e
           Rails.logger.error "방송 알림 생성 실패 (user: #{recipient.id}): #{e.message}"

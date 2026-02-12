@@ -15,7 +15,7 @@ module Broadcasts
       end
     end
 
-    def initialize(user:, audio:, content:, recipient_count:, worker: BroadcastWorker)
+    def initialize(user:, audio:, content:, recipient_count:, worker: BroadcastDeliveryJob)
       @user = user
       @audio = audio
       @content = content
@@ -59,7 +59,7 @@ module Broadcasts
     end
 
     def enqueue_background_job(broadcast)
-      @worker.perform_async(broadcast.id, @recipient_count)
+      @worker.perform_later(broadcast.id, @recipient_count)
     end
 
     def normalize_recipient_count(count)

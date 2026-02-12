@@ -119,13 +119,11 @@ class ReportHandlerService
   # 사용자 정지 알림 발송
   def self.send_suspension_notification(user, duration, reason)
     # 실제 구현은 NotificationWorker를 사용하거나 직접 구현
-    if defined?(NotificationWorker)
-      NotificationWorker.perform_async(
+    if defined?(PushNotificationJob)
+      PushNotificationJob.perform_later(
+        "suspension",
         user.id,
-        "account_suspension",
-        "계정 정지 알림",
-        "귀하의 계정이 #{reason}(으)로 #{ActionController::Base.helpers.distance_of_time_in_words(duration)}간 정지되었습니다.",
-        { suspension_reason: reason, suspension_duration: duration.to_i }
+        "계정 정지 알림"
       )
     end
   end
@@ -133,13 +131,11 @@ class ReportHandlerService
   # 사용자 경고 알림 발송
   def self.send_warning_notification(user, reason)
     # 실제 구현은 NotificationWorker를 사용하거나 직접 구현
-    if defined?(NotificationWorker)
-      NotificationWorker.perform_async(
+    if defined?(PushNotificationJob)
+      PushNotificationJob.perform_later(
+        "suspension",
         user.id,
-        "account_warning",
-        "계정 경고 알림",
-        "귀하의 계정이 #{reason}(으)로 경고를 받았습니다. 추가 위반 시 계정이 정지될 수 있습니다.",
-        { warning_reason: reason }
+        "계정 경고 알림"
       )
     end
   end

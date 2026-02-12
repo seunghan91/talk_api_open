@@ -164,7 +164,7 @@ class BroadcastForm
   end
 
   def schedule_broadcast_job
-    BroadcastWorker.perform_async(@broadcast.id)
+    BroadcastDeliveryJob.perform_later(@broadcast.id)
   end
 
   # 추가 헬퍼 메서드

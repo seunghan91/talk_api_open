@@ -1,6 +1,6 @@
 # app/jobs/clean_phone_verifications_job.rb
-class CleanPhoneVerificationsJob
-    include Sidekiq::Worker
+class CleanPhoneVerificationsJob < ApplicationJob
+    queue_as :default
 
     def perform
       # 만료 후 30분 지난 인증 내역 삭제

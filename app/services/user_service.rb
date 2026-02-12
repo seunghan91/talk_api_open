@@ -77,7 +77,7 @@ class UserService
       )
 
       # 정지 해제 작업 스케줄링
-      ExpiredSuspensionWorker.perform_at(suspension.suspended_until, user.id)
+      ExpiredSuspensionJob.set(wait_until: suspension.suspended_until).perform_later(user.id)
 
       Result.new(success: true, user: user)
     end

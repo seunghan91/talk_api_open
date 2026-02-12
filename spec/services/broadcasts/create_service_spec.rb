@@ -28,7 +28,7 @@ RSpec.describe Broadcasts::CreateService do
       end
 
       it '브로드캐스트 워커를 호출한다' do
-        expect(BroadcastWorker).to receive(:perform_async).once
+        expect(BroadcastDeliveryJob).to receive(:perform_later).once
         service.call
       end
 
@@ -71,7 +71,7 @@ RSpec.describe Broadcasts::CreateService do
         let(:recipient_count) { 0 }
 
         it '기본값 5를 사용한다' do
-          expect(BroadcastWorker).to receive(:perform_async).with(anything, 5)
+          expect(BroadcastDeliveryJob).to receive(:perform_later).with(anything, 5)
           service.call
         end
       end
@@ -80,7 +80,7 @@ RSpec.describe Broadcasts::CreateService do
         let(:recipient_count) { 15 }
 
         it '최대값 10을 사용한다' do
-          expect(BroadcastWorker).to receive(:perform_async).with(anything, 10)
+          expect(BroadcastDeliveryJob).to receive(:perform_later).with(anything, 10)
           service.call
         end
       end
@@ -116,7 +116,7 @@ RSpec.describe Broadcasts::CreateService do
         worker: mock_worker
       )
 
-      expect(mock_worker).to receive(:perform_async)
+      expect(mock_worker).to receive(:perform_later)
       allow_any_instance_of(Broadcast).to receive(:save!).and_return(true)
 
       service_with_injection.call

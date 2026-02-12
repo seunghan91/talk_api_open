@@ -1,13 +1,8 @@
 require 'rails_helper'
-require 'sidekiq/testing'
 
 RSpec.describe "Api::V1::Broadcasts", type: :request do
-  # Sidekiq 테스트 모드 설정
-  around do |example|
-    Sidekiq::Testing.fake! do
-      example.run
-    end
-  end
+  # ActiveJob 테스트 모드 설정 (Solid Queue)
+  include ActiveJob::TestHelper
 
   # 테스트용 사용자 및 인증 헤더 설정
   let!(:user) { create(:user, phone_number: "01012345678") }

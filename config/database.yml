@@ -23,6 +23,19 @@ staging:
   database: talkk_api_staging
 
 production:
-  <<: *default
-  url: <%= ENV['DATABASE_URL'] %>
-  database: talkk_api_production
+  primary:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    database: talkk_api_production
+  queue:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    migrations_paths: db/queue_migrate
+  cache:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    migrations_paths: db/cache_migrate
+  cable:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    migrations_paths: db/cable_migrate

@@ -1,5 +1,7 @@
 # app/models/message.rb
 class Message < ApplicationRecord
+  include Discard::Model
+
   belongs_to :conversation
   belongs_to :sender, class_name: "User", foreign_key: "sender_id"
   belongs_to :broadcast, optional: true
@@ -180,7 +182,7 @@ class Message < ApplicationRecord
 
     # 백그라운드 작업으로 푸시 알림 전송
     if receiver.push_enabled && receiver.message_push_enabled && receiver.push_token.present?
-      PushNotificationWorker.perform_async("message", id)
+      PushNotificationJob.perform_later("message", id)
     end
   rescue => e
     Rails.logger.error "알림 생성 실패: #{e.message}"

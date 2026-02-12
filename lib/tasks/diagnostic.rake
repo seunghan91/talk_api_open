@@ -47,17 +47,21 @@ namespace :diagnostic do
       puts "❌ Redis connection failed: #{e.message}"
     end
 
-    # Check Sidekiq
+    # Check Solid Queue
     begin
-      stats = Sidekiq::Stats.new
-      puts "✅ Sidekiq stats available"
-      puts "  - Processed: #{stats.processed}"
-      puts "  - Failed: #{stats.failed}"
-      puts "  - Enqueued: #{stats.enqueued}"
-      puts "  - Scheduled: #{stats.scheduled_size}"
-      puts "  - Queues: #{Sidekiq::Queue.all.map { |q| "#{q.name} (#{q.size})" }.join(', ')}"
+      ready = SolidQueue::ReadyExecution.count
+      scheduled = SolidQueue::ScheduledExecution.count
+      claimed = SolidQueue::ClaimedExecution.count
+      failed = SolidQueue::FailedExecution.count
+      recurring = SolidQueue::RecurringTask.count
+      puts "✅ Solid Queue stats available"
+      puts "  - Ready: #{ready}"
+      puts "  - Scheduled: #{scheduled}"
+      puts "  - Claimed: #{claimed}"
+      puts "  - Failed: #{failed}"
+      puts "  - Recurring tasks: #{recurring}"
     rescue => e
-      puts "❌ Sidekiq stats unavailable: #{e.message}"
+      puts "❌ Solid Queue stats unavailable: #{e.message}"
     end
 
     puts "\n===== Environment Variables ====="
@@ -86,10 +90,9 @@ namespace :diagnostic do
       if linked_conversations.empty?
         puts "Processing broadcast ID #{broadcast.id} (no linked conversations)"
 
-        # Create worker and process the broadcast
-        worker = BroadcastWorker.new
+        # Process the broadcast via job
         begin
-          worker.perform(broadcast.id, 5)
+          BroadcastDeliveryJob.perform_now(broadcast.id, 5)
           processed += 1
           puts "  ✅ Successfully processed broadcast"
         rescue => e

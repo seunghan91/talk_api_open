@@ -46,7 +46,7 @@ for i in $(seq 1 $MAX_REDIS_RETRIES); do
 done
 
 if [[ "$REDIS_CONNECTED" != "true" ]]; then
-  log "ERROR: Failed to connect to Redis after $MAX_REDIS_RETRIES attempts. Continuing anyway, but Sidekiq might not work properly."
+  log "ERROR: Failed to connect to Redis after $MAX_REDIS_RETRIES attempts. Continuing anyway, but caching might not work properly."
 fi
 
 # Database setup

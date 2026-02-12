@@ -32,9 +32,17 @@ gem "rack-cors", "~> 3.0"
 # JWT for authentication
 gem "jwt", "~> 3.0"
 
-# Background jobs
-gem "sidekiq", "~> 8.0"
+# Background jobs - Solid Queue (Rails 8 native, DB-backed)
+# Redis kept for caching and health check connectivity
 gem "redis", "~> 5.0"
+
+# Solid Suite (Rails 8 native)
+gem "solid_queue", "~> 1.1"   # Latest: 1.3.x (DB-backed jobs, recurring tasks, async mode)
+gem "solid_cache", "~> 1.0"   # Latest: 1.0.x (DB-backed cache)
+gem "solid_cable", "~> 3.0"   # Latest: 3.0.x (DB-backed ActionCable)
+
+# Soft delete
+gem "discard", "~> 1.4"
 
 # 필요한 기본 gem만 유지하고 나머지는 배포 성공 후 추가
 # gem 'sidekiq-cron'
@@ -94,3 +102,9 @@ end
 gem "kaminari"
 
 gem "lograge", "~> 0.14.0"
+
+# Inertia.js Rails adapter (Svelte 5 frontend)
+gem "inertia_rails", "~> 3.0"
+
+# Vite Rails integration (asset bundling)
+gem "vite_rails", "~> 3.0"

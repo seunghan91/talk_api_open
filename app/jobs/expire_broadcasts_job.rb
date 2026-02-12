@@ -1,7 +1,5 @@
-# app/workers/expire_broadcasts_worker.rb
-class ExpireBroadcastsWorker
-  include Sidekiq::Worker
-  sidekiq_options queue: :default, retry: 0
+class ExpireBroadcastsJob < ApplicationJob
+  queue_as :default
 
   def perform
     # 만료된 브로드캐스트 비활성화

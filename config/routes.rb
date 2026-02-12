@@ -1,12 +1,7 @@
-require "sidekiq/web"
-
 Rails.application.routes.draw do
   # Swagger API 문서화 엔진 마운트
   mount Rswag::Ui::Engine => "/api-docs"
   mount Rswag::Api::Engine => "/api-docs"
-
-  # 사이드킥(Sidekiq) 관리자 UI
-  mount Sidekiq::Web => "/sidekiq"
 
   # 헬스 체크 엔드포인트
   get "/api/health_check", to: "health_check#index"
@@ -15,8 +10,50 @@ Rails.application.routes.draw do
   get "/health/conversations", to: "health_check#conversations_check"
   get "/health/redis_debug", to: "health_check#debug_redis"
 
-  # 1) 웹용 루트
-  root "pages#home"
+  # ============================================================
+  # Web Routes (Inertia.js - Svelte 5 Frontend)
+  # ============================================================
+
+  # 메인 홈 (인증된 사용자 -> 피드, 비인증 -> 로그인)
+  root "web/home#index"
+
+  # 인증 플로우
+  scope :auth, module: "web", as: "web_auth" do
+    get "login",     action: :login,          controller: "auth"
+    post "login",    action: :create_session,  controller: "auth"
+    get "verify",    action: :verify,          controller: "auth"
+    post "verify",   action: :verify_code,     controller: "auth"
+    get "register",  action: :register,        controller: "auth"
+    post "register", action: :create_user,     controller: "auth"
+    delete "logout", action: :destroy,         controller: "auth"
+    post "resend",   action: :resend_code,     controller: "auth"
+  end
+
+  # 브로드캐스트
+  resources :broadcasts, controller: "web/broadcasts", only: [:index, :show, :new, :create]
+
+  # 대화
+  resources :conversations, controller: "web/conversations", only: [:index, :show] do
+    member do
+      post :send_message
+      post :favorite
+    end
+  end
+
+  # 프로필
+  resource :profile, controller: "web/profile", only: [:show, :edit, :update]
+
+  # 알림
+  resources :notifications, controller: "web/notifications", only: [:index] do
+    collection do
+      patch :mark_all_read
+    end
+  end
+
+  # 설정
+  resource :settings, controller: "web/settings", only: [:show, :update]
+
+  # 레거시 웹 페이지 (하위 호환)
   get "purchases/create"
   get "purchases/index"
 

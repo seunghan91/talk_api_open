@@ -13,7 +13,6 @@ NC='\033[0m'
 
 # 서비스 ID
 API_SERVICE_ID="srv-cvbri10fnakc73dntmsg"
-SIDEKIQ_SERVICE_ID="srv-cvlm6cbipnbc73as48ag"
 
 # 사용법 출력
 usage() {
@@ -24,8 +23,7 @@ usage() {
     echo ""
     echo "옵션:"
     echo "  api        API 서버 로그 (실시간)"
-    echo "  sidekiq    Sidekiq 워커 로그 (실시간)"
-    echo "  recent     최근 로그 확인 (API + Sidekiq)"
+    echo "  recent     최근 로그 확인"
     echo "  errors     에러 로그만 확인"
     echo "  tail       실시간 스트리밍 (기본값)"
     echo ""
@@ -52,47 +50,29 @@ api_logs() {
     render logs --tail -r $API_SERVICE_ID --output text --confirm
 }
 
-# Sidekiq 실시간 로그
-sidekiq_logs() {
-    echo -e "${GREEN}⚙️ Sidekiq 워커 실시간 로그 스트리밍 시작...${NC}"
-    echo -e "${YELLOW}종료하려면 Ctrl+C를 누르세요${NC}"
-    render logs --tail -r $SIDEKIQ_SERVICE_ID --output text --confirm
-}
-
 # 최근 로그 확인
 recent_logs() {
     echo -e "${GREEN}📋 최근 로그 확인${NC}"
-    
+
     echo -e "${BLUE}--- API 서버 최근 20개 로그 ---${NC}"
     render logs --limit 20 -r $API_SERVICE_ID --output text --confirm
-    
-    echo ""
-    echo -e "${BLUE}--- Sidekiq 워커 최근 20개 로그 ---${NC}"
-    render logs --limit 20 -r $SIDEKIQ_SERVICE_ID --output text --confirm
 }
 
 # 에러 로그만 확인
 error_logs() {
     echo -e "${RED}🚨 에러 로그 확인${NC}"
-    
+
     echo -e "${BLUE}--- API 서버 에러 로그 ---${NC}"
     render logs --level error --limit 50 -r $API_SERVICE_ID --output text --confirm || echo "에러 로그가 없습니다."
-    
-    echo ""
-    echo -e "${BLUE}--- Sidekiq 워커 에러 로그 ---${NC}"
-    render logs --level error --limit 50 -r $SIDEKIQ_SERVICE_ID --output text --confirm || echo "에러 로그가 없습니다."
 }
 
 # 메인 실행 로직
 main() {
     check_api_key
-    
+
     case "${1:-tail}" in
         "api")
             api_logs
-            ;;
-        "sidekiq")
-            sidekiq_logs
             ;;
         "recent")
             recent_logs
@@ -115,4 +95,4 @@ main() {
     esac
 }
 
-main "$@" 
+main "$@"

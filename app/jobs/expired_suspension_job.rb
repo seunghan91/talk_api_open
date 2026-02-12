@@ -1,9 +1,6 @@
-# app/workers/expired_suspension_worker.rb
-class ExpiredSuspensionWorker
-  include Sidekiq::Worker
-
-  # 일일 1회 실행 (정지 종료 처리용)
-  sidekiq_options queue: "default", retry: 3
+class ExpiredSuspensionJob < ApplicationJob
+  queue_as :default
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform
     # 로그 기록

@@ -28,7 +28,7 @@ jobs:
           cd -
           render --version
 
-      # API 서버 배포
+      # API 서버 배포 (Solid Queue worker는 Procfile에서 함께 관리)
       - name: Deploy API Server
         env:
           RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
@@ -42,43 +42,10 @@ jobs:
           render deploys create srv-cvbri10fnakc73dntmsg --output json --confirm --wait
           echo "API server deployment completed!"
 
-  deploy-sidekiq:
-    runs-on: ubuntu-latest
-    name: Deploy Sidekiq Worker
-    needs: deploy-api # API 서버 배포 완료 후 실행
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      # Render CLI 설치
-      - name: Install Render CLI
-        run: |
-          mkdir -p /tmp/render
-          cd /tmp/render
-          curl -L https://github.com/render-oss/cli/releases/download/v2.1.4/cli_2.1.4_linux_amd64.zip -o render.zip
-          unzip -o render.zip
-          chmod +x cli_v2.1.4
-          sudo mv cli_v2.1.4 /usr/local/bin/render
-          cd -
-
-      # Sidekiq 워커 배포
-      - name: Deploy Sidekiq Worker
-        env:
-          RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
-          CI: true
-        run: |
-          if [ -z "$RENDER_API_KEY" ]; then
-            echo "Error: RENDER_API_KEY is not set"
-            exit 1
-          fi
-          echo "Deploying Sidekiq worker..."
-          render deploys create srv-cvlm6cbipnbc73as48ag --output json --confirm --wait
-          echo "Sidekiq worker deployment completed!"
-
   post-deploy:
     runs-on: ubuntu-latest
     name: Post Deployment Tasks
-    needs: [deploy-api, deploy-sidekiq]
+    needs: [deploy-api]
     steps:
       - name: Install Render CLI
         run: |
@@ -98,7 +65,7 @@ jobs:
         run: |
           echo "Checking services status..."
           render services --output json --confirm | jq '.[] | select(.service) | {name: .service.name, status: .service.suspended, url: .service.serviceDetails.url}'
-          
+
       # 로그 확인 (최근 10개)
       - name: Check Recent Logs
         env:
@@ -107,5 +74,3 @@ jobs:
         run: |
           echo "Checking recent API logs..."
           render logs --limit 10 -r srv-cvbri10fnakc73dntmsg --output text --confirm || true
-          echo "Checking recent Sidekiq logs..."
-          render logs --limit 10 -r srv-cvlm6cbipnbc73as48ag --output text --confirm || true 

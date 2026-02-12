@@ -118,7 +118,7 @@ RSpec.describe BroadcastForm do
     end
 
     before do
-      allow(BroadcastWorker).to receive(:perform_async)
+      allow(BroadcastDeliveryJob).to receive(:perform_later)
       allow(mock_recipient_service).to receive(:select_recipients).and_return(recipient_ids)
     end
 
@@ -206,7 +206,7 @@ RSpec.describe BroadcastForm do
       custom_audio_service = double('AudioUploadService')
       custom_recipient_service = double('RecipientSelectionService')
 
-      allow(BroadcastWorker).to receive(:perform_async)
+      allow(BroadcastDeliveryJob).to receive(:perform_later)
 
       form = described_class.new(
         user_id: user.id,

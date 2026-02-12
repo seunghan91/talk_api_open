@@ -66,8 +66,6 @@ Rails.application.configure do
     # 배포 직후 디버깅을 위해 로그 레벨을 info로 설정 (나중에 warn으로 변경 가능)
     config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "info").to_sym
 
-    # Redis 연결 로깅 활성화 (배포 후 확인용)
-    Redis.exists_returns_integer = true # 경고 제거
   end
 
   # Prepend all log lines with the following tags.
@@ -78,41 +76,16 @@ Rails.application.configure do
   # want to log everything, set the level to "debug".
   config.log_level = ENV.fetch("RAILS_LOG_LEVEL", "warn")
 
-  # Use a different cache store in production.
-  # Using Rails built-in :redis_cache_store (not redis-rails gem)
-  # This provides better integration with Rails and proper connection pooling
-  redis_url = ENV.fetch("REDIS_URL", "redis://localhost:6379/0")
-
-  # Detect if SSL is required (external Render Redis or rediss:// protocol)
-  is_external_redis = redis_url.start_with?("rediss://") ||
-                      (redis_url.include?(".render.com") && !redis_url.include?("localhost"))
-
-  cache_redis_options = {
-    url: redis_url,
-    expires_in: 1.day,
-    namespace: "talkk_cache",
-    connect_timeout: 5,
-    read_timeout: 1,
-    write_timeout: 1,
-    reconnect_attempts: 3,
-    error_handler: -> (method:, returning:, exception:) {
-      Rails.logger.error("Redis Cache Error: #{method} failed with #{exception.class}: #{exception.message}")
-      # Report to Sentry if available
-      Sentry.capture_exception(exception, extra: { method: method, returning: returning }) if defined?(Sentry)
-    }
-  }
-
-  # Add SSL configuration for external Redis connections
-  cache_redis_options[:ssl] = true if is_external_redis
-
-  config.cache_store = :redis_cache_store, cache_redis_options
+  # Use Solid Cache for production caching (Rails 8 native)
+  config.cache_store = :solid_cache_store
 
   config.swagger_root = Rails.root.join("swagger").to_s
   # 정적접근 허용
   config.public_file_server.enabled = true
   # Use a real queuing backend for Active Job (and separate queues per environment).
-  config.active_job.queue_adapter = :sidekiq
-  config.active_job.queue_name_prefix = "talkk_api_production"
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
+  # config.active_job.queue_name_prefix = "talkk_api_production"  # Not needed with Solid Queue
 
   # Disable caching for Action Mailer templates even if Action Controller
   # caching is enabled.

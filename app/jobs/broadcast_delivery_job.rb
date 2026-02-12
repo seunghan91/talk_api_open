@@ -1,157 +1,113 @@
-class BroadcastWorker
-  include Sidekiq::Worker
-  sidekiq_options queue: :broadcasts, retry: 3, backtrace: true
-
-  # Diagnostic method for verifying worker functionality
-  def self.verify_worker_setup
-    begin
-      # Check if worker can access the database
-      user_count = User.count
-      broadcast_count = Broadcast.count
-      conversation_count = Conversation.count
-
-      # Verify Redis connection
-      redis_connection = Sidekiq.redis { |conn| conn.ping }
-
-      {
-        status: "ok",
-        message: "BroadcastWorker setup verified",
-        database_access: true,
-        redis_connection: redis_connection == "PONG",
-        stats: {
-          users: user_count,
-          broadcasts: broadcast_count,
-          conversations: conversation_count
-        },
-        timestamp: Time.now.utc.iso8601
-      }
-    rescue => e
-      {
-        status: "error",
-        message: "BroadcastWorker verification failed",
-        error: e.message,
-        backtrace: e.backtrace.first(5),
-        timestamp: Time.now.utc.iso8601
-      }
-    end
-  end
+class BroadcastDeliveryJob < ApplicationJob
+  queue_as :broadcasts
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   def perform(broadcast_id, recipient_count = 5)
-    begin
-      # Log environment information for debugging
-      Rails.logger.info("Worker Environment: RAILS_ENV=#{ENV['RAILS_ENV']}, REDIS_URL=#{ENV['REDIS_URL']&.gsub(/:[^:]*@/, ':****@')}")
-      Rails.logger.info("브로드캐스트 처리 시작: ID #{broadcast_id}, 수신자 수 #{recipient_count}")
+    Rails.logger.info("브로드캐스트 처리 시작: ID #{broadcast_id}, 수신자 수 #{recipient_count}")
 
-      broadcast = Broadcast.find_by(id: broadcast_id)
-      unless broadcast
-        Rails.logger.error("브로드캐스트를 찾을 수 없음: ID #{broadcast_id}")
-        return
-      end
+    broadcast = Broadcast.find_by(id: broadcast_id)
+    unless broadcast
+      Rails.logger.error("브로드캐스트를 찾을 수 없음: ID #{broadcast_id}")
+      return
+    end
 
-      # 송신자 정보
-      sender = broadcast.user
-      Rails.logger.info("브로드캐스트 송신자: ID #{sender.id}, 닉네임 #{sender.nickname}")
+    # 송신자 정보
+    sender = broadcast.user
+    Rails.logger.info("브로드캐스트 송신자: ID #{sender.id}, 닉네임 #{sender.nickname}")
 
-      # SOLID 원칙에 따라 서비스 객체 사용
-      recipient_selection_service = Broadcasts::RecipientSelectionService.new(
-        sender,
-        strategy: determine_selection_strategy(sender)
+    # SOLID 원칙에 따라 서비스 객체 사용
+    recipient_selection_service = Broadcasts::RecipientSelectionService.new(
+      sender,
+      strategy: determine_selection_strategy(sender)
+    )
+    recipients = recipient_selection_service.select_recipients(count: recipient_count)
+
+    # 수신자 로깅
+    recipient_ids = recipients.pluck(:id).join(", ")
+    Rails.logger.info("브로드캐스트 수신자 선택 완료: #{recipients.count}명, IDs: [#{recipient_ids}]")
+
+    # 브로드캐스트 수신자로 설정
+    broadcast_recipients = []
+
+    recipients.each do |recipient|
+      # 수신자 정보 로깅
+      Rails.logger.info("수신자 정보: ID #{recipient.id}, 닉네임 #{recipient.nickname}, 상태 #{recipient.status}")
+
+      # 브로드캐스트 수신자 생성
+      broadcast_recipient = BroadcastRecipient.create(
+        broadcast: broadcast,
+        user: recipient,
+        status: :delivered
       )
-      recipients = recipient_selection_service.select_recipients(count: recipient_count)
 
-      # 수신자 로깅
-      recipient_ids = recipients.pluck(:id).join(", ")
-      Rails.logger.info("브로드캐스트 수신자 선택 완료: #{recipients.count}명, IDs: [#{recipient_ids}]")
+      # 생성 결과 로깅
+      if broadcast_recipient.persisted?
+        Rails.logger.info("브로드캐스트 수신자 생성 성공: ID #{broadcast_recipient.id}")
+        broadcast_recipients << broadcast_recipient
+      else
+        Rails.logger.error("브로드캐스트 수신자 생성 실패: 수신자 ID #{recipient.id}, 오류: #{broadcast_recipient.errors.full_messages.join(', ')}")
+      end
+    end
 
-      # 브로드캐스트 수신자로 설정
-      broadcast_recipients = []
+    # 브로드캐스트 수신자와 대화 자동 생성 확인
+    broadcast_recipients.each do |br|
+      begin
+        Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화 처리 시작")
 
-      recipients.each do |recipient|
-        # 수신자 정보 로깅
-        Rails.logger.info("수신자 정보: ID #{recipient.id}, 닉네임 #{recipient.nickname}, 상태 #{recipient.status}")
-
-        # 브로드캐스트 수신자 생성
-        broadcast_recipient = BroadcastRecipient.create(
-          broadcast: broadcast,
-          user: recipient,
-          status: :delivered
+        # 대화 생성 - Conversation.find_or_create_conversation 메소드 사용
+        conversation = Conversation.find_or_create_conversation(
+          broadcast.user_id,
+          br.user_id,
+          broadcast
         )
 
-        # 생성 결과 로깅
-        if broadcast_recipient.persisted?
-          Rails.logger.info("브로드캐스트 수신자 생성 성공: ID #{broadcast_recipient.id}")
-          broadcast_recipients << broadcast_recipient
-        else
-          Rails.logger.error("브로드캐스트 수신자 생성 실패: 수신자 ID #{recipient.id}, 오류: #{broadcast_recipient.errors.full_messages.join(', ')}")
-        end
-      end
+        Rails.logger.info("대화 처리 완료: ID #{conversation.id}")
 
-      # 브로드캐스트 수신자와 대화 자동 생성 확인
-      broadcast_recipients.each do |br|
-        begin
-          Rails.logger.info("브로드캐스트 수신자 (ID #{br.user_id})와 대화 처리 시작")
+        # 브로드캐스트 발신자에게만 대화방이 보이도록 설정
+        # 수신자는 응답하기 전까지 대화방이 보이지 않음
+        conversation.show_to!(broadcast.user_id)  # 발신자에게만 보임
+        conversation.hide_from!(br.user_id)  # 수신자에게는 숨김 (응답 시 보임)
 
-          # 대화 생성 - Conversation.find_or_create_conversation 메소드 사용
-          conversation = Conversation.find_or_create_conversation(
-            broadcast.user_id,
-            br.user_id,
-            broadcast
-          )
-
-          Rails.logger.info("대화 처리 완료: ID #{conversation.id}")
-
-          # 브로드캐스트 발신자에게만 대화방이 보이도록 설정
-          # 수신자는 응답하기 전까지 대화방이 보이지 않음
-          conversation.show_to!(broadcast.user_id)  # 발신자에게만 보임
-          conversation.hide_from!(br.user_id)  # 수신자에게는 숨김 (응답 시 보임)
-
-          # 대화에 브로드캐스트 메시지 추가
-          message = Message.create!(
-            conversation: conversation,
-            sender_id: broadcast.user_id,
-            broadcast_id: broadcast.id,
-            message_type: "broadcast"
-          )
-
-          Rails.logger.info("대화에 브로드캐스트 메시지 추가 성공: 메시지 ID #{message.id}")
-
-          # 대화 업데이트 시간 갱신
-          conversation.touch
-
-        rescue => e
-          Rails.logger.error("대화 생성 또는 메시지 추가 실패: #{e.message}\n#{e.backtrace.join("\n")}")
-        end
-      end
-
-      # SOLID 원칙에 따라 NotificationService 사용
-      notification_service = NotificationService.new
-
-      # 일괄 알림 전송 (성능 개선)
-      result = notification_service.send_bulk_notifications(
-        users: recipients,
-        type: :broadcast,
-        title: "#{broadcast.user.nickname}님의 새로운 브로드캐스트",
-        body: broadcast.content.presence || "새로운 음성 메시지가 도착했습니다",
-        data: {
+        # 대화에 브로드캐스트 메시지 추가
+        message = Message.create!(
+          conversation: conversation,
+          sender_id: broadcast.user_id,
           broadcast_id: broadcast.id,
-          sender_id: broadcast.user_id
-        }
-      )
+          message_type: "broadcast"
+        )
 
-      if result.success?
-        Rails.logger.info("푸시 알림 전송 성공: #{result.sent_count}명에게 전송")
-      else
-        Rails.logger.error("푸시 알림 전송 실패: #{result.errors.join(', ')}")
+        Rails.logger.info("대화에 브로드캐스트 메시지 추가 성공: 메시지 ID #{message.id}")
+
+        # 대화 업데이트 시간 갱신
+        conversation.touch
+
+      rescue => e
+        Rails.logger.error("대화 생성 또는 메시지 추가 실패: #{e.message}\n#{e.backtrace.join("\n")}")
       end
-
-      Rails.logger.info("브로드캐스트 처리 완료: ID #{broadcast_id}")
-    rescue Redis::CannotConnectError, RedisClient::CannotConnectError => e
-      Rails.logger.error("Redis 연결 실패: #{e.message}")
-      raise e
-    rescue => e
-      Rails.logger.error("브로드캐스트 처리 실패: #{e.message}\n#{e.backtrace.join("\n")}")
-      raise e
     end
+
+    # SOLID 원칙에 따라 NotificationService 사용
+    notification_service = NotificationService.new
+
+    # 일괄 알림 전송 (성능 개선)
+    result = notification_service.send_bulk_notifications(
+      users: recipients,
+      type: :broadcast,
+      title: "#{broadcast.user.nickname}님의 새로운 브로드캐스트",
+      body: broadcast.content.presence || "새로운 음성 메시지가 도착했습니다",
+      data: {
+        broadcast_id: broadcast.id,
+        sender_id: broadcast.user_id
+      }
+    )
+
+    if result.success?
+      Rails.logger.info("푸시 알림 전송 성공: #{result.sent_count}명에게 전송")
+    else
+      Rails.logger.error("푸시 알림 전송 실패: #{result.errors.join(', ')}")
+    end
+
+    Rails.logger.info("브로드캐스트 처리 완료: ID #{broadcast_id}")
   end
 
   private

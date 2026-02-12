@@ -34,8 +34,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
     allow(user).to receive(:wallet).and_return(wallet)
     allow(wallet).to receive(:withdraw).and_return(true)
 
-    # BroadcastWorker stub
-    allow(BroadcastWorker).to receive(:perform_async)
+    # BroadcastDeliveryJob stub
+    allow(BroadcastDeliveryJob).to receive(:perform_later)
   end
 
   # 공통 헬퍼: broadcast mock 설정
@@ -103,8 +103,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
         command.execute
       end
 
-      it 'BroadcastWorker를 호출한다' do
-        expect(BroadcastWorker).to receive(:perform_async).with(
+      it 'BroadcastDeliveryJob를 호출한다' do
+        expect(BroadcastDeliveryJob).to receive(:perform_later).with(
           broadcast.id,
           selected_recipients.map(&:id)
         )

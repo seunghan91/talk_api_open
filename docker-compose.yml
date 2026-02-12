@@ -38,18 +38,16 @@ services:
     tty: true
     stdin_open: true
 
-  sidekiq:
+  solid_queue:
     build: .
-    command: bundle exec sidekiq
+    command: bundle exec rake solid_queue:start
     volumes:
       - .:/app
     environment:
-      REDIS_URL: redis://redis:6379/0
       DATABASE_URL: postgresql://postgres:password@db:5432/talk_api_development
       RAILS_ENV: development
     depends_on:
       - db
-      - redis
       - api
 
 volumes:

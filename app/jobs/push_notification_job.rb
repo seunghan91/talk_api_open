@@ -1,7 +1,6 @@
-# app/workers/push_notification_worker.rb
-class PushNotificationWorker
-  include Sidekiq::Worker
-  sidekiq_options queue: :notifications, retry: 3
+class PushNotificationJob < ApplicationJob
+  queue_as :notifications
+  retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
   # 다양한 알림 유형 처리
   def perform(notification_type, *args)

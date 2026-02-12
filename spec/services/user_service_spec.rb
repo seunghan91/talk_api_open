@@ -80,7 +80,7 @@ RSpec.describe UserService do
     end
 
     it '정지 해제 작업을 스케줄링한다' do
-      expect(ExpiredSuspensionWorker).to receive(:perform_at)
+      expect(ExpiredSuspensionJob).to receive_message_chain(:set, :perform_later)
       service.suspend_user(user, reason: reason, duration_days: duration_days)
     end
   end

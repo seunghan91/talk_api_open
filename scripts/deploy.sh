@@ -14,7 +14,6 @@ NC='\033[0m' # No Color
 
 # 서비스 ID
 API_SERVICE_ID="srv-cvbri10fnakc73dntmsg"
-SIDEKIQ_SERVICE_ID="srv-cvlm6cbipnbc73as48ag"
 
 echo -e "${BLUE}🚀 Render 배포 시작${NC}"
 
@@ -28,7 +27,7 @@ fi
 
 echo -e "${GREEN}✅ API 키 확인 완료${NC}"
 
-# 1. API 서버 배포
+# 1. API 서버 배포 (Solid Queue worker는 Procfile에서 함께 시작됨)
 echo -e "${YELLOW}📦 API 서버 배포 중...${NC}"
 render deploys create $API_SERVICE_ID --output json --confirm --wait
 
@@ -39,20 +38,9 @@ else
     exit 1
 fi
 
-# 2. Sidekiq 워커 배포
-echo -e "${YELLOW}⚙️ Sidekiq 워커 배포 중...${NC}"
-render deploys create $SIDEKIQ_SERVICE_ID --output json --confirm --wait
-
-if [ $? -eq 0 ]; then
-    echo -e "${GREEN}✅ Sidekiq 워커 배포 완료${NC}"
-else
-    echo -e "${RED}❌ Sidekiq 워커 배포 실패${NC}"
-    exit 1
-fi
-
-# 3. 서비스 상태 확인
+# 2. 서비스 상태 확인
 echo -e "${YELLOW}🔍 서비스 상태 확인 중...${NC}"
 render services --output json --confirm | jq '.[] | select(.service) | {name: .service.name, status: .service.suspended, url: .service.serviceDetails.url}'
 
-echo -e "${GREEN}🎉 모든 배포가 완료되었습니다!${NC}"
-echo -e "${BLUE}🌐 API URL: https://talkk-api.onrender.com${NC}" 
+echo -e "${GREEN}🎉 배포가 완료되었습니다!${NC}"
+echo -e "${BLUE}🌐 API URL: https://talkk-api.onrender.com${NC}"

@@ -22,7 +22,7 @@ module Broadcasts
       recipients = select_recipients
       
       # 비동기 처리를 위한 워커 실행
-      BroadcastWorker.perform_async(broadcast.id, recipients.map(&:id))
+      BroadcastDeliveryJob.perform_later(broadcast.id, recipients.map(&:id))
       
       # 이벤트 발행
       @event_publisher.publish(BroadcastCreatedEvent.new(

@@ -1,14 +1,9 @@
 # spec/integration/user_scenarios_spec.rb
 require 'rails_helper'
-require 'sidekiq/testing'
 
 RSpec.describe 'User Scenario Tests', type: :request do
-  # Sidekiq 테스트 모드
-  around do |example|
-    Sidekiq::Testing.fake! do
-      example.run
-    end
-  end
+  # ActiveJob 테스트 모드 (Solid Queue)
+  include ActiveJob::TestHelper
 
   # ============================================
   # 페르소나 정의
@@ -104,7 +99,7 @@ RSpec.describe 'User Scenario Tests', type: :request do
       expect(response).to have_http_status(:created)
       broadcast_id = JSON.parse(response.body)['broadcast']['id']
 
-      # Step 2: 수신자 수동 설정 (Sidekiq fake mode)
+      # Step 2: 수신자 수동 설정 (ActiveJob test mode)
       broadcast = Broadcast.find(broadcast_id)
       BroadcastRecipient.create!(broadcast: broadcast, user: sujin, status: :delivered)
 

@@ -36,13 +36,11 @@ class UserSuspension < ApplicationRecord
         suspension.user.update(blocked: false)
 
         # 정지 해제 알림 발송 (NotificationWorker 있는 경우)
-        if defined?(NotificationWorker)
-          NotificationWorker.perform_async(
+        if defined?(PushNotificationJob)
+          PushNotificationJob.perform_later(
+            "suspension",
             suspension.user_id,
-            "suspension_ended",
-            "계정 정지 해제 알림",
-            "귀하의 계정 정지가 해제되었습니다. Talkk 서비스를 다시 이용하실 수 있습니다.",
-            { suspension_id: suspension.id }
+            "계정 정지 해제 알림"
           )
         end
       end
