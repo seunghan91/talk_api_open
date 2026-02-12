@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ko" class="h-full">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="description" content="Talkk - 음성으로 연결되는 세상" />
+
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <title>Talkk</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- Dark mode initialization (prevent flash) -->
+    <script>
+      (function() {
+        var theme = localStorage.getItem('talkk-theme');
+        if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+
+    <!-- Vite assets -->
+    <%= vite_client_tag %>
+    <%= vite_javascript_tag "application" %>
+  </head>
+  <body class="h-full bg-slate-50 text-slate-800 antialiased">
+    <%= yield %>
+  </body>
+</html>

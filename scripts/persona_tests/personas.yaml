@@ -1,0 +1,17 @@
+personas:
+  - id: guest_visitor
+    name: Guest Visitor
+    role: 비로그인 방문자
+    objective: 홈 접근 시 인증 라우트로 리다이렉트 확인
+  - id: new_user_onboarding
+    name: New User Onboarding
+    role: 신규 가입자
+    objective: 로그인/인증/회원가입 플로우 검증
+  - id: active_user
+    name: Active User
+    role: 기존 활성 사용자
+    objective: 홈/브로드캐스트/대화/프로필/설정/알림 접근 검증
+  - id: admin_auditor
+    name: Admin Auditor
+    role: 관리자 감리자
+    objective: 관리자 대시보드/신고/사용자 관리 및 조치 검증

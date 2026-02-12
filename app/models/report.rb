@@ -4,7 +4,7 @@ class Report < ApplicationRecord
     belongs_to :reported, class_name: "User", foreign_key: :reported_id
 
     enum :status, { pending: 0, processing: 1, resolved: 2, rejected: 3 }, prefix: true, validate: true
-    enum :report_type, { user: 0, broadcast: 1, message: 2 }, prefix: true, validate: true
+    enum :report_type, { user: 0, broadcast: 1, message: 2, feedback: 3 }, prefix: true, validate: true
 
     validates :reason, presence: true
 

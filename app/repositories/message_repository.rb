@@ -88,7 +88,13 @@ class MessageRepository
 
   # 메시지 검색
   def search(query, user: nil)
-    scope = Message.where("text LIKE ?", "%#{query}%")
+    scope = Message.all
+
+    if Message.column_names.include?("text")
+      scope = scope.where("text LIKE ?", "%#{query}%")
+    else
+      scope = scope.none
+    end
     
     if user
       scope = scope.joins(:conversation)

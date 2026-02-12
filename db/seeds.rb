@@ -391,21 +391,26 @@ puts "Creating test users and broadcast data..."
 # 테스트 사용자 생성
 test_users = []
 5.times do |i|
-  user = User.find_or_create_by(phone_number: "+821000000#{i}") do |u|
+  user = User.find_or_create_by(phone_number: "0106000000#{i}") do |u|
     u.nickname = "테스트사용자#{i+1}"
     u.password = "password123"
+    u.password_confirmation = "password123"
     u.gender = i.even? ? "male" : "female"
     u.verified = true
-    u.status = :active
   end
+  # 지갑 생성
+  user.wallet || user.create_wallet!(balance: 5000)
   test_users << user
 end
 
 # 사용자1이 브로드캐스트 생성
 broadcaster = test_users[0]
-broadcast = broadcaster.broadcasts.create!(
-  text: "안녕하세요! 테스트 브로드캐스트입니다.",
-  content: "안녕하세요! 테스트 브로드캐스트입니다."
+broadcast = Broadcast.create!(
+  user: broadcaster,
+  content: "안녕하세요! 테스트 브로드캐스트입니다.",
+  expired_at: 6.days.from_now,
+  active: true,
+  duration: rand(10..60)
 )
 
 # 사용자 2,3,4를 수신자로 설정
@@ -416,29 +421,25 @@ recipients.each_with_index do |recipient, index|
     user: recipient,
     status: :delivered
   )
-  
+
   # 사용자4(인덱스 2)만 응답
   if index == 2
     # 대화방 생성
     conversation = Conversation.find_or_create_conversation(
       broadcaster.id,
-      recipient.id,
-      broadcast
+      recipient.id
     )
-    
+
     # 응답 메시지 생성
-    message = conversation.messages.create!(
+    conversation.messages.create!(
       sender_id: recipient.id,
       message_type: "voice",
-      content: "응답 메시지입니다!"
+      read: false,
+      duration: rand(5..30)
     )
-    
+
     # 응답 상태 업데이트
     br.update!(status: :replied)
-    
-    # 양쪽에게 대화방 표시
-    conversation.show_to!(broadcaster.id)
-    conversation.show_to!(recipient.id)
   end
 end
 

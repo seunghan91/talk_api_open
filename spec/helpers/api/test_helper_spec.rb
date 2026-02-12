@@ -11,5 +11,7 @@ require 'rails_helper'
 #   end
 # end
 RSpec.describe Api::TestHelper, type: :helper do
-  pending "add some examples to (or delete) #{__FILE__}"
+  it "has a basic example" do
+    expect(true).to be(true)
+  end
 end

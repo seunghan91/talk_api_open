@@ -63,7 +63,6 @@ RSpec.describe "Api::V1::Users", type: :request do
 
   # ===================================================================
   #   POST /api/v1/users/change_password - Change user password
-  #   NOTE: Route exists but controller action is not implemented yet
   # ===================================================================
   describe "POST /api/v1/users/change_password" do
     context "with valid parameters" do
@@ -75,11 +74,10 @@ RSpec.describe "Api::V1::Users", type: :request do
         }
       end
 
-      it "changes the password successfully", :pending do
-        # TODO: Controller action not implemented
+      it "changes the password successfully" do
         post "/api/v1/users/change_password", params: valid_params, headers: auth_headers
 
-        expect(response.status).to be_in([200, 422])
+        expect(response).to have_http_status(:ok)
       end
     end
 
@@ -92,17 +90,15 @@ RSpec.describe "Api::V1::Users", type: :request do
         }
       end
 
-      it "returns an error", :pending do
-        # TODO: Controller action not implemented
+      it "returns an error" do
         post "/api/v1/users/change_password", params: invalid_params, headers: auth_headers
 
-        expect(response.status).to be_in([400, 422])
+        expect(response).to have_http_status(:unprocessable_entity)
       end
     end
 
     context "without authentication" do
-      it "returns unauthorized", :pending do
-        # TODO: Controller action not implemented
+      it "returns unauthorized" do
         post "/api/v1/users/change_password", params: { current_password: 'test' }
 
         expect(response).to have_http_status(:unauthorized)

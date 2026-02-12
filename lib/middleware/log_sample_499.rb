@@ -1,7 +1,8 @@
 # 499/304 로그 샘플링 미들웨어
 # 동일한 IP+Path+Status 조합에 대해 1분에 1회만 로그 기록
 
-class LogSample499
+module Middleware
+  class LogSample499
   WINDOW = 60 # 초
   NOISE_PATHS = %r{\A/api/v1/(wallet|notifications)}i.freeze
 
@@ -58,4 +59,8 @@ class LogSample499
     current_time = Time.now.to_i
     @seen.delete_if { |_, timestamp| current_time - timestamp > WINDOW * 10 }
   end
+  end
 end
+
+# Backward compatibility for any legacy references.
+LogSample499 = Middleware::LogSample499 unless defined?(LogSample499)

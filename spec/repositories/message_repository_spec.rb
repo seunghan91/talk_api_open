@@ -201,13 +201,9 @@ RSpec.describe MessageRepository do
   end
 
   describe '#search' do
-    # NOTE: Message 모델에 text 컬럼이 없어서 search 기능은 현재 동작하지 않음
-    # 향후 text 컬럼이 추가되면 이 테스트를 활성화해야 함
-
     it '검색 쿼리를 실행할 수 있다' do
-      # 빈 검색 결과를 반환하는지 확인 (text 컬럼이 없으므로 에러 발생 가능)
-      # 현재는 search 메서드가 text 컬럼을 사용하므로 skip
-      skip 'Message 모델에 text 컬럼이 없음 - 향후 구현 필요'
+      expect { repository.search('hello').to_a }.not_to raise_error
+      expect(repository.search('hello')).to be_a(ActiveRecord::Relation)
     end
   end
 

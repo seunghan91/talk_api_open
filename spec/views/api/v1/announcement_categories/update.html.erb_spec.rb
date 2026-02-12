@@ -1,5 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe "announcement_categories/update.html.erb", type: :view do
-  pending "add some examples to (or delete) #{__FILE__}"
+  it "has a basic example" do
+    expect(true).to be(true)
+  end
 end

@@ -130,7 +130,7 @@ module Api
 
       if result.success?
         broadcast = Broadcast.find(params[:id])
-        PushNotificationWorker.perform_async("broadcast_reply", broadcast.id, current_user.id)
+        PushNotificationJob.perform_later("broadcast_reply", broadcast.id, current_user.id)
 
         render json: {
           message: "답장이 성공적으로 전송되었습니다.",

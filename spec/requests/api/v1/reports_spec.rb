@@ -45,6 +45,20 @@ RSpec.describe 'Api::V1::Reports', type: :request do
         expect(response).to have_http_status(:unprocessable_entity)
       end
     end
+
+    context 'with feedback payload' do
+      it 'creates feedback report without explicit reported_id' do
+        expect {
+          post '/api/v1/reports',
+               params: { report_type: 'feedback', reason: '[bug] test feedback' },
+               headers: auth_headers
+        }.to change(Report, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        expect(Report.last.report_type).to eq('feedback')
+        expect(Report.last.reported_id).to eq(user.id)
+      end
+    end
   end
 
   describe 'GET /api/v1/reports/my_reports' do

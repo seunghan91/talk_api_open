@@ -4,7 +4,7 @@
 
 ### 인증 코드 요청
 
-**엔드포인트:** `POST /api/auth/request_code`
+**엔드포인트:** `POST /api/v1/auth/request_code`
 
 **요청 본문 예시:**
 ```json
@@ -35,7 +35,7 @@
 
 ### 인증 코드 재전송
 
-**URL**: `/api/auth/resend_code`
+**URL**: `/api/v1/auth/resend_code`
 **Method**: `POST`
 **Parameters**:
 ```json
@@ -62,7 +62,7 @@
 
 ### 인증 코드 확인
 
-**엔드포인트:** `POST /api/auth/verify_code`
+**엔드포인트:** `POST /api/v1/auth/verify_code`
 
 **요청 본문 예시:**
 ```json
@@ -142,7 +142,7 @@
 
 ## 회원가입
 
-**엔드포인트:** `POST /api/auth/register`
+**엔드포인트:** `POST /api/v1/auth/register`
 
 **요청 본문 예시:**
 ```json
@@ -204,7 +204,7 @@
 
 ## 로그인
 
-**엔드포인트:** `POST /api/auth/login`
+**엔드포인트:** `POST /api/v1/auth/login`
 
 **요청 본문 예시:**
 ```json
@@ -238,7 +238,7 @@
 
 브로드캐스트 API
 브로드캐스트 목록 조회
-URL: /api/broadcasts
+URL: /api/v1/broadcasts
 Method: GET
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -258,7 +258,7 @@ jsonCopy[
   }
 ]
 브로드캐스트 생성
-URL: /api/broadcasts
+URL: /api/v1/broadcasts
 Method: POST
 Header: Authorization: Bearer {token}
 Content-Type: multipart/form-data
@@ -278,7 +278,7 @@ jsonCopy{
   }
 }
 브로드캐스트 상세 조회
-URL: /api/broadcasts/{id}
+URL: /api/v1/broadcasts/{id}
 Method: GET
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -296,7 +296,7 @@ jsonCopy{
   }
 }
 브로드캐스트에 답장하기
-URL: /api/broadcasts/{id}/reply
+URL: /api/v1/broadcasts/{id}/reply
 Method: POST
 Header: Authorization: Bearer {token}
 Content-Type: multipart/form-data
@@ -311,7 +311,7 @@ jsonCopy{
 }
 대화 API
 대화 목록 조회
-URL: /api/conversations
+URL: /api/v1/conversations
 Method: GET
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -337,7 +337,7 @@ jsonCopy[
   }
 ]
 대화 상세 조회
-URL: /api/conversations/{id}
+URL: /api/v1/conversations/{id}
 Method: GET
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -367,7 +367,7 @@ jsonCopy{
   ]
 }
 대화방 메시지 전송
-URL: /api/conversations/{id}/send_message
+URL: /api/v1/conversations/{id}/send_message
 Method: POST
 Header: Authorization: Bearer {token}
 Content-Type: multipart/form-data
@@ -381,7 +381,7 @@ jsonCopy{
   "message_id": 1
 }
 대화방 즐겨찾기 등록
-URL: /api/conversations/{id}/favorite
+URL: /api/v1/conversations/{id}/favorite
 Method: POST
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -389,7 +389,7 @@ jsonCopy{
   "message": "즐겨찾기 등록 완료"
 }
 대화방 즐겨찾기 해제
-URL: /api/conversations/{id}/unfavorite
+URL: /api/v1/conversations/{id}/unfavorite
 Method: POST
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -397,7 +397,7 @@ jsonCopy{
   "message": "즐겨찾기 해제 완료"
 }
 대화방 삭제
-URL: /api/conversations/{id}
+URL: /api/v1/conversations/{id}
 Method: DELETE
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -406,7 +406,7 @@ jsonCopy{
 }
 사용자 API
 사용자 차단
-URL: /users/{id}/block
+URL: /api/v1/users/{id}/block
 Method: POST
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -421,7 +421,7 @@ jsonCopy{
   }
 }
 사용자 차단 해제
-URL: /users/{id}/unblock
+URL: /api/v1/users/{id}/unblock
 Method: POST
 Header: Authorization: Bearer {token}
 응답 예시:
@@ -429,12 +429,16 @@ jsonCopy{
   "message": "차단 해제 완료"
 }
 사용자 신고하기
-URL: /users/{id}/report
+URL: /api/v1/reports
 Method: POST
 Header: Authorization: Bearer {token}
 Parameters:
 jsonCopy{
-  "reason": "부적절한 내용"
+  "report": {
+    "reported_id": 2,
+    "report_type": "user",
+    "reason": "부적절한 내용"
+  }
 }
 응답 예시:
 jsonCopy{
@@ -443,7 +447,9 @@ jsonCopy{
     "id": 1,
     "reporter_id": 1,
     "reported_id": 2,
+    "report_type": "user",
     "reason": "부적절한 내용",
+    "status": "pending",
     "created_at": "2023-02-23T12:00:00Z",
     "updated_at": "2023-02-23T12:00:00Z"
   }
@@ -473,7 +479,7 @@ jsonCopy{
 }
 
 읽지 않은 메시지 수 조회
-URL: /api/conversations/{id}/unread_count
+URL: /api/v1/conversations/{id}/unread_count
 Method: GET
 Header: Authorization: Bearer {token}
 응답 예시:

@@ -191,7 +191,7 @@ if defined?(RailsAdmin)
             @object.update(status: :suspended)
 
             # 정지 알림 전송
-            PushNotificationWorker.perform_async("suspension", @object.id, "관리자에 의한 계정 정지")
+            PushNotificationJob.perform_later("suspension", @object.id, "관리자에 의한 계정 정지")
 
             flash[:notice] = "사용자가 정지되었습니다."
             redirect_to back_or_index
@@ -231,7 +231,7 @@ if defined?(RailsAdmin)
             @object.update(status: :banned)
 
             # 차단 알림 전송
-            PushNotificationWorker.perform_async("suspension", @object.id, "관리자에 의한 영구 차단")
+            PushNotificationJob.perform_later("suspension", @object.id, "관리자에 의한 영구 차단")
 
             flash[:notice] = "사용자가 영구 차단되었습니다."
             redirect_to back_or_index

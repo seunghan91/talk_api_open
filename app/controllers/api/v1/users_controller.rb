@@ -2,7 +2,7 @@ module Api
   module V1
     class UsersController < Api::V1::BaseController
       before_action :authorize_request
-      before_action :set_user, only: [ :show, :update, :destroy ]
+      before_action :set_user, only: [ :show, :block, :unblock ]
 
       # GET /api/v1/users/profile
       #
@@ -321,6 +321,41 @@ module Api
         end
       end
 
+      # POST /api/v1/users/change_password
+      def change_password
+        current_password = password_change_params[:current_password]
+        new_password = password_change_params[:new_password]
+        new_password_confirmation = password_change_params[:new_password_confirmation].presence || new_password
+
+        if current_password.blank? || new_password.blank?
+          return render json: { error: "현재 비밀번호와 새 비밀번호를 입력해주세요." }, status: :bad_request
+        end
+
+        unless current_user.authenticate(current_password)
+          return render json: { error: "현재 비밀번호가 일치하지 않습니다." }, status: :unauthorized
+        end
+
+        if new_password.length < 6
+          return render json: { error: "새 비밀번호는 최소 6자 이상이어야 합니다." }, status: :unprocessable_entity
+        end
+
+        if new_password != new_password_confirmation
+          return render json: { error: "새 비밀번호와 확인 비밀번호가 일치하지 않습니다." }, status: :unprocessable_entity
+        end
+
+        current_user.password = new_password
+        current_user.password_confirmation = new_password_confirmation
+
+        if current_user.save
+          render json: { message: "비밀번호가 성공적으로 변경되었습니다." }, status: :ok
+        else
+          render json: { error: current_user.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        end
+      rescue => e
+        Rails.logger.error("비밀번호 변경 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "비밀번호 변경 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
+
       # GET /api/v1/users/notification_settings
       #
       # @swagger
@@ -543,7 +578,11 @@ module Api
 
         begin
           # 이미 차단한 사용자인지 확인
-          existing_block = UserBlock.find_by(blocker_id: current_user.id, blocked_id: @user.id)
+          if @user.id == current_user.id
+            return render json: { error: "자기 자신은 차단할 수 없습니다." }, status: :unprocessable_entity
+          end
+
+          existing_block = Block.find_by(blocker_id: current_user.id, blocked_id: @user.id)
 
           if existing_block
             Rails.logger.info("이미 차단된 사용자: 차단 대상 사용자 ID #{@user.id}")
@@ -552,7 +591,7 @@ module Api
           end
 
           # 차단 관계 생성
-          block = UserBlock.new(blocker_id: current_user.id, blocked_id: @user.id)
+          block = Block.new(blocker_id: current_user.id, blocked_id: @user.id)
 
           if block.save
             Rails.logger.info("사용자 차단 성공: 차단 대상 사용자 ID #{@user.id}")
@@ -567,6 +606,47 @@ module Api
         end
       end
 
+      # GET /api/v1/users/blocks
+      def blocks
+        blocked_relations = Block.includes(:blocked)
+          .where(blocker_id: current_user.id)
+          .order(created_at: :desc)
+
+        render json: {
+          blocks: blocked_relations.map do |relation|
+            {
+              id: relation.id,
+              blocked_user: {
+                id: relation.blocked.id,
+                nickname: relation.blocked.nickname,
+                gender: relation.blocked.gender
+              },
+              created_at: relation.created_at
+            }
+          end,
+          count: blocked_relations.size
+        }, status: :ok
+      rescue => e
+        Rails.logger.error("차단 목록 조회 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "차단 목록을 조회하는 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
+
+      # POST /api/v1/users/:id/unblock
+      def unblock
+        Rails.logger.info("사용자 차단 해제 요청: 차단 해제 대상 사용자 ID #{@user.id}")
+
+        block = Block.find_by(blocker_id: current_user.id, blocked_id: @user.id)
+        unless block
+          return render json: { error: "차단된 사용자를 찾을 수 없습니다." }, status: :not_found
+        end
+
+        block.destroy!
+        render json: { message: "사용자 차단이 해제되었습니다." }, status: :ok
+      rescue => e
+        Rails.logger.error("사용자 차단 해제 중 오류 발생: #{e.message}\n#{e.backtrace.join("\n")}")
+        render json: { error: "사용자 차단 해제 중 오류가 발생했습니다." }, status: :internal_server_error
+      end
+
       private
 
       def set_user
@@ -575,6 +655,14 @@ module Api
 
       def profile_params
         params.permit(:gender, :nickname)
+      end
+
+      def password_change_params
+        if params[:password].present?
+          params.require(:password).permit(:current_password, :new_password, :new_password_confirmation)
+        else
+          params.permit(:current_password, :new_password, :new_password_confirmation)
+        end
       end
 
       def generate_random_nickname_string
