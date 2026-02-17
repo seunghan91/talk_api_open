@@ -42,6 +42,21 @@ class BroadcastRepository
              .count
   end
 
+  # 최근 1시간 내 사용자가 보낸 브로드캐스트 수
+  def count_hourly_by_user(user)
+    Broadcast.where(user: user)
+             .where("created_at >= ?", 1.hour.ago)
+             .count
+  end
+
+  # 사용자의 마지막 브로드캐스트 시간
+  def last_broadcast_time(user)
+    Broadcast.where(user: user)
+             .order(created_at: :desc)
+             .limit(1)
+             .pick(:created_at)
+  end
+
   # 최근 활성 브로드캐스트
   def recent_active(since: 24.hours.ago, limit: 100)
     Broadcast.where("created_at > ?", since)

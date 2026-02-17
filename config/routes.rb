@@ -137,11 +137,17 @@ Rails.application.routes.draw do
       resources :broadcasts, only: [ :index, :show, :create ] do
         collection do
           get :received
+          get :limits
         end
         member do
           post :reply
           patch :mark_as_read
         end
+      end
+
+      # 관리자 API
+      namespace :admin do
+        resource :broadcast_settings, only: [ :show, :update ]
       end
 
       # 대화 관련 API

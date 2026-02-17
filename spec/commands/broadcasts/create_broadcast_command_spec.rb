@@ -36,6 +36,19 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
 
     # BroadcastDeliveryJob stub
     allow(BroadcastDeliveryJob).to receive(:perform_later)
+
+    # LimitService가 사용하는 broadcast_repository 메서드 stub
+    allow(broadcast_repository).to receive(:count_hourly_by_user).and_return(0)
+    allow(broadcast_repository).to receive(:last_broadcast_time).and_return(nil)
+
+    # broadcast_limits 설정이 존재하도록 보장
+    unless SystemSetting.exists?(setting_key: "broadcast_limits")
+      SystemSetting.create!(
+        setting_key: "broadcast_limits",
+        setting_value: { "daily_limit" => 20, "hourly_limit" => 5, "cooldown_minutes" => 10, "bypass_roles" => ["admin"] },
+        description: "Test broadcast limits"
+      )
+    end
   end
 
   # 공통 헬퍼: broadcast mock 설정
@@ -235,7 +248,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
         before do
           allow(user).to receive(:status_active?).and_return(true)
           allow(user).to receive(:premium?).and_return(false)
-          allow(broadcast_repository).to receive(:count_today_by_user).and_return(10)
+          # 일일 제한 기본값은 20 (system_settings에서)
+          allow(broadcast_repository).to receive(:count_today_by_user).and_return(20)
         end
 
         it '일일 한도 오류를 반환한다' do

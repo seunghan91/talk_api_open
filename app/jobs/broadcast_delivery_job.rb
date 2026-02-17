@@ -2,8 +2,10 @@ class BroadcastDeliveryJob < ApplicationJob
   queue_as :broadcasts
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
 
-  def perform(broadcast_id, recipient_count = 5)
-    Rails.logger.info("브로드캐스트 처리 시작: ID #{broadcast_id}, 수신자 수 #{recipient_count}")
+  def perform(broadcast_id, recipient_ids_or_count = 5, target_gender = nil)
+    Rails.logger.info(
+      "브로드캐스트 처리 시작: ID #{broadcast_id}, 수신자 수/목록 #{recipient_ids_or_count}"
+    )
 
     broadcast = Broadcast.find_by(id: broadcast_id)
     unless broadcast
@@ -15,12 +17,20 @@ class BroadcastDeliveryJob < ApplicationJob
     sender = broadcast.user
     Rails.logger.info("브로드캐스트 송신자: ID #{sender.id}, 닉네임 #{sender.nickname}")
 
-    # SOLID 원칙에 따라 서비스 객체 사용
-    recipient_selection_service = Broadcasts::RecipientSelectionService.new(
-      sender,
-      strategy: determine_selection_strategy(sender)
-    )
-    recipients = recipient_selection_service.select_recipients(count: recipient_count)
+    recipients = if recipient_ids_or_count.is_a?(Array)
+      User.where(id: recipient_ids_or_count)
+    else
+      # SOLID 원칙에 따라 서비스 객체 사용
+      recipient_selection_service = Broadcasts::RecipientSelectionService.new(
+        sender,
+        strategy: determine_selection_strategy(sender)
+      )
+      filters = normalize_target_gender(target_gender)
+      filters = filters.present? ? { gender: filters } : {}
+      recipient_selection_service
+        .with_filters(filters)
+        .select_recipients(count: recipient_ids_or_count.to_i)
+    end
 
     # 수신자 로깅
     recipient_ids = recipients.pluck(:id).join(", ")
@@ -111,6 +121,15 @@ class BroadcastDeliveryJob < ApplicationJob
   end
 
   private
+
+  def normalize_target_gender(target_gender)
+    return nil if target_gender.blank? || target_gender == "all"
+
+    value = target_gender.to_s
+    return value if %w[male female other].include?(value)
+
+    nil
+  end
 
   def determine_selection_strategy(sender)
     # 사용자 특성에 따라 선택 전략 결정

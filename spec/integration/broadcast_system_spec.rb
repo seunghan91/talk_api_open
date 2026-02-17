@@ -227,8 +227,8 @@ RSpec.describe 'Broadcast System Integration', type: :request do
         results << response.status
       end
 
-      # 모든 요청이 성공하거나 포인트 부족으로 실패
-      expect(results).to all(be_in([201, 402, 422, 500]))
+      # 모든 요청이 성공하거나 포인트 부족/제한 초과로 실패
+      expect(results).to all(be_in([201, 402, 422, 429, 500]))
     end
   end
   

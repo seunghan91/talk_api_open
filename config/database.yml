@@ -6,21 +6,57 @@ default: &default
   host: <%= ENV["PG_HOST"] || "localhost" %>
   pool: 5
 
-
-
-
 development:
-  <<: *default
-  database: talkk_api_development
+  primary:
+    <<: *default
+    database: talkk_api_development
+  cache:
+    <<: *default
+    database: talkk_api_cache_development
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: talkk_api_queue_development
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: talkk_api_cable_development
+    migrations_paths: db/cable_migrate
 
 test:
-  <<: *default
-  database: talkk_api_test
+  primary:
+    <<: *default
+    database: talkk_api_test
+  cache:
+    <<: *default
+    database: talkk_api_cache_test
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *default
+    database: talkk_api_queue_test
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *default
+    database: talkk_api_cable_test
+    migrations_paths: db/cable_migrate
 
 staging:
-  <<: *default
-  url: <%= ENV['DATABASE_URL'] %>
-  database: talkk_api_staging
+  primary:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    database: talkk_api_staging
+  queue:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    migrations_paths: db/queue_migrate
+  cache:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    migrations_paths: db/cache_migrate
+  cable:
+    <<: *default
+    url: <%= ENV['DATABASE_URL'] %>
+    migrations_paths: db/cable_migrate
 
 production:
   primary:

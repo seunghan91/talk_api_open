@@ -118,3 +118,6 @@ persistent_timeout ENV.fetch("PUMA_PERSISTENT_TIMEOUT", 20).to_i
 # Timeout waiting for first data from client
 # Default is 30 seconds
 first_data_timeout ENV.fetch("PUMA_FIRST_DATA_TIMEOUT", 30).to_i
+
+# Run the Solid Queue supervisor inside Puma for single-server deployments.
+plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]

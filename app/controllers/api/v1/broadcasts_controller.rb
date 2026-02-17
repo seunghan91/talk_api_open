@@ -159,6 +159,23 @@ module Api
         end
       end
 
+      # 브로드캐스트 제한 상태 조회
+      def limits
+        limit_service = ::Broadcasts::LimitService.new
+        status = limit_service.get_limit_status(current_user)
+
+        render json: {
+          **status,
+          request_id: request.request_id || SecureRandom.uuid
+        }
+      rescue => e
+        Rails.logger.error("브로드캐스트 제한 상태 조회 오류: #{e.message}")
+        render json: {
+          error: "제한 상태를 조회하는 중 오류가 발생했습니다.",
+          request_id: request.request_id || SecureRandom.uuid
+        }, status: :internal_server_error
+      end
+
       def create
         Rails.logger.info "방송 생성 요청: 사용자 ID #{current_user.id}, 닉네임 #{current_user.nickname}"
 
@@ -167,7 +184,10 @@ module Api
           user: current_user,
           audio_file: params[:broadcast][:voice_file],
           content: params[:broadcast][:content],
-          recipient_count: params[:broadcast][:recipient_count]
+          recipient_count: params[:broadcast][:recipient_count],
+          target_gender: params[:broadcast][:target_gender],
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
         )
 
         result = command.execute

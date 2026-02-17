@@ -8,7 +8,7 @@ class User < ApplicationRecord
   # status 필드를 attribute로 선언
   attribute :status, :integer, default: 0
   attribute :gender, :integer, default: 1
-  attribute :is_admin, :boolean, default: false  # 관리자 여부
+  # is_admin은 DB 컬럼으로 관리 (default: false)
 
   enum :gender, { unknown: 0, male: 1, female: 2 }, prefix: true, validate: true
   enum :status, { active: 0, suspended: 1, banned: 2 }, prefix: true, validate: true

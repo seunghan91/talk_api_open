@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_12_100003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -81,6 +81,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
     t.index ["user_id"], name: "index_broadcast_recipients_on_user_id"
   end
 
+  create_table "broadcast_usage_logs", force: :cascade do |t|
+    t.integer "broadcasts_sent", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.datetime "last_broadcast_at"
+    t.integer "limit_exceeded_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "date"], name: "idx_broadcast_usage_user_date", unique: true
+    t.index ["user_id"], name: "index_broadcast_usage_logs_on_user_id"
+  end
+
   create_table "broadcasts", force: :cascade do |t|
     t.boolean "active", default: true
     t.text "content"
@@ -88,9 +100,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
     t.datetime "discarded_at"
     t.integer "duration", default: 0, null: false
     t.datetime "expired_at"
+    t.string "ip_address", limit: 45
     t.datetime "updated_at", null: false
+    t.text "user_agent"
     t.bigint "user_id", null: false
     t.index ["discarded_at"], name: "index_broadcasts_on_discarded_at"
+    t.index ["user_id", "created_at"], name: "idx_broadcasts_sender_date"
     t.index ["user_id"], name: "index_broadcasts_on_user_id"
   end
 
@@ -193,6 +208,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
     t.index ["status"], name: "index_reports_on_status"
   end
 
+  create_table "system_settings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "is_active", default: true
+    t.string "setting_key", null: false
+    t.jsonb "setting_value", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "updated_by_id"
+    t.index ["setting_key"], name: "index_system_settings_on_setting_key", unique: true
+    t.index ["updated_by_id"], name: "index_system_settings_on_updated_by_id"
+  end
+
   create_table "transactions", force: :cascade do |t|
     t.decimal "amount", precision: 10, scale: 2, null: false
     t.datetime "created_at", null: false
@@ -240,6 +267,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
     t.boolean "broadcast_push_enabled", default: true
     t.datetime "created_at", null: false
     t.string "gender"
+    t.boolean "is_admin", default: false, null: false
     t.boolean "is_verified", default: false
     t.datetime "last_login_at"
     t.boolean "letter_receive_alarm", default: true
@@ -282,6 +310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
   add_foreign_key "blocks", "users", column: "blocker_id"
   add_foreign_key "broadcast_recipients", "broadcasts"
   add_foreign_key "broadcast_recipients", "users"
+  add_foreign_key "broadcast_usage_logs", "users"
   add_foreign_key "broadcasts", "users"
   add_foreign_key "conversations", "broadcasts"
   add_foreign_key "conversations", "users", column: "user_a_id"
@@ -293,6 +322,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_085349) do
   add_foreign_key "phone_verifications", "users"
   add_foreign_key "reports", "users", column: "reported_id"
   add_foreign_key "reports", "users", column: "reporter_id"
+  add_foreign_key "system_settings", "users", column: "updated_by_id"
   add_foreign_key "transactions", "wallets"
   add_foreign_key "user_settings", "users"
   add_foreign_key "user_suspensions", "users"

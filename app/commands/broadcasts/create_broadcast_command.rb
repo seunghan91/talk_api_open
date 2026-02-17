@@ -2,16 +2,21 @@
 module Broadcasts
   class CreateBroadcastCommand
     def initialize(user:, audio_file:, content: nil, recipient_count: 5,
-                   broadcast_repository: nil, recipient_selector: nil, event_publisher: nil)
+                   target_gender: nil, broadcast_repository: nil, recipient_selector: nil, event_publisher: nil,
+                   limit_service: nil, ip_address: nil, user_agent: nil)
       @user = user
       @audio_file = audio_file
       @content = content || "새로운 음성 메시지"
       @recipient_count = normalize_recipient_count(recipient_count)
+      @target_gender = normalize_target_gender(target_gender)
+      @ip_address = ip_address
+      @user_agent = user_agent
       
       # 의존성 주입 (DIP)
       @broadcast_repository = broadcast_repository || BroadcastRepository.new
       @recipient_selector = recipient_selector || RecipientSelector.new
       @event_publisher = event_publisher || EventPublisher.new
+      @limit_service = limit_service || Broadcasts::LimitService.new(broadcast_repository: @broadcast_repository)
     end
 
     def execute
@@ -22,7 +27,7 @@ module Broadcasts
       recipients = select_recipients
       
       # 비동기 처리를 위한 워커 실행
-      BroadcastDeliveryJob.perform_later(broadcast.id, recipients.map(&:id))
+      BroadcastDeliveryJob.perform_later(broadcast.id, recipients.map(&:id), @target_gender)
       
       # 이벤트 발행
       @event_publisher.publish(BroadcastCreatedEvent.new(
@@ -80,11 +85,25 @@ module Broadcasts
         )
       end
       
-      # 일일 한도 확인
-      daily_count = @broadcast_repository.count_today_by_user(@user)
-      if daily_count >= daily_limit
+      # 브로드캐스트 제한 체크 (LimitService 사용)
+      limit_check = @limit_service.check_limit(@user)
+      unless limit_check.can_broadcast?
+        error_message = case limit_check.reason
+                        when "DAILY_LIMIT_EXCEEDED"
+                          "일일 브로드캐스트 한도를 초과했습니다."
+                        when "HOURLY_LIMIT_EXCEEDED"
+                          "시간당 브로드캐스트 한도를 초과했습니다."
+                        when "COOLDOWN_ACTIVE"
+                          cooldown_ends = limit_check.limit_info[:cooldown_ends_at]
+                          "쿨다운 중입니다. #{cooldown_ends}까지 기다려주세요."
+                        else
+                          "브로드캐스트 전송이 제한되었습니다."
+                        end
+
         raise CommandError.new(
-          error: "일일 브로드캐스트 한도를 초과했습니다. (최대 #{daily_limit}개)",
+          error: error_message,
+          code: limit_check.reason,
+          limit_info: limit_check.limit_info,
           status: :too_many_requests
         )
       end
@@ -106,7 +125,9 @@ module Broadcasts
         broadcast = @broadcast_repository.create!(
           user: @user,
           content: @content,
-          active: true
+          active: true,
+          ip_address: @ip_address,
+          user_agent: @user_agent
         )
         
         # 음성 파일 첨부
@@ -114,6 +135,9 @@ module Broadcasts
         
         # 포인트 차감
         @user.wallet.withdraw(broadcast_cost, description: "브로드캐스트 전송")
+
+        # 사용량 기록
+        @limit_service.record_broadcast(@user)
         
         Rails.logger.info("브로드캐스트 생성 성공: ID #{broadcast.id}")
         
@@ -125,7 +149,8 @@ module Broadcasts
       @recipient_selector.select(
         sender: @user,
         count: @recipient_count,
-        exclude_blocked: true
+        exclude_blocked: true,
+        target_gender: @target_gender
       )
     end
 
@@ -161,8 +186,12 @@ module Broadcasts
       count
     end
 
-    def daily_limit
-      @user.premium? ? 20 : 10
+    def normalize_target_gender(target_gender)
+      return nil if target_gender.blank? || target_gender == "all"
+      value = target_gender.to_s
+      return value if %w[male female other].include?(value)
+
+      nil
     end
 
     def broadcast_cost

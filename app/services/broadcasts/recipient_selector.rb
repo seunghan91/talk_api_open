@@ -5,14 +5,14 @@ module Broadcasts
       @strategy = strategy || RandomSelectionStrategy.new
     end
 
-    def select(sender:, count:, exclude_blocked: true)
-      candidates = find_candidates(sender, exclude_blocked)
+    def select(sender:, count:, exclude_blocked: true, target_gender: nil)
+      candidates = find_candidates(sender, exclude_blocked, target_gender)
       @strategy.select(candidates, count)
     end
 
     private
 
-    def find_candidates(sender, exclude_blocked)
+    def find_candidates(sender, exclude_blocked, target_gender)
       scope = User.active
                   .where.not(id: sender.id)
                   .joins(:wallet)
@@ -27,7 +27,19 @@ module Broadcasts
         scope = scope.where.not(id: excluded_ids) if excluded_ids.any?
       end
 
+      normalized_gender = normalize_gender(target_gender)
+      scope = scope.where(gender: normalized_gender) if normalized_gender.present?
+
       scope
+    end
+
+    def normalize_gender(target_gender)
+      return nil if target_gender.blank? || target_gender == "all"
+
+      value = target_gender.to_s
+      return value if %w[male female other].include?(value)
+
+      nil
     end
   end
 
