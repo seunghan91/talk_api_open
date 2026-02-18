@@ -8,7 +8,6 @@ Rails.application.routes.draw do
   get "/health", to: "health_check#index"
   get "/health/worker", to: "health_check#worker_status"
   get "/health/conversations", to: "health_check#conversations_check"
-  get "/health/redis_debug", to: "health_check#debug_redis"
 
   # ============================================================
   # Web Routes (Inertia.js - Svelte 5 Frontend)

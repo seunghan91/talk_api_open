@@ -32,11 +32,7 @@ gem "rack-cors", "~> 3.0"
 # JWT for authentication
 gem "jwt", "~> 3.0"
 
-# Background jobs - Solid Queue (Rails 8 native, DB-backed)
-# Redis kept for caching and health check connectivity
-gem "redis", "~> 5.0"
-
-# Solid Suite (Rails 8 native)
+# Solid Suite (Rails 8 native) - No Redis needed
 gem "solid_queue", "~> 1.1"   # Latest: 1.3.x (DB-backed jobs, recurring tasks, async mode)
 gem "solid_cache", "~> 1.0"   # Latest: 1.0.x (DB-backed cache)
 gem "solid_cable", "~> 3.0"   # Latest: 3.0.x (DB-backed ActionCable)

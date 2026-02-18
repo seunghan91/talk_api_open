@@ -119,7 +119,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
       it 'BroadcastDeliveryJob를 호출한다' do
         expect(BroadcastDeliveryJob).to receive(:perform_later).with(
           broadcast.id,
-          selected_recipients.map(&:id)
+          selected_recipients.map(&:id),
+          nil
         )
 
         command.execute
@@ -328,7 +329,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
           allow(recipient_selector).to receive(:select).with(
             sender: user,
             count: 5,
-            exclude_blocked: true
+            exclude_blocked: true,
+            target_gender: nil
           ).and_return(recipients)
           allow(broadcast_repository).to receive(:create!).and_return(broadcast)
           setup_broadcast_mock(broadcast)
@@ -339,7 +341,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
           expect(recipient_selector).to have_received(:select).with(
             sender: user,
             count: 5,
-            exclude_blocked: true
+            exclude_blocked: true,
+            target_gender: nil
           )
         end
       end
@@ -362,7 +365,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
           allow(recipient_selector).to receive(:select).with(
             sender: user,
             count: 10,
-            exclude_blocked: true
+            exclude_blocked: true,
+            target_gender: nil
           ).and_return(recipients)
           allow(broadcast_repository).to receive(:create!).and_return(broadcast)
           setup_broadcast_mock(broadcast)
@@ -373,7 +377,8 @@ RSpec.describe Broadcasts::CreateBroadcastCommand do
           expect(recipient_selector).to have_received(:select).with(
             sender: user,
             count: 10,
-            exclude_blocked: true
+            exclude_blocked: true,
+            target_gender: nil
           )
         end
       end

@@ -3,7 +3,7 @@ module Api
     class WalletsController < ApplicationController
       before_action :authorize_request
 
-      # 지갑 정보 조회 (Redis 캐싱 적용)
+      # 지갑 정보 조회 (Solid Cache 적용)
       def show
         wallet_data = Rails.cache.fetch("wallet_#{current_user.id}", expires_in: 30.seconds) do
           wallet = current_user.wallet || current_user.create_wallet
