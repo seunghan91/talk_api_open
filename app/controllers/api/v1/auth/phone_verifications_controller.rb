@@ -3,8 +3,8 @@ module Api
   module V1
     module Auth
       class PhoneVerificationsController < Api::V1::BaseController
-        # 인증이 필요한 액션에서만 authorize_request 실행
-        before_action :authorize_request, except: [:create, :verify, :check, :resend]
+        # 인증 없이 접근 가능한 액션
+        skip_before_action :authorize_request, only: [:create, :verify, :check, :resend]
 
         # POST /api/v1/auth/phone-verifications
         # 인증 코드 요청

@@ -79,7 +79,7 @@ RSpec.configure do |config|
   # Include ActiveSupport::Testing::TimeHelpers for travel_to, freeze_time, etc.
   config.include ActiveSupport::Testing::TimeHelpers
 
-  # JWT 토큰 생성을 위한 헬퍼 메서드 추가
+  # 세션 토큰 생성을 위한 헬퍼 메서드 추가
   # config.include Warden::Test::Helpers
 
   # Database cleaner 설정

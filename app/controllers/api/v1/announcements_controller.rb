@@ -1,14 +1,12 @@
 class Api::V1::AnnouncementsController < Api::V1::BaseController
-  # 개발 환경에서는 인증 건너뜁니다 (테스트 용도)
-  before_action :authorize_request, unless: -> { Rails.env.development? || Rails.env.test? }
-  before_action :require_admin, except: [ :index, :show ], unless: -> { Rails.env.development? || Rails.env.test? }
+  before_action :require_admin, except: [ :index, :show ]
   before_action :set_announcement, only: [ :show, :update, :destroy ]
 
   def index
     announcements = Announcement.includes(:category).sorted
 
     # 관리자가 아닌 경우 공개된 공지사항만 표시
-    unless current_user&.admin? || Rails.env.development? || Rails.env.test?
+    unless current_user&.admin?
       announcements = announcements.published.visible
     end
 
@@ -30,9 +28,6 @@ class Api::V1::AnnouncementsController < Api::V1::BaseController
   end
 
   def show
-    # 개발 환경에서는 모든 공지사항 접근 가능
-    return render json: announcement_json(@announcement) if Rails.env.development? || Rails.env.test?
-
     # 관리자가 아니고 숨겨진 공지사항인 경우 접근 불가
     if @announcement.is_hidden && !current_user&.admin?
       return render json: { success: false, error: "접근할 수 없는 공지사항입니다." }, status: :forbidden

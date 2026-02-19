@@ -3,8 +3,10 @@ module Api
   module V1
     module Auth
       class RegistrationsController < Api::V1::BaseController
+        include ApiAuthentication
+
         # 회원가입은 인증 없이 접근 가능
-        before_action :authorize_request, except: [:create]
+        skip_before_action :authorize_request, only: [:create]
 
         # POST /api/v1/auth/registrations
         # 회원가입 처리
@@ -23,9 +25,12 @@ module Api
           result = command.execute
 
           if result[:success]
+            # 세션 토큰 생성 (Command는 user 객체를 반환)
+            session = start_new_session_for(result[:user])
+
             render json: {
-              token: result[:token],
-              user: result[:user],
+              token: session.token,
+              user: result[:user_data],
               message: "회원가입에 성공했습니다."
             }, status: :created
           else

@@ -33,8 +33,7 @@ class Notification < ApplicationRecord
       return unless user.broadcast_push_enabled
     end
 
-    # Expo 푸시 알림 서비스로 전송
-    # 실제 구현에서는 Exponent::Push 같은 젬을 사용하거나 HTTP 클라이언트로 직접 구현
+    # FCM HTTP v1 API를 통해 푸시 알림 전송
     PushNotificationService.send_notification(
       user.push_token,
       title: title.presence || notification_type_to_korean,

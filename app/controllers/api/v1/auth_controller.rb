@@ -2,8 +2,10 @@
 module Api
   module V1
     class AuthController < Api::V1::BaseController
-      # 인증이 필요한 액션에서만 authorize_request 실행
-      before_action :authorize_request, except: [ :login, :register, :request_code, :verify_code, :check_phone, :resend_code ]
+      include ApiAuthentication
+
+      # 인증 없이 접근 가능한 액션
+      skip_before_action :authorize_request, only: [ :login, :register, :request_code, :verify_code, :check_phone, :resend_code ]
 
       # 로그인 처리
       def login
@@ -35,15 +37,15 @@ module Api
             return render json: { error: "전화번호 또는 비밀번호가 올바르지 않습니다." }, status: :unauthorized
           end
 
-          # JWT 토큰 생성
-          token = AuthToken.encode(user_id: @user.id)
+          # 세션 토큰 생성
+          session = start_new_session_for(@user)
 
           # 로그인 정보 저장 (최근 로그인 시간 등)
           @user.update(last_login_at: Time.current)
 
           # 성공 응답
           render json: {
-            token: token,
+            token: session.token,
             user: {
               id: @user.id,
               nickname: @user.nickname,
@@ -143,8 +145,8 @@ module Api
           @user.last_login_at = Time.current
 
           if @user.save
-            # JWT 토큰 생성
-            token = AuthToken.encode(user_id: @user.id)
+            # 세션 토큰 생성
+            session = start_new_session_for(@user)
 
             # 지갑 생성 (이미 존재하면 스킵)
             begin
@@ -157,7 +159,7 @@ module Api
 
             # 성공 응답
             render json: {
-              token: token,
+              token: session.token,
               user: {
                 id: @user.id,
                 nickname: @user.nickname,
@@ -410,8 +412,8 @@ module Api
 
       # 로그아웃 처리
       def logout
-        # JWT 토큰 기반 인증이므로 서버에서 특별한 처리 불필요
-        # 클라이언트에서 토큰을 삭제하면 됨
+        # 세션 토큰 기반 인증 - 서버에서 세션 삭제
+        terminate_session
 
         render json: { message: "로그아웃 되었습니다." }, status: :ok
       end

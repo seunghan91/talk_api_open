@@ -3,7 +3,7 @@ require 'swagger_helper'
 RSpec.describe 'Conversations API', type: :request do
   let(:user) { create(:user) }
   let(:other_user) { create(:user) }
-  let(:valid_token) { generate_token_for(user) }
+  let(:valid_headers) { auth_headers_for(user) }
 
   # Create a conversation between user and other_user
   let!(:conversation) do
@@ -57,7 +57,7 @@ RSpec.describe 'Conversations API', type: :request do
             request_id: { type: :string }
           }
 
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
@@ -108,14 +108,14 @@ RSpec.describe 'Conversations API', type: :request do
           }
 
         let(:id) { conversation.id }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { 999999 }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
     end
@@ -132,14 +132,14 @@ RSpec.describe 'Conversations API', type: :request do
           }
 
         let(:id) { conversation.id }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { 999999 }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
     end
@@ -161,14 +161,14 @@ RSpec.describe 'Conversations API', type: :request do
           }
 
         let(:id) { conversation.id }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { 999999 }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
     end
@@ -190,14 +190,14 @@ RSpec.describe 'Conversations API', type: :request do
           }
 
         let(:id) { conversation.id }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { 999999 }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
     end
@@ -230,7 +230,7 @@ RSpec.describe 'Conversations API', type: :request do
           }
 
         let(:id) { conversation.id }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         let(:text) { nil }
         let(:voice_file) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
         run_test!
@@ -239,7 +239,7 @@ RSpec.describe 'Conversations API', type: :request do
       response '404', 'Conversation not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { 999999 }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         let(:text) { nil }
         let(:voice_file) { fixture_file_upload('spec/fixtures/files/sample_audio.wav', 'audio/wav') }
         run_test!

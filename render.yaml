@@ -16,8 +16,6 @@ services:
         fromDatabase:
           name: talkk-db
           property: connectionString
-      - key: REDIS_URL
-        value: redis://red-cvlm54adbo4c7399oheg:6379
       - key: RAILS_ENV
         value: production
       - key: RAILS_MASTER_KEY
@@ -32,9 +30,3 @@ databases:
     user: talkk_user
     plan: starter
     region: singapore
-
-  # Redis/Valkey 데이터베이스
-  - name: talkk-redis
-    plan: starter
-    region: singapore
-    maxmemoryPolicy: allkeys-lru

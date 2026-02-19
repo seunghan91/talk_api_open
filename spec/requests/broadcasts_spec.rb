@@ -3,7 +3,7 @@ require 'swagger_helper'
 RSpec.describe 'Broadcasts API', type: :request do
   let(:user) { create(:user) }
   let(:other_user) { create(:user) }
-  let(:valid_token) { generate_token_for(user) }
+  let(:valid_headers) { auth_headers_for(user) }
 
   # Create a broadcast from another user for testing show/reply endpoints
   let!(:broadcast) do
@@ -47,7 +47,7 @@ RSpec.describe 'Broadcasts API', type: :request do
             request_id: { type: :string }
           }
 
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
@@ -69,7 +69,7 @@ RSpec.describe 'Broadcasts API', type: :request do
 
       response '400', 'Invalid parameters - missing voice file' do
         schema '$ref' => '#/components/schemas/error_response'
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         let(:'broadcast[content]') { 'Test broadcast' }
         let(:'broadcast[voice_file]') { nil }
         let(:'broadcast[recipient_count]') { 5 }
@@ -111,14 +111,14 @@ RSpec.describe 'Broadcasts API', type: :request do
           }
 
         let(:id) { broadcast.id }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
       response '404', 'Broadcast not found' do
         schema '$ref' => '#/components/schemas/error_response'
         let(:id) { 999999 }
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
     end

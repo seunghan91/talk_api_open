@@ -302,7 +302,7 @@ RSpec.describe 'Auth API', type: :request do
           }
 
         let(:user) { create(:user) }
-        let(:Authorization) { "Bearer #{generate_token_for(user)}" }
+        let(:Authorization) { auth_headers_for(user)["Authorization"] }
         run_test!
       end
     end

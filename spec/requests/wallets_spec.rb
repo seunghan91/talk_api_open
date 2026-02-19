@@ -2,7 +2,7 @@ require 'swagger_helper'
 
 RSpec.describe 'Wallets API', type: :request do
   let(:user) { create(:user) }
-  let(:valid_token) { generate_token_for(user) }
+  let(:valid_headers) { auth_headers_for(user) }
 
   before do
     # User's wallet is auto-created by after_create callback
@@ -24,7 +24,7 @@ RSpec.describe 'Wallets API', type: :request do
             formatted_balance: { type: :string }
           }
 
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 
@@ -50,7 +50,7 @@ RSpec.describe 'Wallets API', type: :request do
             formatted_balance: { type: :string }
           }
 
-        let(:Authorization) { "Bearer #{valid_token}" }
+        let(:Authorization) { valid_headers["Authorization"] }
         run_test!
       end
 

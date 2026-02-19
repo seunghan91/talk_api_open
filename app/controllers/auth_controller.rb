@@ -1,7 +1,9 @@
 # app/controllers/auth_controller.rb
 
 class AuthController < ApplicationController
-  # 인증, 로그인, 회원가입은 JWT 없이 접근해야 하므로:
+  include ApiAuthentication
+
+  # 인증, 로그인, 회원가입은 토큰 없이 접근해야 하므로:
   skip_before_action :authorize_request, only: [ :request_code, :verify_code, :login, :register ]
 
   # 1) 인증코드 발송
@@ -30,7 +32,7 @@ class AuthController < ApplicationController
     }, status: :ok
   end
 
-  # 2) 인증코드 검증 & JWT 발급
+  # 2) 인증코드 검증 & 세션 토큰 발급
   def verify_code
     # `user` 네임스페이스를 지원하기 위해 파라미터 처리 개선
     user_params = params[:user] || {}
@@ -92,12 +94,12 @@ class AuthController < ApplicationController
       # user가 nil이 아닌지 확인 (디버깅)
       Rails.logger.debug "===> created user: #{user.inspect}"
 
-      # JWT 발급 (AuthToken 서비스 클래스를 일관되게 사용)
-      token = ::AuthToken.encode(user_id: user.id)
+      # 세션 토큰 발급
+      session = start_new_session_for(user)
 
       render json: {
         message: "인증 완료",
-        token: token,
+        token: session.token,
         user: {
           id: user.id,
           phone_number: user.phone_number,
@@ -132,12 +134,12 @@ class AuthController < ApplicationController
 
     # 사용자 인증
     if user && user.authenticate(password)
-      # JWT 발급
-      token = ::AuthToken.encode(user_id: user.id)
+      # 세션 토큰 발급
+      session = start_new_session_for(user)
 
       render json: {
         message: "로그인 성공",
-        token: token,
+        token: session.token,
         user: {
           id: user.id,
           phone_number: user.phone_number,
@@ -195,12 +197,12 @@ class AuthController < ApplicationController
     )
 
     if user.save
-      # JWT 발급
-      token = ::AuthToken.encode(user_id: user.id)
+      # 세션 토큰 발급
+      session = start_new_session_for(user)
 
       render json: {
         message: "회원가입 성공",
-        token: token,
+        token: session.token,
         user: {
           id: user.id,
           phone_number: user.phone_number,

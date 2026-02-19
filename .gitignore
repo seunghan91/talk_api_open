@@ -126,6 +126,9 @@ deployment/
 
 /config/credentials/test.key
 
+# Firebase service account (sensitive)
+config/firebase-service-account.json
+
 # Vite Ruby
 /public/vite*
 node_modules

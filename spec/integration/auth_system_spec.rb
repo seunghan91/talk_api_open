@@ -173,8 +173,14 @@ RSpec.describe 'Authentication System Integration', type: :request do
 
   describe 'Event System 동작 확인' do
     let(:user) { create(:user) }
-    # Use AuthToken.encode to ensure consistent secret key with decode
-    let(:token) { AuthToken.encode(user_id: user.id) }
+    let(:session) do
+      user.sessions.create!(
+        ip_address: "127.0.0.1",
+        user_agent: "RSpec",
+        last_active_at: Time.current
+      )
+    end
+    let(:token) { session.token }
 
     it '로그아웃 시 이벤트가 발행됨' do
       # Stub the BaseEvent#publish method to avoid EventBus initialization issues

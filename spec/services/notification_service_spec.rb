@@ -1,13 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe NotificationService do
-  let(:user) { create(:user, push_token: 'ExponentPushToken[xxxxxx]', push_enabled: true) }
+  let(:user) { create(:user, push_token: 'fcm-device-token-xxxxx', push_enabled: true) }
   let(:service) { described_class.new }
 
   describe '#send_notification' do
     context '푸시 알림이 활성화된 경우' do
       it '푸시 알림을 전송한다' do
-        expect_any_instance_of(Exponent::Push::Client).to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).to receive(:send_messages)
 
         result = service.send_notification(
           user: user,
@@ -35,7 +35,7 @@ RSpec.describe NotificationService do
       before { user.update(push_enabled: false) }
 
       it '푸시 알림을 전송하지 않는다' do
-        expect_any_instance_of(Exponent::Push::Client).not_to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).not_to receive(:send_messages)
 
         result = service.send_notification(
           user: user,
@@ -63,7 +63,7 @@ RSpec.describe NotificationService do
       before { user.update(push_token: nil) }
 
       it '푸시 알림을 전송하지 않는다' do
-        expect_any_instance_of(Exponent::Push::Client).not_to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).not_to receive(:send_messages)
 
         result = service.send_notification(
           user: user,
@@ -84,14 +84,14 @@ RSpec.describe NotificationService do
       before { user.update(broadcast_push_enabled: true) }
 
       it '브로드캐스트 알림을 전송한다' do
-        expect_any_instance_of(Exponent::Push::Client).to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).to receive(:send_messages)
 
         result = service.send_broadcast_notification(user, broadcast)
         expect(result.success?).to be true
       end
 
       it '올바른 제목과 내용을 포함한다' do
-        allow_any_instance_of(Exponent::Push::Client).to receive(:send_messages) do |_, messages|
+        allow_any_instance_of(NotificationService::FcmPushClient).to receive(:send_messages) do |_, messages|
           message = messages.first
           expect(message[:to]).to eq(user.push_token)
           expect(message[:title]).to include(broadcast.user.nickname)
@@ -107,7 +107,7 @@ RSpec.describe NotificationService do
       before { user.update(broadcast_push_enabled: false) }
 
       it '알림을 전송하지 않는다' do
-        expect_any_instance_of(Exponent::Push::Client).not_to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).not_to receive(:send_messages)
 
         result = service.send_broadcast_notification(user, broadcast)
         expect(result.success?).to be true
@@ -122,7 +122,7 @@ RSpec.describe NotificationService do
       before { user.update(message_push_enabled: true) }
 
       it '메시지 알림을 전송한다' do
-        expect_any_instance_of(Exponent::Push::Client).to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).to receive(:send_messages)
 
         result = service.send_message_notification(user, message)
         expect(result.success?).to be true
@@ -133,7 +133,7 @@ RSpec.describe NotificationService do
       before { user.update(message_push_enabled: false) }
 
       it '알림을 전송하지 않는다' do
-        expect_any_instance_of(Exponent::Push::Client).not_to receive(:send_messages)
+        expect_any_instance_of(NotificationService::FcmPushClient).not_to receive(:send_messages)
 
         result = service.send_message_notification(user, message)
         expect(result.success?).to be true
@@ -142,10 +142,10 @@ RSpec.describe NotificationService do
   end
 
   describe '#send_bulk_notifications' do
-    let(:users) { create_list(:user, 3, push_token: 'ExponentPushToken[xxxxxx]', push_enabled: true) }
+    let(:users) { create_list(:user, 3, push_token: 'fcm-device-token-xxxxx', push_enabled: true) }
 
     it '여러 사용자에게 동시에 알림을 전송한다' do
-      expect_any_instance_of(Exponent::Push::Client).to receive(:send_messages).once
+      expect_any_instance_of(NotificationService::FcmPushClient).to receive(:send_messages).once
 
       result = service.send_bulk_notifications(
         users: users,

@@ -15,8 +15,23 @@ class NotificationService
     end
   end
 
+  # FCM adapter that wraps PushNotificationService with send_messages interface
+  # for backward compatibility with dependency injection in tests
+  class FcmPushClient
+    def send_messages(messages)
+      messages.each do |msg|
+        PushNotificationService.send_notification(
+          msg[:to],
+          title: msg[:title],
+          body: msg[:body],
+          data: msg[:data] || {}
+        )
+      end
+    end
+  end
+
   def initialize(push_client: nil)
-    @push_client = push_client || Exponent::Push::Client.new
+    @push_client = push_client || FcmPushClient.new
   end
 
   def send_notification(user:, type:, title:, body:, data: {})

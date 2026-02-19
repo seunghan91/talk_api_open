@@ -3,8 +3,10 @@ module Api
   module V1
     module Auth
       class SessionsController < Api::V1::BaseController
-        # 로그인/로그아웃은 인증 상태에 따라 다름
-        before_action :authorize_request, only: [:destroy, :current]
+        include ApiAuthentication
+
+        # 로그인은 인증 없이 접근 가능
+        skip_before_action :authorize_request, only: [:create]
 
         # POST /api/v1/auth/sessions (로그인)
         def create
@@ -19,9 +21,12 @@ module Api
           result = command.execute
 
           if result[:success]
+            # 세션 토큰 생성 (Command는 user 객체를 반환)
+            session = start_new_session_for(result[:user])
+
             render json: {
-              token: result[:token],
-              user: result[:user],
+              token: session.token,
+              user: result[:user_data],
               message: "로그인에 성공했습니다."
             }, status: :ok
           else
@@ -36,12 +41,12 @@ module Api
 
         # DELETE /api/v1/auth/sessions (로그아웃)
         def destroy
-          # JWT는 stateless이므로 클라이언트에서 토큰을 삭제하면 됨
-          # 필요시 토큰 블랙리스트 관리 가능
-          
+          # 세션 토큰 삭제 (서버 사이드)
+          terminate_session
+
           # 로그아웃 이벤트 발생
-          LogoutEvent.new(user: current_user).publish
-          
+          LogoutEvent.new(user: @current_user).publish
+
           render json: {
             message: "로그아웃되었습니다."
           }, status: :ok

@@ -4,118 +4,139 @@ require "uri"
 require "json"
 
 class PushNotificationService
-  # Expo Push Notification 서비스 URL
-  EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send".freeze
+  # FCM HTTP v1 API endpoint
+  FCM_URL = "https://fcm.googleapis.com/v1/projects/%s/messages:send".freeze
+  FCM_SCOPE = "https://www.googleapis.com/auth/firebase.cloud-messaging".freeze
 
-  # 푸시 알림 전송
-  def self.send_notification(push_token, title:, body:, data: {})
-    return if push_token.blank?
+  class << self
+    # Send push notification to a single device
+    def send_notification(push_token, title:, body:, data: {})
+      return if push_token.blank?
 
-    # Expo 푸시 서비스에 전송할 데이터 구성
-    message = {
-      to: push_token,
-      title: title,
-      body: body,
-      data: data,
-      sound: "default",
-      badge: 1, # iOS 뱃지 카운터
-      channelId: "default", # Android 채널 ID
-      priority: "high" # Android 우선순위
-    }
+      message = build_message(push_token, title: title, body: body, data: data)
 
-    # 개발 모드에서는 로깅만 수행
-    if Rails.env.development? || Rails.env.test?
-      Rails.logger.info "[PushNotification] Would send: #{message.to_json}"
-      return true
+      if Rails.env.development? || Rails.env.test?
+        Rails.logger.info "[FCM] Would send: #{message.to_json}"
+        return true
+      end
+
+      send_fcm_request(message)
     end
 
-    # 실제 Expo 푸시 서비스 호출
-    begin
-      uri = URI.parse(EXPO_PUSH_URL)
+    # Send push notification to multiple devices
+    def send_notifications(push_tokens, title:, body:, data: {})
+      tokens = Array(push_tokens).compact.reject(&:blank?)
+      return if tokens.empty?
+
+      # FCM v1 doesn't support batch to multiple tokens in one request
+      # Send individually (could use topic messaging for large batches)
+      tokens.each do |token|
+        send_notification(token, title: title, body: body, data: data)
+      end
+    end
+
+    private
+
+    def build_message(token, title:, body:, data: {})
+      {
+        message: {
+          token: token,
+          notification: {
+            title: title,
+            body: body
+          },
+          data: data.transform_keys(&:to_s).transform_values(&:to_s),
+          android: {
+            priority: "high",
+            notification: {
+              channel_id: "talkk_messages",
+              sound: "default",
+              default_vibrate_timings: true,
+              notification_priority: "PRIORITY_HIGH"
+            }
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: "default",
+                badge: 1,
+                "content-available": 1
+              }
+            },
+            headers: {
+              "apns-priority": "10"
+            }
+          }
+        }
+      }
+    end
+
+    def send_fcm_request(message)
+      project_id = fcm_project_id
+      url = format(FCM_URL, project_id)
+      uri = URI.parse(url)
+
       request = Net::HTTP::Post.new(
         uri.request_uri,
         "Content-Type" => "application/json",
-        "Accept" => "application/json"
+        "Authorization" => "Bearer #{access_token}"
       )
-      request.body = [ message ].to_json
+      request.body = message.to_json
 
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
         http.request(request)
       end
 
-      # 응답 처리
-      result = JSON.parse(response.body)
-      if result["data"].present? && result["data"][0]["status"] == "ok"
-        Rails.logger.info "[PushNotification] Successfully sent to #{push_token}"
+      if response.code.to_i == 200
+        Rails.logger.info "[FCM] Successfully sent notification"
         true
       else
-        Rails.logger.error "[PushNotification] Failed: #{result.to_json}"
-        false
-      end
+        result = JSON.parse(response.body) rescue {}
+        Rails.logger.error "[FCM] Failed (#{response.code}): #{result}"
 
-    rescue => e
-      Rails.logger.error "[PushNotification] Error: #{e.message}"
-      false
-    end
-  end
-
-  # 여러 토큰에 동시에 알림 전송
-  def self.send_notifications(push_tokens, title:, body:, data: {})
-    # 빈 토큰 제거
-    tokens = Array(push_tokens).compact.reject(&:blank?)
-    return if tokens.empty?
-
-    # 최대 100개씩 나누어 전송 (Expo API 제한)
-    tokens.each_slice(100) do |token_batch|
-      messages = token_batch.map do |token|
-        {
-          to: token,
-          title: title,
-          body: body,
-          data: data,
-          sound: "default",
-          badge: 1,
-          channelId: "default",
-          priority: "high"
-        }
-      end
-
-      # 개발 모드에서는 로깅만 수행
-      if Rails.env.development? || Rails.env.test?
-        Rails.logger.info "[PushNotification] Would send to #{token_batch.size} devices: #{messages.to_json}"
-        next
-      end
-
-      # 실제 Expo 푸시 서비스 호출
-      begin
-        uri = URI.parse(EXPO_PUSH_URL)
-        request = Net::HTTP::Post.new(
-          uri.request_uri,
-          "Content-Type" => "application/json",
-          "Accept" => "application/json"
-        )
-        request.body = messages.to_json
-
-        response = Net::HTTP.start(uri.host, uri.port, use_ssl: true) do |http|
-          http.request(request)
+        # Handle invalid/expired token
+        if result.dig("error", "details")&.any? { |d| d["errorCode"] == "UNREGISTERED" }
+          Rails.logger.warn "[FCM] Token is unregistered, should be removed"
         end
 
-        # 결과 로깅
-        result = JSON.parse(response.body)
-        Rails.logger.info "[PushNotification] Batch result: #{result.to_json}"
+        false
+      end
+    rescue => e
+      Rails.logger.error "[FCM] Error: #{e.message}"
+      false
+    end
 
-      rescue => e
-        Rails.logger.error "[PushNotification] Batch error: #{e.message}"
+    def access_token
+      @authorizer ||= begin
+        creds_path = ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS") {
+          Rails.root.join("config", "firebase-service-account.json").to_s
+        }
+        Google::Auth::ServiceAccountCredentials.make_creds(
+          json_key_io: File.open(creds_path),
+          scope: FCM_SCOPE
+        )
+      end
+      @authorizer.fetch_access_token!
+      @authorizer.access_token
+    end
+
+    def fcm_project_id
+      @fcm_project_id ||= begin
+        creds_path = ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS") {
+          Rails.root.join("config", "firebase-service-account.json").to_s
+        }
+        JSON.parse(File.read(creds_path))["project_id"]
       end
     end
   end
 
-  # 브로드캐스트 답장 알림
-  def send_broadcast_reply_notification(broadcast, sender)
-    return unless broadcast.user.expo_push_token.present?
+  # Instance methods for backward compatibility with existing callers
 
-    send_notification(
-      broadcast.user.expo_push_token,
+  def send_broadcast_reply_notification(broadcast, sender)
+    return unless broadcast.user.push_token.present?
+
+    self.class.send_notification(
+      broadcast.user.push_token,
       title: "브로드캐스트 답장",
       body: "#{sender.nickname}님이 당신의 브로드캐스트에 답장했습니다.",
       data: {
@@ -127,19 +148,17 @@ class PushNotificationService
     )
   end
 
-  # 새 메시지 알림
   def send_new_message_notification(message)
     conversation = message.conversation
     sender = message.sender
 
-    # 수신자 결정
     receiver_id = (conversation.user_a_id == sender.id) ? conversation.user_b_id : conversation.user_a_id
     receiver = User.find_by(id: receiver_id)
 
-    return unless receiver&.expo_push_token.present?
+    return unless receiver&.push_token.present?
 
-    send_notification(
-      receiver.expo_push_token,
+    self.class.send_notification(
+      receiver.push_token,
       title: "새 메시지",
       body: "#{sender.nickname}님으로부터 새 메시지가 도착했습니다.",
       data: {
@@ -151,16 +170,15 @@ class PushNotificationService
     )
   end
 
-  # 사용자 정지 알림
   def send_suspension_notification(user, reason = nil)
-    return unless user.expo_push_token.present?
+    return unless user.push_token.present?
 
-    message = reason.present? ? "계정이 정지되었습니다. 사유: #{reason}" : "계정이 정지되었습니다."
+    msg = reason.present? ? "계정이 정지되었습니다. 사유: #{reason}" : "계정이 정지되었습니다."
 
-    send_notification(
-      user.expo_push_token,
+    self.class.send_notification(
+      user.push_token,
       title: "계정 정지 알림",
-      body: message,
+      body: msg,
       data: {
         type: "account_suspension",
         reason: reason
@@ -168,17 +186,14 @@ class PushNotificationService
     )
   end
 
-  # 새 브로드캐스트 알림 (설정에 따라 전송)
   def send_new_broadcast_notification(broadcast, recipients)
     return if recipients.empty?
 
-    # 푸시 알림 설정이 켜져 있는 사용자만 필터링
-    valid_recipients = recipients.select { |user| user.expo_push_token.present? && user.push_enabled? }
+    valid_recipients = recipients.select { |user| user.push_token.present? && user.push_enabled? }
     return if valid_recipients.empty?
 
-    tokens = valid_recipients.map(&:expo_push_token)
-
-    send_notification(
+    tokens = valid_recipients.map(&:push_token)
+    self.class.send_notifications(
       tokens,
       title: "새 브로드캐스트",
       body: "#{broadcast.user.nickname}님이 새 브로드캐스트를 게시했습니다.",
@@ -189,12 +204,5 @@ class PushNotificationService
         user_nickname: broadcast.user.nickname
       }
     )
-  end
-
-  private
-
-  # Expo 푸시 토큰 유효성 검사
-  def valid_expo_token?(token)
-    token.present? && token.start_with?("ExponentPushToken[")
   end
 end

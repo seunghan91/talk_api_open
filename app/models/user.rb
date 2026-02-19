@@ -16,6 +16,7 @@ class User < ApplicationRecord
   # Scope for active users (not blocked and verified)
   scope :active, -> { where(blocked: false, verified: true) }
 
+  has_many :sessions, dependent: :destroy
   has_many :broadcasts, dependent: :destroy
   has_many :reports_as_reporter, class_name: "Report", foreign_key: :reporter_id
   has_many :reports_as_reported, class_name: "Report", foreign_key: :reported_id
@@ -122,15 +123,6 @@ class User < ApplicationRecord
     message: "유효하지 않은 성별입니다. 허용값: male, female, unspecified, unknown, other"
   }, allow_nil: true, allow_blank: true
 
-  # 테스트를 위한 JWT 토큰 생성 메서드
-  def generate_token
-    payload = {
-      user_id: id,
-      exp: 24.hours.from_now.to_i
-    }
-    JWT.encode(payload, Rails.application.credentials.secret_key_base, 'HS256')
-  end
-
   private
 
   # 사용자 생성 시 지갑 자동 생성
@@ -165,7 +157,7 @@ class User < ApplicationRecord
   #     field :created_at
   #     field :updated_at
   #     field :status
-  #     field :expo_push_token
+  #     field :push_token
   #     field :push_enabled
   #     field :broadcast_push_enabled
   #     field :message_push_enabled
@@ -183,7 +175,7 @@ class User < ApplicationRecord
   #     field :phone
   #     field :gender
   #     field :status
-  #     field :expo_push_token
+  #     field :push_token
   #     field :push_enabled
   #     field :broadcast_push_enabled
   #     field :message_push_enabled

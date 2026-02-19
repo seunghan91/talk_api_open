@@ -3,6 +3,7 @@ module Api
     module Auth
       class PasswordResetsController < Api::V1::BaseController
         # 비밀번호 재설정은 인증 없이 전화번호+인증코드로 처리
+        skip_before_action :authorize_request
 
         # POST /api/v1/auth/password_resets
         def create

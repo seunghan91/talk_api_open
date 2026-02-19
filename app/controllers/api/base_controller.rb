@@ -1,7 +1,8 @@
 module Api
   class BaseController < ApplicationController
-    before_action :authorize_request, unless: -> { Rails.env.development? || Rails.env.test? }
-    attr_reader :current_user
+    include ApiAuthentication
+
+    before_action :authorize_request
 
     rescue_from StandardError, with: :handle_standard_error
     rescue_from ActiveRecord::RecordNotFound, with: :handle_record_not_found
@@ -12,27 +13,6 @@ module Api
     rescue_from ApiError::ValidationError, with: :render_validation_error
 
     private
-
-    def authorize_request
-      header = request.headers["Authorization"]
-      if header.present?
-        token = header.split(" ").last
-        begin
-          decoded = JsonWebToken.decode(token)
-          if decoded && decoded[:user_id]
-            @current_user = User.find_by(id: decoded[:user_id])
-          end
-        rescue JWT::ExpiredSignature
-          raise ApiError::TokenExpired
-        rescue JWT::DecodeError
-          raise ApiError::InvalidToken
-        end
-      end
-
-      unless @current_user
-        raise ApiError::Unauthorized
-      end
-    end
 
     def handle_standard_error(exception)
       Rails.logger.error "예외 발생: #{exception.class.name} - #{exception.message}"

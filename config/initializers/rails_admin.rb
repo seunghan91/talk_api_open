@@ -6,7 +6,7 @@ if defined?(RailsAdmin)
     ### Popular gems integration
 
     ## == Devise ==
-    # 관리자 인증 설정 (JWT 토큰 기반)
+    # 관리자 인증 설정 (HTTP Basic Auth)
     config.authenticate_with do
       authenticate_or_request_with_http_basic do |username, password|
         username == ENV.fetch("RAILS_ADMIN_USERNAME", "admin") &&

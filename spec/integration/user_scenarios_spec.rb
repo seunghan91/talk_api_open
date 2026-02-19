@@ -347,7 +347,8 @@ RSpec.describe 'User Scenario Tests', type: :request do
       create(:announcement,
         title: '서비스 업데이트 안내',
         content: 'Rails 8.1로 업그레이드되었습니다.',
-        category: category
+        category: category,
+        is_published: true
       )
     end
 

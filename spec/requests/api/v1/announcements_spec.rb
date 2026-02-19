@@ -2,6 +2,8 @@ require 'rails_helper'
 
 RSpec.describe "Api::V1::Announcements", type: :request do
   # Test data setup
+  let!(:user) { create(:user) }
+  let!(:admin) { create(:user, is_admin: true) }
   let!(:category) { create(:announcement_category, name: "General") }
   let!(:announcement) { create(:announcement, title: "Test Announcement", content: "Test Content", category: category, is_published: true) }
 
@@ -12,18 +14,18 @@ RSpec.describe "Api::V1::Announcements", type: :request do
 
   describe "GET /api/v1/announcements" do
     it "returns http success" do
-      get "/api/v1/announcements"
+      get "/api/v1/announcements", headers: auth_headers_for(user)
       expect(response).to have_http_status(:success)
     end
 
     it "returns announcements list" do
-      get "/api/v1/announcements"
+      get "/api/v1/announcements", headers: auth_headers_for(user)
       expect(json_response).to have_key('announcements')
       expect(json_response['success']).to eq(true)
     end
 
     it "filters by category_id" do
-      get "/api/v1/announcements", params: { category_id: category.id }
+      get "/api/v1/announcements", params: { category_id: category.id }, headers: auth_headers_for(user)
       expect(response).to have_http_status(:success)
       expect(json_response['announcements'].length).to eq(1)
     end
@@ -31,18 +33,18 @@ RSpec.describe "Api::V1::Announcements", type: :request do
 
   describe "GET /api/v1/announcements/:id" do
     it "returns http success" do
-      get "/api/v1/announcements/#{announcement.id}"
+      get "/api/v1/announcements/#{announcement.id}", headers: auth_headers_for(user)
       expect(response).to have_http_status(:success)
     end
 
     it "returns the announcement details" do
-      get "/api/v1/announcements/#{announcement.id}"
+      get "/api/v1/announcements/#{announcement.id}", headers: auth_headers_for(user)
       expect(json_response['id']).to eq(announcement.id)
       expect(json_response['title']).to eq("Test Announcement")
     end
 
     it "returns not found for non-existent announcement" do
-      get "/api/v1/announcements/99999"
+      get "/api/v1/announcements/99999", headers: auth_headers_for(user)
       expect(response).to have_http_status(:not_found)
     end
   end
@@ -71,7 +73,7 @@ RSpec.describe "Api::V1::Announcements", type: :request do
 
     it "creates a new announcement with valid params" do
       expect {
-        post "/api/v1/announcements", params: valid_params
+        post "/api/v1/announcements", params: valid_params, headers: auth_headers_for(admin)
       }.to change(Announcement, :count).by(1)
 
       expect(response).to have_http_status(:created)
@@ -80,7 +82,7 @@ RSpec.describe "Api::V1::Announcements", type: :request do
     end
 
     it "returns error with invalid params" do
-      post "/api/v1/announcements", params: invalid_params
+      post "/api/v1/announcements", params: invalid_params, headers: auth_headers_for(admin)
       expect(response).to have_http_status(:unprocessable_entity)
       expect(json_response['success']).to eq(false)
       expect(json_response['errors']).to be_present
@@ -98,14 +100,14 @@ RSpec.describe "Api::V1::Announcements", type: :request do
     end
 
     it "updates the announcement" do
-      patch "/api/v1/announcements/#{announcement.id}", params: update_params
+      patch "/api/v1/announcements/#{announcement.id}", params: update_params, headers: auth_headers_for(admin)
       expect(response).to have_http_status(:success)
       expect(json_response['success']).to eq(true)
       expect(json_response['announcement']['title']).to eq("Updated Title")
     end
 
     it "returns not found for non-existent announcement" do
-      patch "/api/v1/announcements/99999", params: update_params
+      patch "/api/v1/announcements/99999", params: update_params, headers: auth_headers_for(admin)
       expect(response).to have_http_status(:not_found)
     end
   end
@@ -113,7 +115,7 @@ RSpec.describe "Api::V1::Announcements", type: :request do
   describe "DELETE /api/v1/announcements/:id" do
     it "deletes the announcement" do
       expect {
-        delete "/api/v1/announcements/#{announcement.id}"
+        delete "/api/v1/announcements/#{announcement.id}", headers: auth_headers_for(admin)
       }.to change(Announcement, :count).by(-1)
 
       expect(response).to have_http_status(:success)
@@ -121,7 +123,7 @@ RSpec.describe "Api::V1::Announcements", type: :request do
     end
 
     it "returns not found for non-existent announcement" do
-      delete "/api/v1/announcements/99999"
+      delete "/api/v1/announcements/99999", headers: auth_headers_for(admin)
       expect(response).to have_http_status(:not_found)
     end
   end

@@ -24,8 +24,8 @@ module Auth
       
       {
         success: true,
-        token: generate_token(user),
-        user: serialize_user(user)
+        user: user,
+        user_data: serialize_user(user)
       }
     rescue CommandError => e
       e.to_h.merge(success: false)
@@ -126,10 +126,6 @@ module Auth
         
         user
       end
-    end
-
-    def generate_token(user)
-      AuthToken.encode(user_id: user.id)
     end
 
     def serialize_user(user)

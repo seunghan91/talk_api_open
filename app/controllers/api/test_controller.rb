@@ -1,4 +1,6 @@
 class Api::TestController < ApplicationController
+  skip_before_action :authorize_request
+
   def index
     # 공지사항 카테고리 조회
     categories = AnnouncementCategory.all

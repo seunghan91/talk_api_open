@@ -29,8 +29,9 @@ gem "bootsnap", require: false
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors", "~> 3.0"
 
-# JWT for authentication
-gem "jwt", "~> 3.0"
+# Rate limiting and throttling
+gem "rack-attack", "~> 6.7"
+
 
 # Solid Suite (Rails 8 native) - No Redis needed
 gem "solid_queue", "~> 1.1"   # Latest: 1.3.x (DB-backed jobs, recurring tasks, async mode)
@@ -51,8 +52,8 @@ gem "discard", "~> 1.4"
 # 명시적으로 logger gem 추가
 gem "logger"
 
-# 알림을 위한 Expo push notification
-gem "exponent-server-sdk"
+# FCM HTTP v1 API authentication
+gem "googleauth", "~> 1.11"
 
 # Use Kredis to get higher-level data types in Redis [https://github.com/rails/kredis]
 # gem "kredis"

@@ -25,22 +25,19 @@ module TalkkApi
     config.middleware.use Rack::MethodOverride
     config.middleware.use ActionDispatch::Session::CookieStore, { key: "_talkk_api_session" }
 
+    # Security headers (X-Content-Type-Options, X-Frame-Options, HSTS, etc.)
+    # Inserted early in the stack so headers apply to ALL responses including error pages.
+    require_relative "../lib/middleware/security_headers"
+    config.middleware.insert_before Rack::Sendfile, Middleware::SecurityHeaders
+
     # API 전용 모드 끄기 (RailsAdmin을 위해)
     config.api_only = false  # 또는 이 줄을 아예 삭제
 
     # secret_key_base 설정 (환경 변수가 없는 경우 기본값 사용)
     config.secret_key_base = ENV["SECRET_KEY_BASE"] || "a58d5f62659e89d8c2ae1949570b980619361bfc08ff9a612d1b563fd7ce51250fab4db654dfb90a4f62981e6df12b2d6a49d92d4f56b8c8bacd49f4ccc7879e"
 
-    # CORS 설정
-    config.middleware.insert_before 0, Rack::Cors do
-      allow do
-        origins "*"
-        resource "*",
-          headers: :any,
-          methods: [ :get, :post, :put, :patch, :delete, :options, :head ],
-          expose: [ "Authorization" ]
-      end
-    end
+    # CORS 설정은 config/initializers/cors.rb에서 관리
+    # (환경별 origin 제한 적용)
 
     # Active Storage 설정
     config.active_storage.variant_processor = :mini_magick
