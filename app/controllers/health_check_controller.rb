@@ -23,7 +23,8 @@ class HealthCheckController < ActionController::API
   private
 
   def database_connected?
-    ApplicationRecord.connection.active?
+    ApplicationRecord.connection.execute("SELECT 1")
+    true
   rescue => e
     Rails.logger.error("Database connection check failed: #{e.message}")
     false
