@@ -108,11 +108,8 @@ class PushNotificationService
 
     def access_token
       @authorizer ||= begin
-        creds_path = ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS") {
-          Rails.root.join("config", "firebase-service-account.json").to_s
-        }
         Google::Auth::ServiceAccountCredentials.make_creds(
-          json_key_io: File.open(creds_path),
+          json_key_io: StringIO.new(service_account_json),
           scope: FCM_SCOPE
         )
       end
@@ -121,12 +118,20 @@ class PushNotificationService
     end
 
     def fcm_project_id
-      @fcm_project_id ||= begin
-        creds_path = ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS") {
-          Rails.root.join("config", "firebase-service-account.json").to_s
-        }
-        JSON.parse(File.read(creds_path))["project_id"]
-      end
+      @fcm_project_id ||= JSON.parse(service_account_json)["project_id"]
+    end
+
+    # Load service account JSON from env var (production) or file (local)
+    def service_account_json
+      @service_account_json ||=
+        if ENV["FIREBASE_SERVICE_ACCOUNT_JSON"].present?
+          ENV["FIREBASE_SERVICE_ACCOUNT_JSON"]
+        else
+          creds_path = ENV.fetch("GOOGLE_APPLICATION_CREDENTIALS") {
+            Rails.root.join("config", "firebase-service-account.json").to_s
+          }
+          File.read(creds_path)
+        end
     end
   end
 

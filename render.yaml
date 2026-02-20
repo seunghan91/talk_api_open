@@ -20,6 +20,8 @@ services:
         value: production
       - key: RAILS_MASTER_KEY
         sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
 
 
 # 데이터베이스 정의
